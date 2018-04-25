@@ -16,6 +16,8 @@ public interface MinHashSketchDatabase {
 	
 	int getSketchCount();
 	
-	List<String> getSketchIDs(); 
+	List<String> getSketchIDs();
+
+	MinHashImplementationInformation getImplementationInformation(); 
 	
 }

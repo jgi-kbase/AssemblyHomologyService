@@ -2,7 +2,7 @@ package us.kbase.assemblyhomology.minhash;
 
 import static us.kbase.assemblyhomology.util.Util.exceptOnEmpty;
 
-public class MinHashImplemenationInformation {
+public class MinHashImplementationInformation {
 	
 	//TODO JAVADOC
 	//TODO TEST
@@ -10,7 +10,7 @@ public class MinHashImplemenationInformation {
 	private final String implementationName;
 	private final String implementationVersion;
 	
-	public MinHashImplemenationInformation(
+	public MinHashImplementationInformation(
 			final String implementationName,
 			final String implementationVersion) {
 		exceptOnEmpty(implementationName, "implementationName");

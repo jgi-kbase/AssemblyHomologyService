@@ -4,14 +4,22 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
-import us.kbase.assemblyhomology.minhash.MinHashImplemenationInformation;
+import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
+import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 
 public class Mash implements MinHashImplementation {
@@ -21,69 +29,45 @@ public class Mash implements MinHashImplementation {
 	
 	private final static String MASH = "mash";
 	
-	private final MinHashImplemenationInformation info;
+	private final MinHashImplementationInformation info;
 	
 	public Mash() throws MinHashInitException {
-		checkMashExists();
 		info = getInfo();
 	}
-	
-	
-	private void checkMashExists() throws MinHashInitException {
+
+	private MinHashImplementationInformation getInfo() throws MinHashInitException {
 		try {
-			final Process which = new ProcessBuilder("which", MASH).start();
-			if (!which.waitFor(10L, TimeUnit.SECONDS)) {
-				throw new MinHashInitException(String.format(
-						"Timed out waiting for os to confirm %s is available on the system path",
-						MASH));
-			}
-			// on ubuntu which returns 1 if the command isn't found
-			if (which.exitValue() != 0) {
-				//TODO LOG log this
-				try (final InputStream is = which.getErrorStream()) {
-					System.out.println(IOUtils.toString(is));
-				}
-				throw new MinHashInitException(String.format(
-						"Error attempting to confirm %s is available on the system path", MASH));
-			}
-			try (final InputStream is = which .getInputStream()) {
-				if (IOUtils.toString(is).isEmpty()) {
-					throw new MinHashInitException(String.format(
-							"%s is not available on the system path", MASH));
-				}
-			}
-		} catch (IOException | InterruptedException e) {
-			throw new MinHashInitException(String.format(
-					"Error attempting to confirm %s is available on the system path: ", MASH) + 
-					e.getMessage(), e);
+			final String version = getVersion(getMashOutput("-h"));
+			return new MinHashImplementationInformation(MASH, version);
+		} catch (MashException e) {
+			throw new MinHashInitException(e.getMessage(), e);
 		}
-		
 	}
-	private MinHashImplemenationInformation getInfo() throws MinHashInitException {
-		final String version;
+	
+	// only use when expecting a small amount of output, otherwise will put entire output in mem
+	// or more likely deadlock
+	private String getMashOutput(final String... arguments) throws MashException {
+		final List<String> command = new LinkedList<>(Arrays.asList(MASH));
+		command.addAll(Arrays.asList(arguments));
 		try {
-			final Process mashHelp = new ProcessBuilder(MASH, "-h").start();
-			if (!mashHelp.waitFor(10L, TimeUnit.SECONDS)) {
-				throw new MinHashInitException(String.format(
+			final Process mash = new ProcessBuilder(command).start();
+			if (!mash.waitFor(10L, TimeUnit.SECONDS)) {
+				throw new MashException(String.format(
 						"Timed out waiting for %s to run", MASH));
 			}
-			if (mashHelp.exitValue() != 0) {
-				//TODO LOG log this
-				try (final InputStream is = mashHelp.getErrorStream()) {
-					System.out.println(IOUtils.toString(is));
+			if (mash.exitValue() != 0) {
+				try (final InputStream is = mash.getErrorStream()) {
+					throw new MashException(String.format(
+							"Error running %s: %s", MASH, IOUtils.toString(is)));
 				}
-				throw new MinHashInitException(String.format(
-						"Error running %s", MASH));
 			}
-			try (final InputStream is = mashHelp.getInputStream()) {
-				final String mashHelpOut = IOUtils.toString(is);
-				version = getVersion(mashHelpOut);
+			try (final InputStream is = mash.getInputStream()) {
+				return IOUtils.toString(is);
 			}
 		} catch (IOException | InterruptedException e) {
-			throw new MinHashInitException(String.format(
-					"Error running %s:", MASH) + e.getMessage(), e);
+			throw new MashException(String.format(
+					"Error running %s: ", MASH) + e.getMessage(), e);
 		}
-		return new MinHashImplemenationInformation(MASH, version);
 	}
 	
 	private String getVersion(final String mashHelpOut) {
@@ -93,22 +77,41 @@ public class Mash implements MinHashImplementation {
 		return verline[verline.length - 1].trim();
 	}
 
-
 	@Override
-	public MinHashImplemenationInformation getImplementationInformation() {
+	public MinHashImplementationInformation getImplementationInformation() {
 		return info;
 	}
 
 	@Override
-	public MinHashSketchDatabase getDatabase(final MinHashDBLocation location) {
+	public MinHashSketchDatabase getDatabase(final MinHashDBLocation location)
+			throws MashException {
 		checkNotNull(location, "location");
-		// TODO Auto-generated method stub
-		return null;
+		final MinHashParameters params = getParameters(location.getPathToFile().get());
+		
+		//TODO CODE add IDs
+		return new MashSketchDatabase(info, params, location, Collections.emptyList());
 	}
 	
-	public static void main(final String[] args) throws MinHashInitException {
+	private MinHashParameters getParameters(final Path path) throws MashException {
+		final String mashout = getMashOutput("info", "-H", path.toString());
+		//TODO CODE this is nasty. Use a regex or something
+		final String[] lines = mashout.split("\n");
+		final int kmerSize = Integer.parseInt(lines[2].trim().split("\\s+")[2].trim());
+		final int hashCount = Integer.parseInt(lines[4].trim().split("\\s+")[4].trim());
+		return MinHashParameters.getBuilder(kmerSize).withHashCount(hashCount).build();
+	}
+
+	public static void main(final String[] args) throws MinHashException {
 		final MinHashImplementation mash = new Mash();
 		System.out.println(mash.getImplementationInformation());
+		
+		final MinHashSketchDatabase db = mash.getDatabase(new MinHashDBLocation(Paths.get(
+				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000.msh")));
+		System.out.println(db.getImplementationInformation());
+		System.out.println(db.getLocation());
+		System.out.println(db.getParameterSet());
+		System.out.println(db.getSketchCount());
+		System.out.println(db.getSketchIDs());
 	}
 
 }
