@@ -1,5 +1,7 @@
 package us.kbase.assemblyhomology.minhash;
 
+import java.util.List;
+
 import us.kbase.assemblyhomology.minhash.mash.MashException;
 
 /** An implementation of the MinHash algorithm like Mash or Sourmash.
@@ -13,5 +15,7 @@ public interface MinHashImplementation {
 	MinHashImplementationInformation getImplementationInformation();
 	
 	MinHashSketchDatabase getDatabase(MinHashDBLocation location) throws MashException;
+	
+	List<String> getSketchIDs(MinHashSketchDatabase db) throws MashException;
 	
 }

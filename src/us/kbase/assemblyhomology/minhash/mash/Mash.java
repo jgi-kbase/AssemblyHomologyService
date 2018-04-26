@@ -113,16 +113,17 @@ public class Mash implements MinHashImplementation {
 	public MinHashSketchDatabase getDatabase(final MinHashDBLocation location)
 			throws MashException {
 		checkNotNull(location, "location");
-		final MinHashParameters params = getParameters(location.getPathToFile().get());
-		final List<String> ids = getIDs(location.getPathToFile().get());
-		return new MinHashSketchDatabase(info, params, location, ids);
+		final ParamsAndSize pns = getParametersAndSize(location.getPathToFile().get());
+		return new MinHashSketchDatabase(info, pns.params, location, pns.size);
 	}
 	
-	private List<String> getIDs(final Path path) throws MashException {
+	@Override
+	public List<String> getSketchIDs(final MinHashSketchDatabase db) throws MashException {
 		Path tempFile = null;
 		try {
 			tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
-			getMashOutput(tempFile, "info", "-t", path.toString());
+			getMashOutput(
+					tempFile, "info", "-t", db.getLocation().getPathToFile().get().toString());
 			final List<String> ids = new LinkedList<>();
 			try (final InputStream is = Files.newInputStream(tempFile)) {
 				final BufferedReader br = new BufferedReader(new InputStreamReader(
@@ -146,14 +147,28 @@ public class Mash implements MinHashImplementation {
 			}
 		}
 	}
-
-	private MinHashParameters getParameters(final Path path) throws MashException {
+	
+	private static class ParamsAndSize {
+		final MinHashParameters params;
+		final int size;
+		private ParamsAndSize(MinHashParameters params, int size) {
+			this.params = params;
+			this.size = size;
+		}
+	}
+	
+	private ParamsAndSize getParametersAndSize(final Path path) throws MashException {
 		final String mashout = getMashOutput("info", "-H", path.toString());
-		//TODO CODE this is nasty. Use a regex or something
+		//TODO CODE this is nasty. Use a regex or something so we can have 2 problems
 		final String[] lines = mashout.split("\n");
 		final int kmerSize = Integer.parseInt(lines[2].trim().split("\\s+")[2].trim());
 		final int hashCount = Integer.parseInt(lines[4].trim().split("\\s+")[4].trim());
-		return MinHashParameters.getBuilder(kmerSize).withHashCount(hashCount).build();
+		final int size = Integer.parseInt(lines[5].trim().split("\\s+")[1].trim());
+		return new ParamsAndSize(
+				MinHashParameters.getBuilder(kmerSize)
+						.withHashCount(hashCount)
+						.build(),
+				size);
 	}
 
 	public static void main(final String[] args) throws MinHashException {
@@ -165,8 +180,10 @@ public class Mash implements MinHashImplementation {
 		System.out.println(db.getImplementationInformation());
 		System.out.println(db.getLocation());
 		System.out.println(db.getParameterSet());
-		System.out.println(db.getSketchCount());
-		System.out.println(db.getSketchIDs());
+		System.out.println(db.getSequenceCount());
+		final List<String> ids = mash.getSketchIDs(db);
+		System.out.println(ids.size());
+		System.out.println(ids);
 	}
 
 }
