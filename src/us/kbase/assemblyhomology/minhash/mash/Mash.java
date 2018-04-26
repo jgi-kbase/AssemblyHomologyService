@@ -115,7 +115,7 @@ public class Mash implements MinHashImplementation {
 		checkNotNull(location, "location");
 		final MinHashParameters params = getParameters(location.getPathToFile().get());
 		final List<String> ids = getIDs(location.getPathToFile().get());
-		return new MashSketchDatabase(info, params, location, ids);
+		return new MinHashSketchDatabase(info, params, location, ids);
 	}
 	
 	private List<String> getIDs(final Path path) throws MashException {
