@@ -121,11 +121,7 @@ public class Mash implements MinHashImplementation {
 	private List<String> getIDs(final Path path) throws MashException {
 		Path tempFile = null;
 		try {
-			try {
-				tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
-			} catch (IOException e) {
-				throw new MashException(e.getMessage(), e);
-			}
+			tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
 			getMashOutput(tempFile, "info", "-t", path.toString());
 			final List<String> ids = new LinkedList<>();
 			try (final InputStream is = Files.newInputStream(tempFile)) {
