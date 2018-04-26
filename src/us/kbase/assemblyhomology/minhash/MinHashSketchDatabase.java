@@ -1,42 +1,36 @@
 package us.kbase.assemblyhomology.minhash;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static us.kbase.assemblyhomology.util.Util.exceptOnEmpty;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
 
 public class MinHashSketchDatabase {
-
+	
 	//TODO TEST
 	//TODO JAVADOC
 
 	private final MinHashImplementationInformation info;
 	private final MinHashParameters parameterSet;
 	private final MinHashDBLocation location;
-	private final List<String> sketchIDs;
+	private final int sequenceCount;
 	
 	public MinHashSketchDatabase(
 			final MinHashImplementationInformation info,
 			final MinHashParameters parameterSet,
 			final MinHashDBLocation location,
-			final List<String> sketchIDs) {
+			final int sequenceCount) {
 		checkNotNull(info, "info");
 		checkNotNull(parameterSet, "parameterSet");
 		checkNotNull(location, "location");
-		checkNotNull(sketchIDs, "sketchIDs");
-		for (final String id: sketchIDs) {
-			exceptOnEmpty(id, "null or whitespace only id in sketchIDs");
+		if (sequenceCount < 1) {
+			throw new IllegalArgumentException("sequenceCount must be at least 1");
 		}
 		this.info = info;
 		this.parameterSet = parameterSet;
 		this.location = location;
-		this.sketchIDs = Collections.unmodifiableList(new ArrayList<>(sketchIDs));
+		this.sequenceCount = sequenceCount;
 	}
 
 	public MinHashImplementationInformation getImplementationInformation() {
@@ -51,12 +45,7 @@ public class MinHashSketchDatabase {
 		return location;
 	}
 
-	public int getSketchCount() {
-		return sketchIDs.size();
+	public int getSequenceCount() {
+		return sequenceCount;
 	}
-
-	public List<String> getSketchIDs() {
-		return sketchIDs;
-	}
-
 }
