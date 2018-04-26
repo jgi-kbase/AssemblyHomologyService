@@ -2,12 +2,15 @@ package us.kbase.assemblyhomology.minhash.mash;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -30,8 +33,16 @@ public class Mash implements MinHashImplementation {
 	private final static String MASH = "mash";
 	
 	private final MinHashImplementationInformation info;
+	private final Path tempFileDirectory;
 	
-	public Mash() throws MinHashInitException {
+	public Mash(final Path tempFileDirectory) throws MinHashInitException {
+		checkNotNull(tempFileDirectory, "tempFileDirectory");
+		this.tempFileDirectory = tempFileDirectory;
+		try {
+			Files.createDirectories(tempFileDirectory);
+		} catch (IOException e) {
+			throw new MinHashInitException(e.getMessage(), e);
+		}
 		info = getInfo();
 	}
 
@@ -47,11 +58,23 @@ public class Mash implements MinHashImplementation {
 	// only use when expecting a small amount of output, otherwise will put entire output in mem
 	// or more likely deadlock
 	private String getMashOutput(final String... arguments) throws MashException {
+		return getMashOutput(null, arguments);
+	}
+
+	// returns null if outputPath is not null
+	private String getMashOutput(final Path outputPath, final String... arguments)
+			throws MashException {
 		final List<String> command = new LinkedList<>(Arrays.asList(MASH));
 		command.addAll(Arrays.asList(arguments));
 		try {
-			final Process mash = new ProcessBuilder(command).start();
-			if (!mash.waitFor(10L, TimeUnit.SECONDS)) {
+			final ProcessBuilder pb = new ProcessBuilder(command);
+			if (outputPath != null) {
+				// it's far less complicated if we just redirect to a file rather than have
+				// threads consuming output and error so they don't deadlock
+				pb.redirectOutput(outputPath.toFile());
+			}
+			final Process mash = pb.start();
+			if (!mash.waitFor(30L, TimeUnit.SECONDS)) {
 				throw new MashException(String.format(
 						"Timed out waiting for %s to run", MASH));
 			}
@@ -61,15 +84,19 @@ public class Mash implements MinHashImplementation {
 							"Error running %s: %s", MASH, IOUtils.toString(is)));
 				}
 			}
-			try (final InputStream is = mash.getInputStream()) {
-				return IOUtils.toString(is);
+			if (outputPath != null) {
+				return null;
+			} else {
+				try (final InputStream is = mash.getInputStream()) {
+					return IOUtils.toString(is);
+				}
 			}
 		} catch (IOException | InterruptedException e) {
 			throw new MashException(String.format(
 					"Error running %s: ", MASH) + e.getMessage(), e);
 		}
 	}
-	
+
 	private String getVersion(final String mashHelpOut) {
 		//TODO CODE use regex later
 		final String[] lines = mashHelpOut.split("\n");
@@ -87,11 +114,43 @@ public class Mash implements MinHashImplementation {
 			throws MashException {
 		checkNotNull(location, "location");
 		final MinHashParameters params = getParameters(location.getPathToFile().get());
-		
-		//TODO CODE add IDs
-		return new MashSketchDatabase(info, params, location, Collections.emptyList());
+		final List<String> ids = getIDs(location.getPathToFile().get());
+		return new MashSketchDatabase(info, params, location, ids);
 	}
 	
+	private List<String> getIDs(final Path path) throws MashException {
+		Path tempFile = null;
+		try {
+			try {
+				tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
+			} catch (IOException e) {
+				throw new MashException(e.getMessage(), e);
+			}
+			getMashOutput(tempFile, "info", "-t", path.toString());
+			final List<String> ids = new LinkedList<>();
+			try (final InputStream is = Files.newInputStream(tempFile)) {
+				final BufferedReader br = new BufferedReader(new InputStreamReader(
+						is, StandardCharsets.UTF_8));
+				br.readLine(); // remove header
+				for (String line = br.readLine(); line != null; line = br.readLine()) {
+					final String id = line.split("\\s+")[2].trim();
+					ids.add(id);
+				}
+			}
+			return ids;
+		} catch (IOException e) {
+			throw new MashException(e.getMessage(), e);
+		} finally {
+			if (tempFile != null) {
+				try {
+					Files.delete(tempFile);
+				} catch (IOException e) {
+					throw new MashException(e.getMessage(), e);
+				}
+			}
+		}
+	}
+
 	private MinHashParameters getParameters(final Path path) throws MashException {
 		final String mashout = getMashOutput("info", "-H", path.toString());
 		//TODO CODE this is nasty. Use a regex or something
@@ -102,7 +161,7 @@ public class Mash implements MinHashImplementation {
 	}
 
 	public static void main(final String[] args) throws MinHashException {
-		final MinHashImplementation mash = new Mash();
+		final MinHashImplementation mash = new Mash(Paths.get("."));
 		System.out.println(mash.getImplementationInformation());
 		
 		final MinHashSketchDatabase db = mash.getDatabase(new MinHashDBLocation(Paths.get(
