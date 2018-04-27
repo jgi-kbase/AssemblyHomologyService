@@ -48,4 +48,36 @@ public class MinHashSketchDatabase {
 	public int getSequenceCount() {
 		return sequenceCount;
 	}
+	
+	public void checkCompatibility(final MinHashSketchDatabase otherDB) {
+		if (!getImplementationInformation().getImplementationName().equals(
+				otherDB.getImplementationInformation().getImplementationName())) {
+			// need to check version?
+			throw new IllegalArgumentException(String.format(
+					"Implementations for databases do not match: {} {}",
+					getImplementationInformation().getImplementationName(),
+					otherDB.getImplementationInformation().getImplementationName()));
+		}
+		if (!getParameterSet().equals(otherDB.getParameterSet())) {
+			// is this check necessary? what happens if you run with differing
+			// sketch sizes?
+			throw new IllegalArgumentException(
+					"Parameter sets for databases do not match");
+		}
+	}
+
+	@Override
+	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("MinHashSketchDatabase [info=");
+		builder.append(info);
+		builder.append(", parameterSet=");
+		builder.append(parameterSet);
+		builder.append(", location=");
+		builder.append(location);
+		builder.append(", sequenceCount=");
+		builder.append(sequenceCount);
+		builder.append("]");
+		return builder.toString();
+	}
 }

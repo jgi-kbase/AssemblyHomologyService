@@ -42,6 +42,48 @@ public class MinHashParameters {
 		return builder.toString();
 	}
 	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((hashCount == null) ? 0 : hashCount.hashCode());
+		result = prime * result + kmerSize;
+		result = prime * result + ((scaling == null) ? 0 : scaling.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		MinHashParameters other = (MinHashParameters) obj;
+		if (hashCount == null) {
+			if (other.hashCount != null) {
+				return false;
+			}
+		} else if (!hashCount.equals(other.hashCount)) {
+			return false;
+		}
+		if (kmerSize != other.kmerSize) {
+			return false;
+		}
+		if (scaling == null) {
+			if (other.scaling != null) {
+				return false;
+			}
+		} else if (!scaling.equals(other.scaling)) {
+			return false;
+		}
+		return true;
+	}
+
 	public static Builder getBuilder(final int kmerSize) {
 		return new Builder(kmerSize);
 	}
