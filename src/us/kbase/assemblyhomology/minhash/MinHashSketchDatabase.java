@@ -16,7 +16,7 @@ public class MinHashSketchDatabase {
 	private final MinHashDBLocation location;
 	private final int sequenceCount;
 	
-	public MinHashSketchDatabase(
+	private MinHashSketchDatabase(
 			final MinHashImplementationInformation info,
 			final MinHashParameters parameterSet,
 			final MinHashDBLocation location,
@@ -59,8 +59,16 @@ public class MinHashSketchDatabase {
 					otherDB.getImplementationInformation().getImplementationName()));
 		}
 		if (!getParameterSet().equals(otherDB.getParameterSet())) {
-			// is this check necessary? what happens if you run with differing
-			// sketch sizes?
+			/* is this check necessary? what happens if you run with differing
+			 * sketch sizes?
+			 * for mash:
+			 *		if the kmer size is different it skips the file
+			 * 		if the query hash count is < reference it skips the file
+			 *		if the query hash count is > reference, it warns and reduces the overall
+			 *		hash count
+			 *		either way we shouldn't allow it (maybe with explicit permission for the
+			 *		lower hash count, but then need to ignore the warning in the output)
+			 */
 			throw new IllegalArgumentException(
 					"Parameter sets for databases do not match");
 		}

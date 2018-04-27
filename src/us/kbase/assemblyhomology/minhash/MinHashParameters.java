@@ -11,7 +11,7 @@ public class MinHashParameters {
 	private final Optional<Integer> hashCount;
 	private final Optional<Integer> scaling;
 	
-	public MinHashParameters(final int kmerSize, final Integer hashCount, final Integer scaling) {
+	private MinHashParameters(final int kmerSize, final Integer hashCount, final Integer scaling) {
 		this.kmerSize = kmerSize;
 		this.hashCount = Optional.fromNullable(hashCount);
 		this.scaling = Optional.fromNullable(scaling);
