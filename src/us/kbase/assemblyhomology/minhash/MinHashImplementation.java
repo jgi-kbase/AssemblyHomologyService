@@ -18,4 +18,11 @@ public interface MinHashImplementation {
 	
 	List<String> getSketchIDs(MinHashSketchDatabase db) throws MashException;
 	
+	// if maxReturnCount < 1 it is treated as infinite
+	MinHashDistanceSet computeDistance(
+			MinHashSketchDatabase query,
+			MinHashSketchDatabase reference,
+			int maxReturnCount)
+			throws MashException;
+	
 }

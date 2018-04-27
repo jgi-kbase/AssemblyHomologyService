@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -18,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.io.IOUtils;
 
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
+import us.kbase.assemblyhomology.minhash.MinHashDistance;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
@@ -98,7 +102,7 @@ public class Mash implements MinHashImplementation {
 	}
 
 	private String getVersion(final String mashHelpOut) {
-		//TODO CODE use regex later
+		//TODO CODE brittle
 		final String[] lines = mashHelpOut.split("\n");
 		final String[] verline = lines[1].trim().split("\\s+");
 		return verline[verline.length - 1].trim();
@@ -119,22 +123,39 @@ public class Mash implements MinHashImplementation {
 	
 	@Override
 	public List<String> getSketchIDs(final MinHashSketchDatabase db) throws MashException {
+		return processMashOutput(
+				//TODO CODE make less brittle
+				l -> l.split("\\s+")[2].trim(),
+				true,
+				"info", "-t", db.getLocation().getPathToFile().get().toString());
+	}
+	
+	private interface LineProcessor<T> {
+		T processline(String line);
+	}
+	
+	// use for large output, creates a temp file
+	private <T> List<T> processMashOutput(
+			final LineProcessor<T> lineProcessor,
+			final boolean skipHeader,
+			final String... command)
+			throws MashException {
 		Path tempFile = null;
 		try {
 			tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
-			getMashOutput(
-					tempFile, "info", "-t", db.getLocation().getPathToFile().get().toString());
-			final List<String> ids = new LinkedList<>();
+			getMashOutput(tempFile, command);
+			final List<T> results = new LinkedList<>();
 			try (final InputStream is = Files.newInputStream(tempFile)) {
 				final BufferedReader br = new BufferedReader(new InputStreamReader(
 						is, StandardCharsets.UTF_8));
-				br.readLine(); // remove header
+				if (skipHeader) {
+					br.readLine();
+				}
 				for (String line = br.readLine(); line != null; line = br.readLine()) {
-					final String id = line.split("\\s+")[2].trim();
-					ids.add(id);
+					results.add(lineProcessor.processline(line));
 				}
 			}
-			return ids;
+			return results;
 		} catch (IOException e) {
 			throw new MashException(e.getMessage(), e);
 		} finally {
@@ -146,6 +167,43 @@ public class Mash implements MinHashImplementation {
 				}
 			}
 		}
+	}
+	
+	private final LineProcessor<MinHashDistance> PROC = new LineProcessor<MinHashDistance>() {
+
+		@Override
+		public MinHashDistance processline(final String line) {
+			//TODO CODE nasty & brittle
+			final String[] sl = line.trim().split("\\s+");
+			final String id = sl[0].trim();
+			final double distance = Double.parseDouble(sl[2].trim());
+			return new MinHashDistance(id, distance);
+		}
+		
+	};
+	
+	@Override
+	public MinHashDistanceSet computeDistance(
+			final MinHashSketchDatabase query,
+			final MinHashSketchDatabase reference,
+			final int maxReturnCount)
+			throws MashException {
+		checkNotNull(query, "query");
+		checkNotNull(reference, "reference");
+		if (query.getSequenceCount() != 1) {
+			// may want to relax this, but that'll require changing a bunch of stuff
+			throw new IllegalArgumentException("Only 1 query sequence is allowed");
+		}
+		query.checkCompatibility(reference);
+		// may need to be smarter about this for really large collections
+		List<MinHashDistance> dists = processMashOutput(PROC, false, "dist", "-d", "0.5",
+					reference.getLocation().getPathToFile().get().toString(),
+					query.getLocation().getPathToFile().get().toString());
+		if (maxReturnCount > 0 && maxReturnCount <= dists.size()) {
+			Collections.sort(dists);
+			dists = dists.subList(0, maxReturnCount);
+		}
+		return new MinHashDistanceSet(query, reference, new HashSet<>(dists));
 	}
 	
 	private static class ParamsAndSize {
@@ -184,6 +242,18 @@ public class Mash implements MinHashImplementation {
 		final List<String> ids = mash.getSketchIDs(db);
 		System.out.println(ids.size());
 		System.out.println(ids);
+		
+		final MinHashSketchDatabase query = mash.getDatabase(new MinHashDBLocation(Paths.get(
+				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000_15792_446_1.msh")));
+		System.out.println(query.getImplementationInformation());
+		System.out.println(query.getLocation());
+		System.out.println(query.getParameterSet());
+		System.out.println(query.getSequenceCount());
+		System.out.println(mash.getSketchIDs(query));
+		
+		final MinHashDistanceSet dists = mash.computeDistance(query, db, 30);
+		System.out.println(dists);
+		System.out.println(dists.getDistances().size());
 	}
 
 }
