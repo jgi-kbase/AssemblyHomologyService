@@ -16,7 +16,7 @@ public class MinHashSketchDatabase {
 	private final MinHashDBLocation location;
 	private final int sequenceCount;
 	
-	private MinHashSketchDatabase(
+	public MinHashSketchDatabase(
 			final MinHashImplementationInformation info,
 			final MinHashParameters parameterSet,
 			final MinHashDBLocation location,
