@@ -8,12 +8,15 @@ public class MinHashParameters {
 	//TODO JAVADOC
 	
 	private final int kmerSize;
-	private final Optional<Integer> hashCount;
+	private final Optional<Integer> sketchSize;
 	private final Optional<Integer> scaling;
 	
-	private MinHashParameters(final int kmerSize, final Integer hashCount, final Integer scaling) {
+	private MinHashParameters(
+			final int kmerSize,
+			final Integer sketchSize,
+			final Integer scaling) {
 		this.kmerSize = kmerSize;
-		this.hashCount = Optional.fromNullable(hashCount);
+		this.sketchSize = Optional.fromNullable(sketchSize);
 		this.scaling = Optional.fromNullable(scaling);
 	}
 
@@ -21,8 +24,8 @@ public class MinHashParameters {
 		return kmerSize;
 	}
 
-	public Optional<Integer> getHashCount() {
-		return hashCount;
+	public Optional<Integer> getSketchSize() {
+		return sketchSize;
 	}
 
 	public Optional<Integer> getScaling() {
@@ -34,8 +37,8 @@ public class MinHashParameters {
 		StringBuilder builder = new StringBuilder();
 		builder.append("MinHashParameters [kmerSize=");
 		builder.append(kmerSize);
-		builder.append(", hashCount=");
-		builder.append(hashCount);
+		builder.append(", sketchSize=");
+		builder.append(sketchSize);
 		builder.append(", scaling=");
 		builder.append(scaling);
 		builder.append("]");
@@ -46,7 +49,7 @@ public class MinHashParameters {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((hashCount == null) ? 0 : hashCount.hashCode());
+		result = prime * result + ((sketchSize == null) ? 0 : sketchSize.hashCode());
 		result = prime * result + kmerSize;
 		result = prime * result + ((scaling == null) ? 0 : scaling.hashCode());
 		return result;
@@ -64,11 +67,11 @@ public class MinHashParameters {
 			return false;
 		}
 		MinHashParameters other = (MinHashParameters) obj;
-		if (hashCount == null) {
-			if (other.hashCount != null) {
+		if (sketchSize == null) {
+			if (other.sketchSize != null) {
 				return false;
 			}
-		} else if (!hashCount.equals(other.hashCount)) {
+		} else if (!sketchSize.equals(other.sketchSize)) {
 			return false;
 		}
 		if (kmerSize != other.kmerSize) {
@@ -91,7 +94,7 @@ public class MinHashParameters {
 	public static class Builder {
 		
 		private final int kmerSize;
-		private Integer hashCount = null;
+		private Integer sketchSize = null;
 		private Integer scaling = null;
 		
 		private Builder(final int kmerSize) {
@@ -101,11 +104,11 @@ public class MinHashParameters {
 			this.kmerSize = kmerSize;
 		}
 		
-		public Builder withHashCount(final int hashCount) {
-			if (hashCount < 1) {
-				throw new IllegalArgumentException("hashCount <1");
+		public Builder withSketchSize(final int sketchSize) {
+			if (sketchSize < 1) {
+				throw new IllegalArgumentException("sketchSize <1");
 			}
-			this.hashCount = hashCount;
+			this.sketchSize = sketchSize;
 			this.scaling = null;
 			return this;
 		}
@@ -114,16 +117,16 @@ public class MinHashParameters {
 			if (scaling < 1) {
 				throw new IllegalArgumentException("scaling <1");
 			}
-			this.hashCount = null;
+			this.sketchSize = null;
 			this.scaling = scaling;
 			return this;
 		}
 		
 		public MinHashParameters build() {
-			if (hashCount == null && scaling == null) {
-				throw new IllegalStateException("One of scaling or hashCount must be set");
+			if (sketchSize == null && scaling == null) {
+				throw new IllegalStateException("One of scaling or sketchSize must be set");
 			}
-			return new MinHashParameters(kmerSize, hashCount, scaling);
+			return new MinHashParameters(kmerSize, sketchSize, scaling);
 		}
 	}
 }

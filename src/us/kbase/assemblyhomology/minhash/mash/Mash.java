@@ -220,11 +220,11 @@ public class Mash implements MinHashImplementation {
 		//TODO CODE this is nasty. Use a regex or something so we can have 2 problems
 		final String[] lines = mashout.split("\n");
 		final int kmerSize = Integer.parseInt(lines[2].trim().split("\\s+")[2].trim());
-		final int hashCount = Integer.parseInt(lines[4].trim().split("\\s+")[4].trim());
+		final int sketchSize = Integer.parseInt(lines[4].trim().split("\\s+")[4].trim());
 		final int size = Integer.parseInt(lines[5].trim().split("\\s+")[1].trim());
 		return new ParamsAndSize(
 				MinHashParameters.getBuilder(kmerSize)
-						.withHashCount(hashCount)
+						.withSketchSize(sketchSize)
 						.build(),
 				size);
 	}
