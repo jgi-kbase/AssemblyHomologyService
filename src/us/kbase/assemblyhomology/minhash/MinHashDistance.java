@@ -2,7 +2,7 @@ package us.kbase.assemblyhomology.minhash;
 
 import static us.kbase.assemblyhomology.util.Util.exceptOnEmpty;
 
-public class MinHashDistance implements Comparable<MinHashDistance>{
+public class MinHashDistance implements Comparable<MinHashDistance> {
 
 	//TODO JAVADOC
 	//TODO TEST
