@@ -84,6 +84,7 @@ public class Mash implements MinHashImplementation {
 			}
 			if (mash.exitValue() != 0) {
 				try (final InputStream is = mash.getErrorStream()) {
+					//may need different types of exceptions based on the output text
 					throw new MashException(String.format(
 							"Error running %s: %s", MASH, IOUtils.toString(is)));
 				}
