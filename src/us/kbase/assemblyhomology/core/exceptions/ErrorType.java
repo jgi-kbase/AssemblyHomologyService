@@ -22,7 +22,9 @@ public enum ErrorType {
 	/** An input parameter had an illegal value. */
 	ILLEGAL_PARAMETER		(30001, "Illegal input parameter"),
 	/** There is no namespace with the specified name. */
-	NO_SUCH_NAMESPACE		(5000, "No such namespace"),
+	NO_SUCH_NAMESPACE		(50000, "No such namespace"),
+	/** There is no sequence with the specified name. */
+	NO_SUCH_SEQUENCE		(50010, "No such sequence"),
 	/** The requested operation is not supported. */
 	UNSUPPORTED_OP			(70000, "Unsupported operation");
 	

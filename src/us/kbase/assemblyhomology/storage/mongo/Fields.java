@@ -19,7 +19,6 @@ public class Fields {
 	 * namespace fields
 	 * ***********************
 	 */
-	
 	public static final String NAMESPACE_ID = "id";
 	public static final String NAMESPACE_LOAD_ID = "load";
 	public static final String NAMESPACE_DATASOURCE_ID = "dsid";
@@ -32,6 +31,17 @@ public class Fields {
 	public static final String NAMESPACE_SCALING_FACTOR = "scle";
 	public static final String NAMESPACE_SKETCH_DB_PATH = "path";
 	public static final String NAMESPACE_SEQUENCE_COUNT = "seqcnt";
+	
+	/* ***********************
+	 * sequence metadata fields
+	 * ***********************
+	 */
+	public static final String SEQMETA_NAMESPACE_ID = "nsid";
+	public static final String SEQMETA_LOAD_ID = "load";
+	public static final String SEQMETA_SEQUENCE_ID = "seqid";
+	public static final String SEQMETA_SOURCE_ID = "srcid";
+	public static final String SEQMETA_SCIENTIFIC_NAME = "scinm";
+	public static final String SEQMETA_RELATED_IDS = "relids";
 	
 	
 	/* ***********************

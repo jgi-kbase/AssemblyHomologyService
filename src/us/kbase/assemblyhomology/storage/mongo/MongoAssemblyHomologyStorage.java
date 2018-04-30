@@ -1,12 +1,17 @@
 package us.kbase.assemblyhomology.storage.mongo;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
+import static us.kbase.assemblyhomology.util.Util.checkNoNullsOrEmpties;
 
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,9 +33,11 @@ import us.kbase.assemblyhomology.core.DataSourceID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
+import us.kbase.assemblyhomology.core.SequenceMetadata;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
+import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
@@ -64,6 +71,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	// collection names
 	private static final String COL_CONFIG = "config";
 	private static final String COL_NAMESPACES = "namesp";
+	private static final String COL_SEQUENCE_METADATA = "seqmeta";
 	
 	private static final Map<String, Map<List<String>, IndexOptions>> INDEXES;
 	private static final IndexOptions IDX_UNIQ = new IndexOptions().unique(true);
@@ -74,10 +82,17 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		//hardcoded indexes
 		INDEXES = new HashMap<String, Map<List<String>, IndexOptions>>();
 		
-		// namespace config indexes
+		// namespace indexes
 		final Map<List<String>, IndexOptions> namespace = new HashMap<>();
 		namespace.put(Arrays.asList(Fields.NAMESPACE_ID), IDX_UNIQ);
 		INDEXES.put(COL_NAMESPACES, namespace);
+		
+		// sequence metadata indexes
+		final Map<List<String>, IndexOptions> seqmeta = new HashMap<>();
+		seqmeta.put(Arrays.asList(
+				Fields.SEQMETA_NAMESPACE_ID, Fields.SEQMETA_LOAD_ID, Fields.SEQMETA_SEQUENCE_ID),
+				IDX_UNIQ);
+		INDEXES.put(COL_SEQUENCE_METADATA, seqmeta);
 		
 		//config indexes
 		final Map<List<String>, IndexOptions> cfg = new HashMap<>();
@@ -228,7 +243,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 			throws AssemblyHomologyStorageException {
 		checkNotNull(namespace, "namespace");
 		final MinHashSketchDatabase sketchDB = namespace.getSketchDatabase();
-		final Document ns = new Document("$set", new Document()
+		final Document ns = new Document()
 				.append(Fields.NAMESPACE_LOAD_ID, namespace.getLoadID().getName())
 				.append(Fields.NAMESPACE_DATASOURCE_ID, namespace.getSourceID().getName())
 				.append(Fields.NAMESPACE_DATABASE_ID, namespace.getSourceDatabaseID())
@@ -244,14 +259,17 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 						sketchDB.getParameterSet().getScaling().orNull())
 				.append(Fields.NAMESPACE_SKETCH_DB_PATH,
 						sketchDB.getLocation().getPathToFile().get().toString())
-				.append(Fields.NAMESPACE_SEQUENCE_COUNT, sketchDB.getSequenceCount()));
+				.append(Fields.NAMESPACE_SEQUENCE_COUNT, sketchDB.getSequenceCount());
 		
 		final Document query = new Document(Fields.NAMESPACE_ID, namespace.getId().getName());
+		upsert(COL_NAMESPACES, query, ns);
+	}
+
+	private void upsert(final String collection, final Document query, final Document set)
+			throws AssemblyHomologyStorageException {
 		try {
-			db.getCollection(COL_NAMESPACES).updateOne(
-					query,
-					ns,
-					new UpdateOptions().upsert(true));
+			db.getCollection(collection).updateOne(
+					query, new Document("$set", set), new UpdateOptions().upsert(true));
 		} catch (MongoException e) {
 			throw new AssemblyHomologyStorageException(
 					"Connection to database failed: " + e.getMessage(), e);
@@ -333,6 +351,86 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		
 	}
 	
+	@Override
+	public void saveSequenceMetadata(
+			final NamespaceID namespace,
+			final LoadID loadID,
+			final Collection<SequenceMetadata> seqmeta)
+			throws AssemblyHomologyStorageException {
+		checkNotNull(namespace, "namespace");
+		checkNotNull(loadID, "loadID");
+		checkNoNullsInCollection(seqmeta, "seqmeta");
+		// if loop too slow try https://docs.mongodb.com/manual/reference/method/Bulk/
+		for (final SequenceMetadata meta: seqmeta) {
+			final Document dmeta = new Document()
+					.append(Fields.SEQMETA_SOURCE_ID, meta.getSourceID())
+					.append(Fields.SEQMETA_SCIENTIFIC_NAME, meta.getScientificName().orNull())
+					.append(Fields.SEQMETA_RELATED_IDS, meta.getRelatedIDs());
+			
+			final Document query = new Document()
+					.append(Fields.SEQMETA_NAMESPACE_ID, namespace.getName())
+					.append(Fields.SEQMETA_LOAD_ID, loadID.getName())
+					.append(Fields.SEQMETA_SEQUENCE_ID, meta.getId());
+			upsert(COL_SEQUENCE_METADATA, query, dmeta);
+		}
+	}
+	
+	@Override
+	public List<SequenceMetadata> getSequenceMetadata(
+			final NamespaceID namespace,
+			final List<String> sequenceIDs)
+			throws AssemblyHomologyStorageException, NoSuchSequenceException,
+				NoSuchNamespaceException {
+		return getSequenceMetadata(namespace, getNamespace(namespace).getLoadID(), sequenceIDs);
+	}
+	
+	@Override
+	public List<SequenceMetadata> getSequenceMetadata(
+			final NamespaceID namespace,
+			final LoadID loadID,
+			final List<String> sequenceIDs)
+			throws AssemblyHomologyStorageException, NoSuchSequenceException,
+				NoSuchNamespaceException {
+		checkNotNull(namespace, "namespace");
+		checkNoNullsOrEmpties(sequenceIDs, "sequenceIDs");
+		final Document query = new Document()
+				.append(Fields.SEQMETA_NAMESPACE_ID, namespace.getName())
+				.append(Fields.SEQMETA_LOAD_ID, loadID.getName())
+				.append(Fields.SEQMETA_SEQUENCE_ID, new Document("$in", sequenceIDs));
+		final List<SequenceMetadata> ret = new LinkedList<>();
+		try {
+			final FindIterable<Document> docs = db.getCollection(
+					COL_SEQUENCE_METADATA).find(query);
+			for (final Document d: docs) {
+				ret.add(toSequenceMeta(d));
+			}
+			if (ret.size() != sequenceIDs.size()) {
+				//TODO ERRHANDLING be more specific - provide some sequence IDs
+				throw new NoSuchSequenceException(String.format(
+						"Missing sequence in namespace %s with load id %s",
+						namespace.getName(), loadID.getName()));
+			}
+			return ret;
+		} catch (MongoException e) {
+			throw new AssemblyHomologyStorageException(
+					"Connection to database failed: " + e.getMessage(), e);
+		}
+	}
+	
+	private SequenceMetadata toSequenceMeta(final Document d) {
+		final SequenceMetadata.Builder b = SequenceMetadata.getBuilder(
+				d.getString(Fields.SEQMETA_SEQUENCE_ID),
+				d.getString(Fields.SEQMETA_SOURCE_ID))
+				.withNullableScientificName(d.getString(Fields.SEQMETA_SCIENTIFIC_NAME));
+		@SuppressWarnings("unchecked")
+		final Map<String, String> relatedIDs =
+				(Map<String, String>) d.get(Fields.SEQMETA_RELATED_IDS);
+		for (final Entry<String, String> e: relatedIDs.entrySet()) {
+			b.withRelatedID(e.getKey(), e.getValue());
+		}
+		return b.build();
+	}
+
 	public static void main(final String[] args) throws Exception {
 		@SuppressWarnings("resource")
 		final MongoClient mc = new MongoClient("localhost");
@@ -364,7 +462,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 						MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
 						new MinHashDBLocation(Paths.get("/tmp/fake2")),
 						2400),
-				new LoadID("some UUID2"),
+				new LoadID("load1"),
 				new DataSourceID("KBase2"))
 				.withNullableDescription("desc2")
 				.withNullableSourceDatabaseID("CI Refseq2")
@@ -373,6 +471,20 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		storage.createOrReplaceNamespace(ns2);
 		
 		System.out.println(storage.getNamespace(new NamespaceID("foo")));
+		
+		final List<SequenceMetadata> seqmeta = Arrays.asList(
+				SequenceMetadata.getBuilder("smfoo", "sid")
+						.withNullableScientificName("sciname")
+						.withRelatedID("Genome", "5/6/7")
+						.withRelatedID("NCBI", "GCF_stuff")
+						.build(),
+				SequenceMetadata.getBuilder("smfoo2", "sid2").build());
+		
+		storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("load1"), seqmeta);
+		
+		System.out.println(storage.getSequenceMetadata(
+				new NamespaceID("foo"), Arrays.asList("smfoo", "smfoo2")));
+				
 	}
 
 }
