@@ -1,5 +1,9 @@
 package us.kbase.assemblyhomology.util;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.util.Collection;
+
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 
@@ -10,7 +14,7 @@ public class Util {
 
 	public static void exceptOnEmpty(final String s, final String name)
 			throws IllegalArgumentException {
-		if (s == null || s.trim().isEmpty()) {
+		if (isNullOrEmpty(s)) {
 			throw new IllegalArgumentException(name);
 		}
 	}
@@ -46,5 +50,23 @@ public class Util {
 	
 	private static int codePoints(final String s) {
 		return s.codePointCount(0, s.length());
+	}
+	
+	public static <T> void checkNoNullsInCollection(final Collection<T> col, final String name) {
+		checkNotNull(col, name);
+		for (final T item: col) {
+			if (item == null) {
+				throw new NullPointerException("Null item in collection " + name);
+			}
+		}
+	}
+	
+	public static void checkNoNullsOrEmpties(final Collection<String> strings, final String name) {
+		checkNotNull(strings, name);
+		for (final String s: strings) {
+			if (isNullOrEmpty(s)) {
+				throw new IllegalArgumentException("Null or empty string in collection " + name);
+			}
+		}
 	}
 }

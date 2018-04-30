@@ -1,6 +1,6 @@
 package us.kbase.assemblyhomology.core.exceptions;
 
-/** Thrown when a parameter has an illegal value.
+/** Thrown when the specified namespace does not exist.
  * @author gaprice@lbl.gov
  *
  */
