@@ -8,15 +8,16 @@ public class Util {
 	//TODO JAVADOC
 	//TODO TEST
 
-	public static void exceptOnEmpty(
-			final String s,
-			final String name)
+	public static void exceptOnEmpty(final String s, final String name)
 			throws IllegalArgumentException {
 		if (s == null || s.trim().isEmpty()) {
 			throw new IllegalArgumentException(name);
 		}
 	}
-	
+
+	public static boolean isNullOrEmpty(final String s) {
+		return s == null || s.trim().isEmpty();
+	}
 	
 	/** Check that a string is non-null, has at least one non-whitespace character, and is below
 	 * a specified length (not including surrounding whitespace).
