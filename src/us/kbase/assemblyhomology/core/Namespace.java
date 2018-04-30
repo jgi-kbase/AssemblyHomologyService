@@ -1,12 +1,10 @@
 package us.kbase.assemblyhomology.core;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static us.kbase.assemblyhomology.util.Util.checkString;
+import static us.kbase.assemblyhomology.util.Util.isNullOrEmpty;
 
 import com.google.common.base.Optional;
 
-import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
-import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
 public class Namespace {
@@ -60,7 +58,28 @@ public class Namespace {
 		return description;
 	}
 
-	public Builder getBuilder(
+	
+	
+	@Override
+	public String toString() {
+		StringBuilder builder2 = new StringBuilder();
+		builder2.append("Namespace [id=");
+		builder2.append(id);
+		builder2.append(", sketchDatabase=");
+		builder2.append(sketchDatabase);
+		builder2.append(", loadID=");
+		builder2.append(loadID);
+		builder2.append(", dataSourceID=");
+		builder2.append(dataSourceID);
+		builder2.append(", sourceDatabaseID=");
+		builder2.append(sourceDatabaseID);
+		builder2.append(", description=");
+		builder2.append(description);
+		builder2.append("]");
+		return builder2.toString();
+	}
+
+	public static Builder getBuilder(
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
@@ -68,13 +87,15 @@ public class Namespace {
 		return new Builder(id, sketchDatabase, loadID, dataSourceID);
 	}
 	
-	public class Builder {
+	public static class Builder {
+		
+		private final String DEFAULT = "default";
 		
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
 		private final DataSourceID dataSourceID;
-		private String sourceDatabaseID = "default";
+		private String sourceDatabaseID = DEFAULT;
 		private String description = null;
 		
 		private Builder(
@@ -93,18 +114,21 @@ public class Namespace {
 		}
 		
 		// default = "default"
-		public Builder withSourceDatabaseID(final String sourceDatabaseID)
-				throws MissingParameterException, IllegalParameterException {
-			checkString(sourceDatabaseID, "sourceDatabaseID", 256);
-			this.sourceDatabaseID = sourceDatabaseID;
+		public Builder withNullableSourceDatabaseID(final String sourceDatabaseID) {
+			if (isNullOrEmpty(sourceDatabaseID)) {
+				this.sourceDatabaseID = DEFAULT;
+			} else {
+				this.sourceDatabaseID = sourceDatabaseID;
+			}
 			return this;
 		}
 		
-		public Builder withDescription(String description) {
-			if (description == null || description.trim().isEmpty()) {
-				description = null;
+		public Builder withNullableDescription(final String description) {
+			if (isNullOrEmpty(description)) {
+				this.description = null;
+			} else {
+				this.description = description;
 			}
-			this.description = description;
 			return this;
 		}
 		
