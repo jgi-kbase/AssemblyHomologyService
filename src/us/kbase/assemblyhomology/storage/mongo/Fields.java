@@ -22,6 +22,7 @@ public class Fields {
 	public static final String NAMESPACE_ID = "id";
 	public static final String NAMESPACE_LOAD_ID = "load";
 	public static final String NAMESPACE_DATASOURCE_ID = "dsid";
+	public static final String NAMESPACE_CREATION_DATE = "create";
 	public static final String NAMESPACE_DATABASE_ID = "dbid";
 	public static final String NAMESPACE_DESCRIPTION = "desc";
 	public static final String NAMESPACE_IMPLEMENTATION = "impl";
@@ -38,6 +39,7 @@ public class Fields {
 	 */
 	public static final String SEQMETA_NAMESPACE_ID = "nsid";
 	public static final String SEQMETA_LOAD_ID = "load";
+	public static final String SEQMETA_CREATION_DATE = "create";
 	public static final String SEQMETA_SEQUENCE_ID = "seqid";
 	public static final String SEQMETA_SOURCE_ID = "srcid";
 	public static final String SEQMETA_SCIENTIFIC_NAME = "scinm";
