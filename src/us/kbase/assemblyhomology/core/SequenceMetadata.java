@@ -1,8 +1,10 @@
 package us.kbase.assemblyhomology.core;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static us.kbase.assemblyhomology.util.Util.exceptOnEmpty;
 import static us.kbase.assemblyhomology.util.Util.isNullOrEmpty;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,14 +20,17 @@ public class SequenceMetadata {
 	public final String sourceID;
 	public final Optional<String> scientificName;
 	public Map<String, String> relatedIDs;
+	private Instant creation;
 	
 	private SequenceMetadata(
 			final String id,
 			final String sourceID,
+			final Instant creation,
 			final String scientificName,
 			final Map<String, String> relatedIDs) {
 		this.id = id;
 		this.sourceID = sourceID;
+		this.creation = creation;
 		this.scientificName = Optional.fromNullable(scientificName);
 		this.relatedIDs = Collections.unmodifiableMap(relatedIDs);
 	}
@@ -42,6 +47,10 @@ public class SequenceMetadata {
 		return id;
 	}
 
+	public Instant getCreation() {
+		return creation;
+	}
+
 	public String getSourceID() {
 		return sourceID;
 	}
@@ -52,35 +61,43 @@ public class SequenceMetadata {
 
 	@Override
 	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("SequenceMetadata [id=");
-		builder.append(id);
-		builder.append(", sourceID=");
-		builder.append(sourceID);
-		builder.append(", scientificName=");
-		builder.append(scientificName);
-		builder.append(", relatedIDs=");
-		builder.append(relatedIDs);
-		builder.append("]");
-		return builder.toString();
+		StringBuilder builder2 = new StringBuilder();
+		builder2.append("SequenceMetadata [id=");
+		builder2.append(id);
+		builder2.append(", sourceID=");
+		builder2.append(sourceID);
+		builder2.append(", scientificName=");
+		builder2.append(scientificName);
+		builder2.append(", relatedIDs=");
+		builder2.append(relatedIDs);
+		builder2.append(", creation=");
+		builder2.append(creation);
+		builder2.append("]");
+		return builder2.toString();
 	}
 
-	public static Builder getBuilder(final String id, final String sourceID) {
-		return new Builder(id, sourceID);
+	public static Builder getBuilder(
+			final String id,
+			final String sourceID,
+			final Instant creation) {
+		return new Builder(id, sourceID, creation);
 	}
 	
 	public static class Builder {
 		
 		private final String id;
 		private final String sourceID;
+		private final Instant creation;
 		private String scientificName = null;
 		private final Map<String, String> relatedIDs = new HashMap<>();
 		
-		private Builder(final String id, final String sourceID) {
+		private Builder(final String id, final String sourceID, final Instant creation) {
 			exceptOnEmpty(id, "id");
 			exceptOnEmpty(sourceID, "sourceID");
+			checkNotNull(creation, "creation");
 			this.id = id;
 			this.sourceID = sourceID;
+			this.creation = creation;
 		}
 		
 		public Builder withNullableScientificName(final String scientificName) {
@@ -100,7 +117,7 @@ public class SequenceMetadata {
 		}
 		
 		public SequenceMetadata build() {
-			return new SequenceMetadata(id, sourceID, scientificName, relatedIDs);
+			return new SequenceMetadata(id, sourceID, creation, scientificName, relatedIDs);
 		}
 	}
 	

@@ -3,8 +3,12 @@ package us.kbase.assemblyhomology.core;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static us.kbase.assemblyhomology.util.Util.isNullOrEmpty;
 
+import java.time.Instant;
+
 import com.google.common.base.Optional;
 
+import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
 public class Namespace {
@@ -16,6 +20,7 @@ public class Namespace {
 	private final MinHashSketchDatabase sketchDatabase;
 	private final LoadID loadID;
 	private final DataSourceID dataSourceID;
+	private final Instant creation;
 	private final String sourceDatabaseID;
 	private final Optional<String> description;
 
@@ -24,12 +29,14 @@ public class Namespace {
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
 			final DataSourceID dataSourceID,
+			final Instant creation,
 			final String sourceDatabaseID,
 			final String description) {
 		this.id = id;
 		this.sketchDatabase = sketchDatabase;
 		this.loadID = loadID;
 		this.dataSourceID = dataSourceID;
+		this.creation = creation;
 		this.sourceDatabaseID = sourceDatabaseID;
 		this.description = Optional.fromNullable(description);
 	}
@@ -50,6 +57,10 @@ public class Namespace {
 		return dataSourceID;
 	}
 
+	public Instant getCreation() {
+		return creation;
+	}
+
 	public String getSourceDatabaseID() {
 		return sourceDatabaseID;
 	}
@@ -58,8 +69,6 @@ public class Namespace {
 		return description;
 	}
 
-	
-	
 	@Override
 	public String toString() {
 		StringBuilder builder2 = new StringBuilder();
@@ -71,6 +80,8 @@ public class Namespace {
 		builder2.append(loadID);
 		builder2.append(", dataSourceID=");
 		builder2.append(dataSourceID);
+		builder2.append(", creation=");
+		builder2.append(creation);
 		builder2.append(", sourceDatabaseID=");
 		builder2.append(sourceDatabaseID);
 		builder2.append(", description=");
@@ -83,8 +94,8 @@ public class Namespace {
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
-			final DataSourceID dataSourceID) {
-		return new Builder(id, sketchDatabase, loadID, dataSourceID);
+			final Instant creation) {
+		return new Builder(id, sketchDatabase, loadID, creation);
 	}
 	
 	public static class Builder {
@@ -94,23 +105,36 @@ public class Namespace {
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
-		private final DataSourceID dataSourceID;
+		private DataSourceID dataSourceID;
+		private Instant creation;
 		private String sourceDatabaseID = DEFAULT;
 		private String description = null;
-		
+
 		private Builder(
 				final NamespaceID id,
 				final MinHashSketchDatabase sketchDatabase,
 				final LoadID loadID,
-				final DataSourceID dataSourceID) {
+				final Instant creation) {
 			checkNotNull(id, "id");
 			checkNotNull(sketchDatabase, "sketchDatabase");
 			checkNotNull(loadID, "loadID");
-			checkNotNull(dataSourceID, "dataSourceID");
+			checkNotNull(creation, "creation");
 			this.id = id;
 			this.sketchDatabase = sketchDatabase;
 			this.loadID = loadID;
-			this.dataSourceID = dataSourceID;
+			this.creation = creation;
+			try {
+				this.dataSourceID = new DataSourceID("KBase");
+			} catch (IllegalParameterException | MissingParameterException e) {
+				throw new RuntimeException("Well this is unexpected.", e);
+			}
+		}
+		
+		public Builder withNullableDataSourceID(final DataSourceID dataSourceID) {
+			if (dataSourceID != null) {
+				this.dataSourceID = dataSourceID;
+			}
+			return this;
 		}
 		
 		// default = "default"
@@ -133,8 +157,8 @@ public class Namespace {
 		}
 		
 		public Namespace build() {
-			return new Namespace(id, sketchDatabase, loadID, dataSourceID, sourceDatabaseID,
-					description);
+			return new Namespace(id, sketchDatabase, loadID, dataSourceID, creation,
+					sourceDatabaseID, description);
 		}
 	}
 }

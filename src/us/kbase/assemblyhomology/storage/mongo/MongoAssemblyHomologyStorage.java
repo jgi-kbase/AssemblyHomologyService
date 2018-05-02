@@ -5,8 +5,10 @@ import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 import static us.kbase.assemblyhomology.util.Util.checkNoNullsOrEmpties;
 
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -246,6 +248,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		final Document ns = new Document()
 				.append(Fields.NAMESPACE_LOAD_ID, namespace.getLoadID().getName())
 				.append(Fields.NAMESPACE_DATASOURCE_ID, namespace.getSourceID().getName())
+				.append(Fields.NAMESPACE_CREATION_DATE, Date.from(namespace.getCreation()))
 				.append(Fields.NAMESPACE_DATABASE_ID, namespace.getSourceDatabaseID())
 				.append(Fields.NAMESPACE_DESCRIPTION, namespace.getDescription().orNull())
 				.append(Fields.NAMESPACE_IMPLEMENTATION,
@@ -297,9 +300,11 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 									Paths.get(ns.getString(Fields.NAMESPACE_SKETCH_DB_PATH))),
 							ns.getInteger(Fields.NAMESPACE_SEQUENCE_COUNT)),
 					new LoadID(ns.getString(Fields.NAMESPACE_LOAD_ID)),
-					new DataSourceID(ns.getString(Fields.NAMESPACE_DATASOURCE_ID)))
+					ns.getDate(Fields.NAMESPACE_CREATION_DATE).toInstant())
 					.withNullableSourceDatabaseID(ns.getString(Fields.NAMESPACE_DATABASE_ID))
 					.withNullableDescription(ns.getString(Fields.NAMESPACE_DESCRIPTION))
+					.withNullableDataSourceID(new DataSourceID(
+							ns.getString(Fields.NAMESPACE_DATASOURCE_ID)))
 					.build();
 		} catch (MissingParameterException | IllegalParameterException e) {
 			throw new AssemblyHomologyStorageException(
@@ -364,6 +369,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		for (final SequenceMetadata meta: seqmeta) {
 			final Document dmeta = new Document()
 					.append(Fields.SEQMETA_SOURCE_ID, meta.getSourceID())
+					.append(Fields.SEQMETA_CREATION_DATE, Date.from(meta.getCreation()))
 					.append(Fields.SEQMETA_SCIENTIFIC_NAME, meta.getScientificName().orNull())
 					.append(Fields.SEQMETA_RELATED_IDS, meta.getRelatedIDs());
 			
@@ -420,7 +426,8 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	private SequenceMetadata toSequenceMeta(final Document d) {
 		final SequenceMetadata.Builder b = SequenceMetadata.getBuilder(
 				d.getString(Fields.SEQMETA_SEQUENCE_ID),
-				d.getString(Fields.SEQMETA_SOURCE_ID))
+				d.getString(Fields.SEQMETA_SOURCE_ID),
+				d.getDate(Fields.SEQMETA_CREATION_DATE).toInstant())
 				.withNullableScientificName(d.getString(Fields.SEQMETA_SCIENTIFIC_NAME));
 		@SuppressWarnings("unchecked")
 		final Map<String, String> relatedIDs =
@@ -446,9 +453,10 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 						new MinHashDBLocation(Paths.get("/tmp/fake")),
 						2400),
 				new LoadID("some UUID"),
-				new DataSourceID("KBase"))
+				Instant.ofEpochMilli(20000))
 				.withNullableDescription("desc")
 				.withNullableSourceDatabaseID("CI Refseq")
+				.withNullableDataSourceID(new DataSourceID("some ds id"))
 				.build();
 		
 		storage.createOrReplaceNamespace(ns);
@@ -463,7 +471,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 						new MinHashDBLocation(Paths.get("/tmp/fake2")),
 						2400),
 				new LoadID("load1"),
-				new DataSourceID("KBase2"))
+				Instant.ofEpochMilli(30000))
 				.withNullableDescription("desc2")
 				.withNullableSourceDatabaseID("CI Refseq2")
 				.build();
@@ -473,12 +481,13 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		System.out.println(storage.getNamespace(new NamespaceID("foo")));
 		
 		final List<SequenceMetadata> seqmeta = Arrays.asList(
-				SequenceMetadata.getBuilder("smfoo", "sid")
+				SequenceMetadata.getBuilder("smfoo", "sid", Instant.ofEpochMilli(10000))
 						.withNullableScientificName("sciname")
 						.withRelatedID("Genome", "5/6/7")
 						.withRelatedID("NCBI", "GCF_stuff")
 						.build(),
-				SequenceMetadata.getBuilder("smfoo2", "sid2").build());
+				SequenceMetadata.getBuilder("smfoo2", "sid2", Instant.ofEpochMilli(20000))
+						.build());
 		
 		storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("load1"), seqmeta);
 		
