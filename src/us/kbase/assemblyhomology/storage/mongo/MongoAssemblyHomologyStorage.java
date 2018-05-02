@@ -369,6 +369,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		for (final SequenceMetadata meta: seqmeta) {
 			final Document dmeta = new Document()
 					.append(Fields.SEQMETA_SOURCE_ID, meta.getSourceID())
+					.append(Fields.SEQMETA_CREATION_DATE, Date.from(meta.getCreation()))
 					.append(Fields.SEQMETA_SCIENTIFIC_NAME, meta.getScientificName().orNull())
 					.append(Fields.SEQMETA_RELATED_IDS, meta.getRelatedIDs());
 			
@@ -425,7 +426,8 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	private SequenceMetadata toSequenceMeta(final Document d) {
 		final SequenceMetadata.Builder b = SequenceMetadata.getBuilder(
 				d.getString(Fields.SEQMETA_SEQUENCE_ID),
-				d.getString(Fields.SEQMETA_SOURCE_ID))
+				d.getString(Fields.SEQMETA_SOURCE_ID),
+				d.getDate(Fields.SEQMETA_CREATION_DATE).toInstant())
 				.withNullableScientificName(d.getString(Fields.SEQMETA_SCIENTIFIC_NAME));
 		@SuppressWarnings("unchecked")
 		final Map<String, String> relatedIDs =
@@ -479,12 +481,13 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		System.out.println(storage.getNamespace(new NamespaceID("foo")));
 		
 		final List<SequenceMetadata> seqmeta = Arrays.asList(
-				SequenceMetadata.getBuilder("smfoo", "sid")
+				SequenceMetadata.getBuilder("smfoo", "sid", Instant.ofEpochMilli(10000))
 						.withNullableScientificName("sciname")
 						.withRelatedID("Genome", "5/6/7")
 						.withRelatedID("NCBI", "GCF_stuff")
 						.build(),
-				SequenceMetadata.getBuilder("smfoo2", "sid2").build());
+				SequenceMetadata.getBuilder("smfoo2", "sid2", Instant.ofEpochMilli(20000))
+						.build());
 		
 		storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("load1"), seqmeta);
 		
