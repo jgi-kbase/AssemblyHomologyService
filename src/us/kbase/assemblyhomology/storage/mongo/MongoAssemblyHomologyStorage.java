@@ -288,7 +288,6 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		if (ns == null) {
 			throw new NoSuchNamespaceException(namespace.getName());
 		}
-		final String dsid = ns.getString(Fields.NAMESPACE_DATASOURCE_ID);
 		try {
 			return Namespace.getBuilder(
 					namespace,
@@ -304,7 +303,8 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 					ns.getDate(Fields.NAMESPACE_CREATION_DATE).toInstant())
 					.withNullableSourceDatabaseID(ns.getString(Fields.NAMESPACE_DATABASE_ID))
 					.withNullableDescription(ns.getString(Fields.NAMESPACE_DESCRIPTION))
-					.withNullableDataSourceID(dsid == null ? null : new DataSourceID(dsid))
+					.withNullableDataSourceID(new DataSourceID(
+							ns.getString(Fields.NAMESPACE_DATASOURCE_ID)))
 					.build();
 		} catch (MissingParameterException | IllegalParameterException e) {
 			throw new AssemblyHomologyStorageException(
