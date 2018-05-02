@@ -5,5 +5,6 @@
 	<classpathentry kind="lib" path="/jars/lib/jars/google/guava-18.0.jar"/>
 	<classpathentry kind="lib" path="/jars/lib/jars/apache_commons/commons-io-2.4.jar"/>
 	<classpathentry kind="lib" path="/jars/lib/jars/mongo/mongo-java-driver-3.4.2.jar"/>
+	<classpathentry kind="lib" path="/jars/lib/jars/snakeyaml/snakeyaml-1.18.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
