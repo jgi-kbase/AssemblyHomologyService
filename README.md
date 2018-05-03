@@ -21,12 +21,25 @@ Note that searches against a namespace **may not be reproducible over time**.
 
 Most input strings do not allow empty strings and have a maximum size of 256 unicode code points.
 
+## Requirements
+
+Java 8 (OpenJDK OK)  
+Apache Ant (http://ant.apache.org/)  
+MongoDB 2.6+ (https://www.mongodb.com/)  
+Jetty 9.3+ (http://www.eclipse.org/jetty/download.html)
+    (see jetty-config.md for version used for testing)  
+This repo (git clone https://github.com/kbaseIncubator/AssemblyHomologyService)  
+The jars repo (git clone https://github.com/kbase/jars)  
+The two repos above need to be in the same parent folder.
+
 ### API
 
 ## TODO
 
+* Tests
+* Javadoc
 * Reaper thread that finds sequence metadata with a namespace or load id that does not exist,
   is older than some time period, and deletes it. E.g. cleans up unfinished loads and reloads
   that overwrite some, but not all, of the prior load's data.
 * Search namespaces (no free text search)
-* Update source ID, source DB ID, and description fields of namespace
+* Update source ID, source DB ID, and description fields of namespace without reload
