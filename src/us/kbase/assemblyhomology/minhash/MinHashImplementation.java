@@ -2,7 +2,7 @@ package us.kbase.assemblyhomology.minhash;
 
 import java.util.List;
 
-import us.kbase.assemblyhomology.minhash.mash.MashException;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 
 /** An implementation of the MinHash algorithm like Mash or Sourmash.
  * @author gaprice@lbl.gov
@@ -14,15 +14,15 @@ public interface MinHashImplementation {
 
 	MinHashImplementationInformation getImplementationInformation();
 	
-	MinHashSketchDatabase getDatabase(MinHashDBLocation location) throws MashException;
+	MinHashSketchDatabase getDatabase(MinHashDBLocation location) throws MinHashException;
 	
-	List<String> getSketchIDs(MinHashSketchDatabase db) throws MashException;
+	List<String> getSketchIDs(MinHashSketchDatabase db) throws MinHashException;
 	
 	// if maxReturnCount < 1 it is treated as infinite
 	MinHashDistanceSet computeDistance(
 			MinHashSketchDatabase query,
 			MinHashSketchDatabase reference,
 			int maxReturnCount)
-			throws MashException;
+			throws MinHashException;
 	
 }
