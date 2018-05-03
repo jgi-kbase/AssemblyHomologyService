@@ -1,5 +1,6 @@
 package us.kbase.assemblyhomology.load;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static us.kbase.assemblyhomology.load.ParseHelpers.fromYAML;
 import static us.kbase.assemblyhomology.load.ParseHelpers.getString;
 
@@ -90,7 +91,8 @@ public class SeqMetaLoadInfo {
 	}
 	
 	public SequenceMetadata toSequenceMetadata(final Instant creation) {
-		final Builder b =  SequenceMetadata.getBuilder(id, sourceID, creation)
+		checkNotNull(creation, "creation");
+		final Builder b = SequenceMetadata.getBuilder(id, sourceID, creation)
 				.withNullableScientificName(scientificName.orNull());
 		for (final Entry<String, String> e: relatedIDs.entrySet()) {
 			b.withRelatedID(e.getKey(), e.getValue());
