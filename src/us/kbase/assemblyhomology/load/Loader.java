@@ -61,16 +61,21 @@ public class Loader {
 	// LoadParams builder?
 	public void load(
 			final LoadID loadID,
-			final MinHashImplementation minhash,
+			final MinHashImplementation minhashImpl,
 			final MinHashDBLocation sketchDBlocation,
 			final Restreamable namespaceYAML,
 			final Restreamable sequenceMetaYAML)
 			throws MinHashException, IOException, LoadInputParseException,
 				AssemblyHomologyStorageException {
-		final MinHashSketchDatabase sketchDB = minhash.getDatabase(sketchDBlocation);
+		checkNotNull(loadID, "loadID");
+		checkNotNull(minhashImpl, "minhashImpl");
+		checkNotNull(sketchDBlocation, "sketchDBlocation");
+		checkNotNull(namespaceYAML, "namespaceYAML");
+		checkNotNull(sequenceMetaYAML, "sequenceMetaYAML");
+		final MinHashSketchDatabase sketchDB = minhashImpl.getDatabase(sketchDBlocation);
 		final NamespaceLoadInfo nsinfo = loadNameSpaceInfo(namespaceYAML);
 		final Set<String> seqmetaIDs = loadSequenceMetaIDs(sequenceMetaYAML);
-		final Set<String> skdbIDs = new HashSet<>(minhash.getSketchIDs(sketchDB));
+		final Set<String> skdbIDs = new HashSet<>(minhashImpl.getSketchIDs(sketchDB));
 		checkEqual(seqmetaIDs, sequenceMetaYAML, skdbIDs, sketchDBlocation);
 		loadSeqs(nsinfo.getId(), loadID, sequenceMetaYAML);
 		storage.createOrReplaceNamespace(nsinfo.toNamespace(sketchDB, loadID, clock.instant()));
@@ -95,6 +100,9 @@ public class Loader {
 					metas.clear();
 				}
 				count++;
+			}
+			if (!metas.isEmpty()) {
+				storage.saveSequenceMetadata(namespaceID, loadID, metas);
 			}
 		}
 	}
