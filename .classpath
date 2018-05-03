@@ -6,5 +6,13 @@
 	<classpathentry kind="lib" path="/jars/lib/jars/apache_commons/commons-io-2.4.jar"/>
 	<classpathentry kind="lib" path="/jars/lib/jars/mongo/mongo-java-driver-3.4.2.jar"/>
 	<classpathentry kind="lib" path="/jars/lib/jars/snakeyaml/snakeyaml-1.18.jar"/>
+	<classpathentry kind="lib" path="/jars/lib/jars/slf4j/slf4j-api-1.7.25.jar"/>
+	<classpathentry kind="lib" path="/jars/lib/jars/logback/logback-classic-1.1.2.jar"/>
+	<classpathentry kind="lib" path="/jars/lib/jars/logback/logback-core-1.1.2.jar"/>
+	<classpathentry kind="lib" path="/jars/lib/jars/jcommander/jcommander-1.72.jar" sourcepath="/jars/lib/jars/jcommander/jcommander-1.72-sources.jar">
+		<attributes>
+			<attribute name="javadoc_location" value="jar:platform:/resource/jars/lib/jars/jcommander/jcommander-1.72-javadoc.jar!/"/>
+		</attributes>
+	</classpathentry>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
