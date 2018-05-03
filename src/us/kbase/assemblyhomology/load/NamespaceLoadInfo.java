@@ -1,10 +1,13 @@
 package us.kbase.assemblyhomology.load;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static us.kbase.assemblyhomology.load.ParseHelpers.getString;
 import static us.kbase.assemblyhomology.load.ParseHelpers.fromYAML;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Map;
 
 import org.yaml.snakeyaml.DumperOptions;
@@ -14,10 +17,16 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.LoadID;
+import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.load.exceptions.LoadInputParseException;
+import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
+import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
+import us.kbase.assemblyhomology.minhash.MinHashParameters;
+import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
 public class NamespaceLoadInfo {
 	
@@ -82,6 +91,20 @@ public class NamespaceLoadInfo {
 			throw new RuntimeException("this should be impossible", e);
 		}
 	}
+	
+	public Namespace toNamespace(
+			final MinHashSketchDatabase sketchDB,
+			final LoadID loadID,
+			final Instant creation) {
+		checkNotNull(sketchDB, "sketchDB");
+		checkNotNull(loadID, "loadID");
+		checkNotNull(creation, "creation");
+		return Namespace.getBuilder(id, sketchDB, loadID, creation)
+				.withNullableDataSourceID(dataSourceID)
+				.withNullableSourceDatabaseID(sourceDatabaseID.orNull())
+				.withNullableDescription(description.orNull())
+				.build();
+	}
 
 	@Override
 	public String toString() {
@@ -115,6 +138,15 @@ public class NamespaceLoadInfo {
 				new ByteArrayInputStream(yaml.getBytes()), "whoo");
 		
 		System.out.println(nsload);
+		
+		System.out.println(nsload.toNamespace(
+				new MinHashSketchDatabase(
+						new MinHashImplementationInformation("foo", "1"),
+						MinHashParameters.getBuilder(31).withSketchSize(10).build(),
+						new MinHashDBLocation(Paths.get("/tmp/fake")),
+						3),
+				new LoadID("some load id"),
+				Instant.ofEpochMilli(600000)));
 	}
 	
 }
