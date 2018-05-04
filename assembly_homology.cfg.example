@@ -1,0 +1,10 @@
+## Settings for the assembly_homology CLI.
+
+# MongoDB information.
+mongo-host=
+mongo-db=
+mongo-user=
+mongo-pwd=
+
+# A directory to use for temporary files:
+temp-dir=./assemblyhomology_temp
