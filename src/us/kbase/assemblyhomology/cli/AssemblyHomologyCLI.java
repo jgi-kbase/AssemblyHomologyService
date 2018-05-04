@@ -228,9 +228,9 @@ public class AssemblyHomologyCLI {
 		@Parameter(names = {"-v", "--verbose"}, description = "Print full stack trace on error.")
 		boolean verbose = false;
 		
-		@Parameter(names = {"-c", "--config"}, required = true,
+		@Parameter(names = {"-c", "--config"}, 
 				description = "Path to the assembly_homology configuration file.")
-		String configPath;
+		String configPath = "./" + PROG_NAME + ".cfg";
 	}
 	
 	@Parameters(commandDescription = "Load data into the database")
