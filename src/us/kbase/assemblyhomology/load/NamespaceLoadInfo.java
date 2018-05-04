@@ -72,7 +72,7 @@ public class NamespaceLoadInfo {
 		try {
 			return new NamespaceID(nsid);
 		} catch (IllegalParameterException e) {
-			throw new LoadInputParseException("Illegal namespace ID: " + nsid, e);
+			throw new LoadInputParseException(e.getMessage(), e);
 		} catch (MissingParameterException e) {
 			throw new RuntimeException("this should be impossible", e);
 		}
