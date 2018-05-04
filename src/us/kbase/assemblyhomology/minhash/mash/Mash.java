@@ -19,10 +19,13 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 
+import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
+import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
@@ -33,6 +36,8 @@ public class Mash implements MinHashImplementation {
 	
 	//TODO JAVADOC
 	//TODO TEST
+	
+	//TODO ZZLATER CODE consider JNA to bind directly to the mash libs? That would allow controlling the version of Mash.
 	
 	private final static String MASH = "mash";
 	
@@ -53,9 +58,12 @@ public class Mash implements MinHashImplementation {
 	private MinHashImplementationInformation getInfo() throws MinHashInitException {
 		try {
 			final String version = getVersion(getMashOutput("-h"));
-			return new MinHashImplementationInformation(MASH, version);
+			return new MinHashImplementationInformation(
+					new MinHashImplementationName(MASH), version);
 		} catch (MashException e) {
 			throw new MinHashInitException(e.getMessage(), e);
+		} catch (IllegalParameterException | MissingParameterException e) {
+			throw new RuntimeException("Well this is unexpected", e);
 		}
 	}
 	
@@ -119,7 +127,8 @@ public class Mash implements MinHashImplementation {
 			throws MashException {
 		checkNotNull(location, "location");
 		final ParamsAndSize pns = getParametersAndSize(location.getPathToFile().get());
-		return new MinHashSketchDatabase(info, pns.params, location, pns.size);
+		return new MinHashSketchDatabase(
+				info.getImplementationName(), pns.params, location, pns.size);
 	}
 	
 	@Override
@@ -236,7 +245,7 @@ public class Mash implements MinHashImplementation {
 		
 		final MinHashSketchDatabase db = mash.getDatabase(new MinHashDBLocation(Paths.get(
 				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000.msh")));
-		System.out.println(db.getImplementationInformation());
+		System.out.println(db.getImplementationName());
 		System.out.println(db.getLocation());
 		System.out.println(db.getParameterSet());
 		System.out.println(db.getSequenceCount());
@@ -246,7 +255,7 @@ public class Mash implements MinHashImplementation {
 		
 		final MinHashSketchDatabase query = mash.getDatabase(new MinHashDBLocation(Paths.get(
 				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000_15792_446_1.msh")));
-		System.out.println(query.getImplementationInformation());
+		System.out.println(query.getImplementationName());
 		System.out.println(query.getLocation());
 		System.out.println(query.getParameterSet());
 		System.out.println(query.getSequenceCount());
