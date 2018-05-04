@@ -39,14 +39,11 @@ cd [assembly homology repo directory]
 ant build
 ```
 
-## Deploy and load data
+## Load data
 
 These instructions assume
 * MongoDB is running in a location accessible to the assembly homology process.
 * The Mash binary is available in the system path.
-
-
-### Load data
 
 Loading data is accomplished via the `assembly_homology` CLI. Get CLI help via the `-h` option:
 
@@ -68,13 +65,13 @@ Currently only Mash sketch database uploads are supported. An upload requires 4 
 * A file containing, on each line, a JSON string containing metadata about each sequence in
   the sketch database.
 
-#### Assembly homology configuration file
+### Assembly homology configuration file
 
 The assembly homology configuration file contains the configuration information required for the
 loader to run. Copy the `assembly_homology.cfg.example` file to `assembly_homology.cfg`
 and fill it in appropriately.
 
-#### Namespace YAML file
+### Namespace YAML file
 
 The namespace YAML file contains 4 keys in a top level map:
 
@@ -96,7 +93,7 @@ is used.
 
 `description` (optional) is a free text description of the namespace.
 
-#### Sequence metadata file
+### Sequence metadata file
 
 The sequence metadata file contains multiple lines, each one corresponding to a sequence in the
 sketch database. Each line is a JSON string:
@@ -118,7 +115,7 @@ the sequence.
 `relatedids` (optional) are IDs other than the source ID for the sequence, contained in a mapping
 from the type or source of the ID (NCBI in this example) to the ID.
 
-#### Loading
+### Loading
 
 An optional load ID may be provided to the loader. If a load ID is not provided, a random load ID
 will be generated. Load IDs separate loads within a particular namespace and provide instantaneous
@@ -144,7 +141,8 @@ Once the required data is assembled, load the data:
 ./assembly_homology -c assembly_homology.cfg load -k [path to sketch database]
    -n [path to namespace YAML file] -s [path to sequence metadata file]
 ```
-### API
+
+## API
 
 ## TODO
 
