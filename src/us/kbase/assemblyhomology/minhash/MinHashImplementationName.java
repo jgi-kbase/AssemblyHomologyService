@@ -1,17 +1,17 @@
-package us.kbase.assemblyhomology.core;
+package us.kbase.assemblyhomology.minhash;
 
+import us.kbase.assemblyhomology.core.Name;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 
-public class NamespaceID extends Name {
+public class MinHashImplementationName extends Name {
 
 	//TODO JAVADOC
 	//TODO TEST
 	
-	//TODO NOW ascii letters and numerals only
-	
-	public NamespaceID(final String id)
+	public MinHashImplementationName(final String id)
 			throws MissingParameterException, IllegalParameterException {
-		super(id, "namespaceID", 256);
+		super(id, "minhash implementation name", 256);
 	}
+	
 }
