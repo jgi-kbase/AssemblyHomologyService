@@ -52,7 +52,7 @@ Loading data is accomplished via the `assembly_homology` CLI. Get CLI help via t
 $ ./assembly_homology -h
 Usage: assembly_homology [options] [command] [command options]
   Options:
-  * -c, --config
+    -c, --config
 *snip*
 ```
 
@@ -138,8 +138,8 @@ there are special cases where it may be useful, such as if a load partially comp
 Once the required data is assembled, load the data:
 
 ```
-./assembly_homology -c assembly_homology.cfg load -k [path to sketch database]
-   -n [path to namespace YAML file] -s [path to sequence metadata file]
+./assembly_homology load -k [path to sketch database] -n [path to namespace YAML file]
+  -s [path to sequence metadata file]
 ```
 
 ## API
