@@ -1,6 +1,6 @@
 # Joint KBase / JGI Assembly Homology Service
 
-This repo contains the KBase / JGI Assembly Homology Service. The service provides sequence
+This repo contains the KBase / JGI Assembly Homology Service (AHS). The service provides sequence
 assembly matching based on implementations of the
 [MinHash algorithm](https://ieeexplore.ieee.org/abstract/document/666900/?reload=tru). Currently
 the service supports
@@ -42,7 +42,7 @@ ant build
 ## Load data
 
 These instructions assume
-* MongoDB is running in a location accessible to the assembly homology process.
+* MongoDB is running in a location accessible to the AHS.
 * The Mash binary is available in the system path.
 
 Loading data is accomplished via the `assembly_homology` CLI. Get CLI help via the `-h` option:
@@ -57,7 +57,7 @@ Usage: assembly_homology [options] [command] [command options]
 
 Currently only Mash sketch database uploads are supported. An upload requires 4 files:
 
-* The assembly_homology configuration file
+* The assembly homology configuration file
 * The sketch database
 * A YAML file containing information about the namespace that will be created or updated at the
   end of the load
@@ -140,6 +140,10 @@ Once the required data is assembled, load the data:
 ./assembly_homology load -k [path to sketch database] -n [path to namespace YAML file]
   -s [path to sequence metadata file]
 ```
+
+The AHS expects that the sketch database will exist at the specified path once the load is
+complete, so place the sketch database in a permanent location. The other files can be deleted
+once the load is complete (although it may be advisable to retain them for reloads).
 
 ## API
 
