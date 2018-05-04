@@ -43,7 +43,7 @@ public class SequenceMetadata {
 		this.relatedIDs = relatedIDs;
 	}
 
-	public String getId() {
+	public String getID() {
 		return id;
 	}
 
