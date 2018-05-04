@@ -48,7 +48,6 @@ These instructions assume
 Loading data is accomplished via the `assembly_homology` CLI. Get CLI help via the `-h` option:
 
 ```
-./assembly_homology -h
 $ ./assembly_homology -h
 Usage: assembly_homology [options] [command] [command options]
   Options:
