@@ -6,8 +6,6 @@ import static us.kbase.assemblyhomology.util.Util.isNullOrEmpty;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 
 import org.slf4j.LoggerFactory;
@@ -17,14 +15,12 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.mongodb.MongoClient;
-import com.mongodb.MongoCredential;
-import com.mongodb.MongoException;
-import com.mongodb.ServerAddress;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfigurationException;
+import us.kbase.assemblyhomology.core.AssemblyHomologyBuilder;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
@@ -34,9 +30,7 @@ import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.mash.Mash;
-import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
-import us.kbase.assemblyhomology.storage.mongo.MongoAssemblyHomologyStorage;
 import us.kbase.assemblyhomology.util.FileOpener;
 import us.kbase.assemblyhomology.util.PathRestreamable;
 
@@ -114,26 +108,6 @@ public class AssemblyHomologyCLI {
 		return 0;
 	}
 	
-	private MongoClient buildMongo(final AssemblyHomologyConfig cfg)
-			throws AssemblyHomologyStorageException {
-		//TODO ZLATER MONGO handle shards & replica sets
-		try {
-			if (cfg.getMongoUser().isPresent()) {
-				final List<MongoCredential> creds = Arrays.asList(MongoCredential.createCredential(
-						cfg.getMongoUser().get(), cfg.getMongoDatabase(), cfg.getMongoPwd().get()));
-				// unclear if and when it's safe to clear the password
-				return new MongoClient(new ServerAddress(cfg.getMongoHost()), creds);
-			} else {
-				return new MongoClient(new ServerAddress(cfg.getMongoHost()));
-			}
-		} catch (MongoException e) {
-			LoggerFactory.getLogger(getClass()).error(
-					"Failed to connect to MongoDB: " + e.getMessage(), e);
-			throw new AssemblyHomologyStorageException(
-					"Failed to connect to MongoDB: " + e.getMessage(), e);
-		}
-	}
-	
 	private void load(final LoadArgs loadArgs, final AssemblyHomologyConfig cfg)
 			throws AssemblyHomologyStorageException, MissingParameterException,
 				IllegalParameterException, MinHashInitException, MinHashException, IOException,
@@ -141,10 +115,9 @@ public class AssemblyHomologyCLI {
 		if (!MASH.equals(loadArgs.implementation)) {
 			throw new MinHashException("Unsupported implementation: " + loadArgs.implementation);
 		}
-		try (final MongoClient mc = buildMongo(cfg)) {
-			final AssemblyHomologyStorage storage = new MongoAssemblyHomologyStorage(
-					mc.getDatabase(cfg.getMongoDatabase()));
-			new Loader(storage).load(
+		final AssemblyHomologyBuilder builder = new AssemblyHomologyBuilder(cfg);
+		try (final MongoClient mc = builder.getMongoClient()) {
+			new Loader(builder.getStorage()).load(
 					getLoadID(loadArgs),
 					new Mash(cfg.getPathToTemporaryFileDirectory()),
 					new MinHashDBLocation(Paths.get(loadArgs.sketchDBPath)),
