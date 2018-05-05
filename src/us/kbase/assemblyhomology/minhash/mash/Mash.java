@@ -39,7 +39,18 @@ public class Mash implements MinHashImplementation {
 	
 	//TODO ZZLATER CODE consider JNA to bind directly to the mash libs? That would allow controlling the version of Mash.
 	
-	private final static String MASH = "mash";
+	private final static MinHashImplementationName MASH;
+	static {
+		try {
+			MASH = new MinHashImplementationName("mash");
+		} catch (MissingParameterException | IllegalParameterException e) {
+			throw new RuntimeException("Well this is unexpected", e);
+		}
+	}
+	
+	public static MinHashImplementationName getImplementationName() {
+		return MASH;
+	}
 	
 	private final MinHashImplementationInformation info;
 	private final Path tempFileDirectory;
@@ -58,12 +69,9 @@ public class Mash implements MinHashImplementation {
 	private MinHashImplementationInformation getInfo() throws MinHashInitException {
 		try {
 			final String version = getVersion(getMashOutput("-h"));
-			return new MinHashImplementationInformation(
-					new MinHashImplementationName(MASH), version);
+			return new MinHashImplementationInformation(MASH, version);
 		} catch (MashException e) {
 			throw new MinHashInitException(e.getMessage(), e);
-		} catch (IllegalParameterException | MissingParameterException e) {
-			throw new RuntimeException("Well this is unexpected", e);
 		}
 	}
 	
@@ -76,7 +84,7 @@ public class Mash implements MinHashImplementation {
 	// returns null if outputPath is not null
 	private String getMashOutput(final Path outputPath, final String... arguments)
 			throws MashException {
-		final List<String> command = new LinkedList<>(Arrays.asList(MASH));
+		final List<String> command = new LinkedList<>(Arrays.asList(MASH.getName()));
 		command.addAll(Arrays.asList(arguments));
 		try {
 			final ProcessBuilder pb = new ProcessBuilder(command);
@@ -88,13 +96,13 @@ public class Mash implements MinHashImplementation {
 			final Process mash = pb.start();
 			if (!mash.waitFor(30L, TimeUnit.SECONDS)) {
 				throw new MashException(String.format(
-						"Timed out waiting for %s to run", MASH));
+						"Timed out waiting for %s to run", MASH.getName()));
 			}
 			if (mash.exitValue() != 0) {
 				try (final InputStream is = mash.getErrorStream()) {
 					//may need different types of exceptions based on the output text
 					throw new MashException(String.format(
-							"Error running %s: %s", MASH, IOUtils.toString(is)));
+							"Error running %s: %s", MASH.getName(), IOUtils.toString(is)));
 				}
 			}
 			if (outputPath != null) {
@@ -106,7 +114,7 @@ public class Mash implements MinHashImplementation {
 			}
 		} catch (IOException | InterruptedException e) {
 			throw new MashException(String.format(
-					"Error running %s: ", MASH) + e.getMessage(), e);
+					"Error running %s: ", MASH.getName()) + e.getMessage(), e);
 		}
 	}
 

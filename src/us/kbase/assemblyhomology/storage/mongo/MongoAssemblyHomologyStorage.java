@@ -374,7 +374,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 			final Document query = new Document()
 					.append(Fields.SEQMETA_NAMESPACE_ID, namespace.getName())
 					.append(Fields.SEQMETA_LOAD_ID, loadID.getName())
-					.append(Fields.SEQMETA_SEQUENCE_ID, meta.getId());
+					.append(Fields.SEQMETA_SEQUENCE_ID, meta.getID());
 			upsert(COL_SEQUENCE_METADATA, query, dmeta);
 		}
 	}

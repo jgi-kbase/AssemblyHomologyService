@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
 
+import us.kbase.assemblyhomology.util.Util;
+
 public class MinHashDistanceSet {
 	
 	//TODO JAVADOC
@@ -23,11 +25,8 @@ public class MinHashDistanceSet {
 			final Set<MinHashDistance> distances) {
 		checkNotNull(query, "query");
 		checkNotNull(reference, "reference");
-		checkNotNull(distances, "distances");
 		// check for duplicate sequence IDs?
-		for (final MinHashDistance d: distances) {
-			checkNotNull(d, "null distance in distance set");
-		}
+		Util.checkNoNullsInCollection(distances, "distances");
 		if (query.getSequenceCount() != 1) { // may want to relax list later
 			throw new IllegalArgumentException("Query may only contain 1 sequence");
 		}
