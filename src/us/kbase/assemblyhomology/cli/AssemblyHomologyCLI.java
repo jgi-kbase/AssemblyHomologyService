@@ -5,14 +5,9 @@ import static us.kbase.assemblyhomology.util.Util.isNullOrEmpty;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.file.AccessDeniedException;
-import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 import java.util.UUID;
 
 import org.slf4j.LoggerFactory;
@@ -28,7 +23,8 @@ import com.mongodb.ServerAddress;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import us.kbase.assemblyhomology.cli.AssemblyHomologyCLIConfig.AssemblyHomlogyCLIConfigException;
+import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
+import us.kbase.assemblyhomology.config.AssemblyHomologyConfigurationException;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
@@ -98,20 +94,11 @@ public class AssemblyHomologyCLI {
 			usage(jc);
 			return 1;
 		}
-		final AssemblyHomologyCLIConfig cfg;
+		final AssemblyHomologyConfig cfg;
 		try {
-			cfg = getConfig(globalArgs.configPath);
-		} catch (NoSuchFileException e) {
-			printError("No such file", e, globalArgs.verbose);
-			return 1;
-		} catch (AccessDeniedException e) {
-			printError("Access denied", e, globalArgs.verbose);
-			return 1;
-		} catch (IOException e) {
+			cfg = new AssemblyHomologyConfig(Paths.get(globalArgs.configPath));
+		} catch (AssemblyHomologyConfigurationException e) {
 			printError(e, globalArgs.verbose);
-			return 1;
-		} catch (AssemblyHomlogyCLIConfigException e) {
-			printError("For config file " + globalArgs.configPath, e, globalArgs.verbose);
 			return 1;
 		}
 		if (jc.getParsedCommand().equals(CMD_LOAD)) {
@@ -127,25 +114,17 @@ public class AssemblyHomologyCLI {
 		return 0;
 	}
 	
-	private AssemblyHomologyCLIConfig getConfig(final String configPath)
-			throws IOException, AssemblyHomlogyCLIConfigException {
-		final Path path = Paths.get(configPath);
-		final Properties p = new Properties();
-		p.load(Files.newInputStream(path));
-		return AssemblyHomologyCLIConfig.from(p);
-	}
-	
-	private MongoClient buildMongo(final AssemblyHomologyCLIConfig c)
+	private MongoClient buildMongo(final AssemblyHomologyConfig cfg)
 			throws AssemblyHomologyStorageException {
 		//TODO ZLATER MONGO handle shards & replica sets
 		try {
-			if (c.getMongoUser().isPresent()) {
+			if (cfg.getMongoUser().isPresent()) {
 				final List<MongoCredential> creds = Arrays.asList(MongoCredential.createCredential(
-						c.getMongoUser().get(), c.getMongoDatabase(), c.getMongoPwd().get()));
+						cfg.getMongoUser().get(), cfg.getMongoDatabase(), cfg.getMongoPwd().get()));
 				// unclear if and when it's safe to clear the password
-				return new MongoClient(new ServerAddress(c.getMongoHost()), creds);
+				return new MongoClient(new ServerAddress(cfg.getMongoHost()), creds);
 			} else {
-				return new MongoClient(new ServerAddress(c.getMongoHost()));
+				return new MongoClient(new ServerAddress(cfg.getMongoHost()));
 			}
 		} catch (MongoException e) {
 			LoggerFactory.getLogger(getClass()).error(
@@ -155,19 +134,19 @@ public class AssemblyHomologyCLI {
 		}
 	}
 	
-	private void load(final LoadArgs loadArgs, final AssemblyHomologyCLIConfig config)
+	private void load(final LoadArgs loadArgs, final AssemblyHomologyConfig cfg)
 			throws AssemblyHomologyStorageException, MissingParameterException,
 				IllegalParameterException, MinHashInitException, MinHashException, IOException,
 				LoadInputParseException {
 		if (!MASH.equals(loadArgs.implementation)) {
 			throw new MinHashException("Unsupported implementation: " + loadArgs.implementation);
 		}
-		try (final MongoClient mc = buildMongo(config)) {
+		try (final MongoClient mc = buildMongo(cfg)) {
 			final AssemblyHomologyStorage storage = new MongoAssemblyHomologyStorage(
-					mc.getDatabase(config.getMongoDatabase()));
+					mc.getDatabase(cfg.getMongoDatabase()));
 			new Loader(storage).load(
 					getLoadID(loadArgs),
-					new Mash(Paths.get(config.getTempDir())),
+					new Mash(cfg.getPathToTemporaryFileDirectory()),
 					new MinHashDBLocation(Paths.get(loadArgs.sketchDBPath)),
 					new PathRestreamable(Paths.get(loadArgs.namespaceYAML), fileOpener),
 					new PathRestreamable(Paths.get(loadArgs.sequeneceMetadataPath), fileOpener));
@@ -229,8 +208,8 @@ public class AssemblyHomologyCLI {
 		boolean verbose = false;
 		
 		@Parameter(names = {"-c", "--config"}, 
-				description = "Path to the assembly_homology configuration file.")
-		String configPath = "./" + PROG_NAME + ".cfg";
+				description = "Path to the assembly homology configuration file.")
+		String configPath = "./deploy.cfg";
 	}
 	
 	@Parameters(commandDescription = "Load data into the database")

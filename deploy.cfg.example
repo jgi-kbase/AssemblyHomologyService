@@ -1,4 +1,6 @@
-## Settings for the assembly_homology CLI.
+## Settings for the assembly homology service and CLI.
+
+[assemblyhomology]
 
 # MongoDB information.
 mongo-host=

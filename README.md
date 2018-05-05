@@ -67,7 +67,7 @@ Currently only Mash sketch database uploads are supported. An upload requires 4 
 ### Assembly homology configuration file
 
 The assembly homology configuration file contains the configuration information required for the
-loader to run. Copy the `assembly_homology.cfg.example` file to `assembly_homology.cfg`
+loader to run. Copy the `deploy.cfg.example` file to `deploy.cfg`
 and fill it in appropriately.
 
 ### Namespace YAML file
