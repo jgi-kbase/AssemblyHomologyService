@@ -45,5 +45,6 @@
 	<classpathentry kind="lib" path="/jars/lib/jars/hk2/hk2-locator-2.5.0-b05.jar"/>
 	<classpathentry kind="lib" path="/jars/lib/jars/hk2/hk2-utils-2.5.0-b05.jar"/>
 	<classpathentry kind="lib" path="/jars/lib/jars/hk2/osgi-resource-locator-1.0.1.jar"/>
+	<classpathentry kind="lib" path="/jars/lib/jars/kbase/common/kbase-common-0.0.24.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
