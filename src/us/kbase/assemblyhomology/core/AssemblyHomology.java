@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.base.Optional;
@@ -61,6 +62,11 @@ public class AssemblyHomology {
 			}
 			impls.put(impl, fac);
 		}
+	}
+	
+	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
+	public Set<Namespace> getNamespaces() throws AssemblyHomologyStorageException {
+		return storage.getNamespaces();
 	}
 	
 	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
