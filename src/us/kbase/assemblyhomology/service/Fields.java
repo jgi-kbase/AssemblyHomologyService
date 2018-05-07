@@ -16,6 +16,18 @@ public class Fields {
 	/** The Git commit from which the service was built. */
 	public static final String GIT_HASH = "gitcommithash";
 	
+	/* namespaces */
+	
+	public static final String NAMESPACE_DESCRIPTION = "desc";
+	public static final String NAMESPACE_ID = "id";
+	public static final String NAMESPACE_IMPLEMENTATION = "impl";
+	public static final String NAMESPACE_SEQ_COUNT = "seqcount";
+	public static final String NAMESPACE_KMER_SIZE = "kmersize";
+	public static final String NAMESPACE_SCALING = "scaling";
+	public static final String NAMESPACE_SKETCH_SIZE = "sketchsize";
+	public static final String NAMESPACE_DB_ID = "database";
+	public static final String NAMESPACE_DATA_SOURCE_ID = "datasource";
+	
 	/* errors */
 	
 	/** An error. */
