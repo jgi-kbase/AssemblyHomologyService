@@ -11,6 +11,7 @@ public class ServicePaths {
 	
 	private static final String NAMESPACE = "namespace";
 	private static final String NAMESPACE_ID = "{" + NAMESPACE + "}";
+	private static final String SEARCH = "search";
 	
 	
 	/* Root endpoint */
@@ -22,8 +23,12 @@ public class ServicePaths {
 	
 	/** The root namespace location. */
 	public static final String NAMESPACE_ROOT = SEP + NAMESPACE;
-	/** The location for a specific namespace */
+	/** The location for a specific namespace. */
 	public static final String NAMESPACE_SELECT = NAMESPACE_ID;
+	/** The parameter name for the namspace selector portion of the url. */
 	public static final String NAMESPACE_SELECT_PARAM = NAMESPACE;
+	/** The location for searching a namespace with a sketch file. */
+	public static final String NAMESPACE_SEARCH = NAMESPACE_SELECT + SEP + SEARCH;
+	
 	
 }

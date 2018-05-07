@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import com.google.common.base.Optional;
 import com.mongodb.MongoClient;
 
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
@@ -67,6 +68,15 @@ public class AssemblyHomology {
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
 		checkNotNull(namespaceID, "namespaceID");
 		return storage.getNamespace(namespaceID);
+	}
+	
+	public Optional<Path> getExpectedFileExtension(final MinHashImplementationName impl) {
+		checkNotNull(impl, "impl");
+		final String implLower = impl.getName().toLowerCase();
+		if (!impls.containsKey(implLower)) {
+			throw new IllegalArgumentException("No such implementation: " + impl.getName());
+		}
+		return impls.get(implLower).getExpectedFileExtension();
 	}
 	
 	public SequenceMatches measureDistance(
@@ -150,6 +160,7 @@ public class AssemblyHomology {
 					"Application is misconfigured. Implementation %s stored in database but " +
 					"not available.", impl));
 		}
+		//TODO NOW CODE catch and wrap min hash exception
 		return impls.get(impl).getImplementation(tempFileDirectory);
 	}
 	

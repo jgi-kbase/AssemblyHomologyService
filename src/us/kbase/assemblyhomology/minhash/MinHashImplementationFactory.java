@@ -2,6 +2,8 @@ package us.kbase.assemblyhomology.minhash;
 
 import java.nio.file.Path;
 
+import com.google.common.base.Optional;
+
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 
 public interface MinHashImplementationFactory {
@@ -12,5 +14,7 @@ public interface MinHashImplementationFactory {
 			throws MinHashInitException;
 	
 	MinHashImplementationName getImplementationName();
+	
+	Optional<Path> getExpectedFileExtension();
 
 }
