@@ -160,9 +160,7 @@ OR
 
 ## API
 
-TODO
-
-##Developer notes
+## Developer notes
 
 ### Adding and releasing code
 
