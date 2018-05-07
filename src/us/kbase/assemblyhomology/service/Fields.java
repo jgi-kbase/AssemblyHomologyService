@@ -6,6 +6,7 @@ package us.kbase.assemblyhomology.service;
  */
 public class Fields {
 
+	//TODO JAVADOC
 	
 	/* root */
 	
@@ -18,6 +19,7 @@ public class Fields {
 	
 	/* namespaces */
 	
+	public static final String NAMESPACE = "namespace";
 	public static final String NAMESPACE_DESCRIPTION = "desc";
 	public static final String NAMESPACE_ID = "id";
 	public static final String NAMESPACE_IMPLEMENTATION = "impl";
@@ -27,6 +29,15 @@ public class Fields {
 	public static final String NAMESPACE_SKETCH_SIZE = "sketchsize";
 	public static final String NAMESPACE_DB_ID = "database";
 	public static final String NAMESPACE_DATA_SOURCE_ID = "datasource";
+	
+	/* Distances */
+	public static final String DISTANCES = "distances";
+	public static final String DIST_IMPLEMENTATION = "impl";
+	public static final String DIST_IMPLEMENTATION_VERSION = "implver";
+	public static final String DIST_DISTANCE = "dist";
+	public static final String DIST_RELATED_IDS = "relatedids";
+	public static final String DIST_SCI_NAME = "sciname";
+	public static final String DIST_SOURCE_ID = "sourceid";
 	
 	/* errors */
 	

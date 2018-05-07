@@ -1,5 +1,7 @@
 package us.kbase.assemblyhomology.service;
 
+import java.io.IOException;
+import java.nio.file.Files;
 
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.glassfish.jersey.server.ResourceConfig;
@@ -33,6 +35,11 @@ public class AssemblyHomologyService extends ResourceConfig {
 		
 		quietLogger();
 		logger = cfg.getLogger();
+		try {
+			Files.createDirectories(cfg.getPathToTemporaryFileDirectory());
+		} catch (IOException e) {
+			throw new AssemblyHomologyConfigurationException(e.getMessage(), e);
+		}
 		try {
 			buildApp(cfg);
 		} catch (StorageInitException e) {

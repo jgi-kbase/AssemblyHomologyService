@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 
+import com.google.common.base.Optional;
+
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
@@ -47,9 +49,14 @@ public class Mash implements MinHashImplementation {
 			throw new RuntimeException("Well this is unexpected", e);
 		}
 	}
+	private final static Path MASH_FILE_EXT = Paths.get("msh");
 	
 	public static MinHashImplementationName getImplementationName() {
 		return MASH;
+	}
+	
+	public static Optional<Path> getExpectedFileExtension() {
+		return Optional.of(MASH_FILE_EXT);
 	}
 	
 	private final MinHashImplementationInformation info;
@@ -69,7 +76,7 @@ public class Mash implements MinHashImplementation {
 	private MinHashImplementationInformation getInfo() throws MinHashInitException {
 		try {
 			final String version = getVersion(getMashOutput("-h"));
-			return new MinHashImplementationInformation(MASH, version);
+			return new MinHashImplementationInformation(MASH, version, MASH_FILE_EXT);
 		} catch (MashException e) {
 			throw new MinHashInitException(e.getMessage(), e);
 		}
