@@ -5,23 +5,11 @@ package us.kbase.assemblyhomology.core.exceptions;
  *
  */
 @SuppressWarnings("serial")
-public class NoSuchNamespaceException extends AssemblyHomologyException {
+public class NoSuchNamespaceException extends NoDataException {
 
 	//TODO TEST
 	
 	public NoSuchNamespaceException(final String message) {
 		super(ErrorType.NO_SUCH_NAMESPACE, message);
-	}
-
-	public NoSuchNamespaceException(
-			final ErrorType type,
-			final String message) {
-		super(type, message);
-	}
-
-	public NoSuchNamespaceException(
-			final String message,
-			final Throwable cause) {
-		super(ErrorType.NO_SUCH_NAMESPACE, message, cause);
 	}
 }
