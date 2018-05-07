@@ -5,7 +5,7 @@ package us.kbase.assemblyhomology.core.exceptions;
  *
  */
 @SuppressWarnings("serial")
-public class NoSuchSequenceException extends AssemblyHomologyException {
+public class NoSuchSequenceException extends NoDataException {
 
 	//TODO TEST
 	
