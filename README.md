@@ -160,6 +160,17 @@ OR
 
 ## API
 
+`GET /namespace/<namespace id>`
+
+Returns information about a namespace.
+
+`POST /namespace/<namespace id>/search`
+
+Performs a search with the sketch database provided in the `POST` body against the sketch
+database associated with the namespace. `curl -T` is useful for this:
+`curl -X POST -T kb_refseq_ci_1000_15792_446_1.msh http://localhost:20000/namespace/mynamespace/search`
+Currently the input sketch database must contain only one sequence.
+
 ## Developer notes
 
 ### Adding and releasing code
