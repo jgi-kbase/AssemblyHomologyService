@@ -18,7 +18,7 @@ import us.kbase.assemblyhomology.core.exceptions.NoDataException;
 @JsonInclude(Include.NON_NULL)
 public class ErrorMessage {
 	
-	//TODO TEST unit tests
+	//TODO TEST
 	//TODO JAVADOC
 
 	private final int httpcode;
@@ -29,7 +29,6 @@ public class ErrorMessage {
 	private final String callid;
 	private final long time = Instant.now().toEpochMilli();
 	// may want to support returning the exception. YAGNI
-	
 	
 	public ErrorMessage(
 			final Throwable ex,
@@ -48,7 +47,6 @@ public class ErrorMessage {
 //			} else if (ae instanceof UnauthorizedException) {
 //				status = Response.Status.FORBIDDEN;
 //			} else
-			//TODO NOW document exception mapping
 			if (ae instanceof NoDataException) {
 				status = Response.Status.NOT_FOUND;
 			} else {
