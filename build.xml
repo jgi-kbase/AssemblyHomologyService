@@ -37,6 +37,7 @@
     <include name="logback/logback-core-1.1.2.jar"/>
     <include name="logback/logback-classic-1.1.2.jar"/>
     <include name="slf4j/slf4j-api-1.7.25.jar"/>
+    <include name="syslog4j/syslog4j-0.9.46.jar"/>
   </fileset>
 	
   <fileset dir="${jardir}" id="jackson">

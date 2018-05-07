@@ -90,7 +90,7 @@ public class AssemblyHomologyCLI {
 		}
 		final AssemblyHomologyConfig cfg;
 		try {
-			cfg = new AssemblyHomologyConfig(Paths.get(globalArgs.configPath));
+			cfg = new AssemblyHomologyConfig(Paths.get(globalArgs.configPath), true);
 		} catch (AssemblyHomologyConfigurationException e) {
 			printError(e, globalArgs.verbose);
 			return 1;
