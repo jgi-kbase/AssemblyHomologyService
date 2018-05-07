@@ -7,8 +7,14 @@ import java.nio.file.Paths;
 import java.util.Map;
 
 import org.ini4j.Ini;
+import org.productivity.java.syslog4j.SyslogIF;
 
 import com.google.common.base.Optional;
+
+import us.kbase.assemblyhomology.service.SLF4JAutoLogger;
+import us.kbase.common.service.JsonServerSyslog;
+import us.kbase.common.service.JsonServerSyslog.RpcInfo;
+import us.kbase.common.service.JsonServerSyslog.SyslogOutput;
 
 public class AssemblyHomologyConfig {
 	
@@ -19,6 +25,8 @@ public class AssemblyHomologyConfig {
 	
 	private static final String ENV_VAR_ASSYHOM = "ASSEMBLY_HOMOLOGY_CONFIG";
 	private static final String ENV_VAR_KB_DEP = "KB_DEPLOYMENT_CONFIG";
+	
+	private static final String LOG_NAME = "AssemblyHomology";
 	
 	private static final String CFG_LOC = "assemblyhomology";
 	private static final String TEMP_KEY_CFG_FILE = "temp-key-config-file";
@@ -35,13 +43,25 @@ public class AssemblyHomologyConfig {
 	private final Optional<String> mongoUser;
 	private final Optional<char[]> mongoPwd;
 	private final Path tempDir;
+	private final SLF4JAutoLogger logger;
 
 	public AssemblyHomologyConfig() throws AssemblyHomologyConfigurationException {
-		this(getConfigPathFromEnv());
+		this(getConfigPathFromEnv(), false);
 	}
 	
-	public AssemblyHomologyConfig(final Path filepath) 
+	public AssemblyHomologyConfig(final Path filepath, final boolean nullLogger) 
 			throws AssemblyHomologyConfigurationException {
+		// the logger is configured in in the configuration class so that alternate environments with different configuration mechanisms can configure their own logger
+		if (nullLogger) {
+			logger = new NullLogger();
+		} else {
+			// may want to allow configuring the logger name, but YAGNI
+			logger = new JsonServerSysLogAutoLogger(new JsonServerSyslog(LOG_NAME,
+					//TODO KBASECOMMON allow null for the fake config prop arg
+					"thisisafakekeythatshouldntexistihope",
+					JsonServerSyslog.LOG_LEVEL_INFO, true));
+		}
+		
 		final Map<String, String> cfg = getConfig(filepath);
 		tempDir = Paths.get(getString(KEY_TEMP_DIR, cfg, true));
 		mongoHost = getString(KEY_MONGO_HOST, cfg, true);
@@ -122,6 +142,54 @@ public class AssemblyHomologyConfig {
 		return config;
 	}
 	
+	private static class NullLogger implements SLF4JAutoLogger {
+
+		@Override
+		public void setCallInfo(String method, String id, String ipAddress) {
+			//  do nothing
+		}
+
+		@Override
+		public String getCallID() {
+			return null;
+		}
+	}
+	
+	private static class JsonServerSysLogAutoLogger implements SLF4JAutoLogger {
+		
+		@SuppressWarnings("unused")
+		private JsonServerSyslog logger; // keep a reference to avoid gc
+
+		private JsonServerSysLogAutoLogger(final JsonServerSyslog logger) {
+			super();
+			this.logger = logger;
+			logger.changeOutput(new SyslogOutput() {
+				
+				@Override
+				public void logToSystem(SyslogIF log, int level, String message) {
+					System.out.println(message);
+				}
+				
+			});
+		}
+
+		@Override
+		public void setCallInfo(
+				final String method,
+				final String id,
+				final String ipAddress) {
+			final RpcInfo rpc = JsonServerSyslog.getCurrentRpcInfo();
+			rpc.setId(id);
+			rpc.setIp(ipAddress);
+			rpc.setMethod(method);
+		}
+
+		@Override
+		public String getCallID() {
+			return JsonServerSyslog.getCurrentRpcInfo().getId();
+		}
+	}
+	
 	public String getMongoHost() {
 		return mongoHost;
 	}
@@ -140,5 +208,9 @@ public class AssemblyHomologyConfig {
 	
 	public Path getPathToTemporaryFileDirectory() {
 		return tempDir;
+	}
+	
+	public SLF4JAutoLogger getLogger() {
+		return logger;
 	}
 }
