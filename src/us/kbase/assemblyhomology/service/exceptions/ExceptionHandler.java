@@ -13,7 +13,7 @@ import us.kbase.assemblyhomology.service.SLF4JAutoLogger;
 
 public class ExceptionHandler implements ExceptionMapper<Throwable> {
 
-	//TODO TEST unit tests, probably makes sense to do logging & exceptions in the same test file
+	//TODO TEST
 	//TODO JAVADOC
 
 	private SLF4JAutoLogger logger;

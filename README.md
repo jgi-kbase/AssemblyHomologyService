@@ -147,6 +147,47 @@ once the load is complete (although it may be advisable to retain them for reloa
 
 ## API
 
+##Developer notes
+
+### Adding and releasing code
+
+* Adding code
+  * All code additions and updates must be made as pull requests directed at the develop branch.
+    * All tests must pass and all new code must be covered by tests.
+    * All new code must be documented appropriately
+      * Javadoc
+      * General documentation if appropriate
+      * Release notes
+* Releases
+  * The master branch is the stable branch. Releases are made from the develop branch to the master
+    branch.
+  * Update the version as per the semantic version rules in `src/us/kbase/assemblyhomoloy/api/Root.java`.
+  * Tag the version in git and github.
+
+### Running tests
+
+* Copy `test.cfg.example` to `test.cfg` and fill in the values appropriately.
+  * If it works as is start buying lottery tickets immediately.
+* `ant test`
+
+### UI
+
+Most text fields are arbitrary text entered by a data uploader. These fields should be
+HTML-escaped prior to display.
+  
+Use common sense when displaying a field from the server regarding whether the field should be
+html escaped or not.
+  
+### Exception mapping
+
+In `us.kbase.assemblyhomology.core.exceptions`:  
+`AssemblyHomologyException` and subclasses other than the below - 400  
+`NoDataException` and subclasses - 404  
+
+`JsonMappingException` (from [Jackson](https://github.com/FasterXML/jackson)) - 400  
+
+Anything else is mapped to 500.
+
 ## TODO
 
 * Tests
