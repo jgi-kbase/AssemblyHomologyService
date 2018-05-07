@@ -145,9 +145,22 @@ The AHS expects that the sketch database will exist at the specified path once t
 complete, so place the sketch database in a permanent location. The other files can be deleted
 once the load is complete (although it may be advisable to retain them for reloads).
 
+## Start service
+
+start mongodb  
+cd into the assembly homology repo  
+`ant build`  
+copy `deploy.cfg.example` to `deploy.cfg` and fill in appropriately  
+`export ASSEMBLY_HOMOLOGY_CONFIG=<path to deploy.cfg>`  
+OR  
+`export KB_DEPLOYMENT_CONFIG=<path to deploy.cfg>`  
+
+`cd jettybase`  
+`./jettybase$ java -jar -Djetty.http.port=<port> <path to jetty install>/start.jar`  
+
 ## API
 
-##Developer notes
+## Developer notes
 
 ### Adding and releasing code
 

@@ -33,11 +33,12 @@
   </fileset>
 
   <fileset dir="${jardir}" id="logging">
-    <include name="kbase/common/kbase-common/0.0.24.jar"/>
+    <include name="kbase/common/kbase-common-0.0.24.jar"/>
     <include name="logback/logback-core-1.1.2.jar"/>
     <include name="logback/logback-classic-1.1.2.jar"/>
     <include name="slf4j/slf4j-api-1.7.25.jar"/>
     <include name="syslog4j/syslog4j-0.9.46.jar"/>
+    <include name="jna/jna-3.4.0.jar"/>
   </fileset>
 	
   <fileset dir="${jardir}" id="jackson">
