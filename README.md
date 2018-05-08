@@ -2,9 +2,7 @@
 
 This repo contains the KBase / JGI Assembly Homology Service (AHS). The service provides sequence
 assembly matching based on implementations of the
-[MinHash algorithm](https://ieeexplore.ieee.org/abstract/document/666900/?reload=tru). Currently
-the service supports
-[Mash](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0997-x).
+[MinHash algorithm](https://ieeexplore.ieee.org/abstract/document/666900/?reload=tru).
 
 ## Usage
 
@@ -22,6 +20,11 @@ Note that searches against a namespace **may not be reproducible over time**.
 The service is expected to contain <1000 namespaces, although there is no hard limit.
 
 Most input strings do not allow empty strings and have a maximum size of 256 unicode code points.
+
+## MinHash implementations
+
+Currently only [Mash](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0997-x)
+is supported. Mash is configured to never return sequences with a distance greater than 0.5.
 
 ## Requirements
 
@@ -45,7 +48,7 @@ ant build
 
 These instructions assume
 * MongoDB is running in a location accessible to the AHS.
-* The Mash binary is available in the system path.
+* The `mash` binary is available in the system path.
 
 Loading data is accomplished via the `assembly_homology` CLI. Get CLI help via the `-h` option:
 
@@ -149,6 +152,7 @@ once the load is complete (although it may be advisable to retain them for reloa
 
 ## Start service
 
+ensure `mash` is available on the system path  
 start mongodb  
 cd into the assembly homology repo  
 `ant build`  

@@ -56,6 +56,7 @@ public class MinHashSketchDatabase {
 					getImplementationName(), otherDB.getImplementationName()));
 		}
 		if (!getParameterSet().equals(otherDB.getParameterSet())) {
+			//TODO NOW allow query sketch size > reference, but not reverse
 			/* is this check necessary? what happens if you run with differing
 			 * sketch sizes?
 			 * for mash:
