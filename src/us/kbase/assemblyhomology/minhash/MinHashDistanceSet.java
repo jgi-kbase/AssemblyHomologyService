@@ -30,7 +30,8 @@ public class MinHashDistanceSet {
 		if (query.getSequenceCount() != 1) { // may want to relax list later
 			throw new IllegalArgumentException("Query may only contain 1 sequence");
 		}
-		query.checkCompatibility(reference);
+		// we don't check DB compatibility given that the presence of distance measurements
+		// implies they must be compatible
 		this.query = query;
 		this.reference = reference;
 		this.distances = Collections.unmodifiableSet(new TreeSet<>(distances));
