@@ -19,6 +19,8 @@ a sketch database and a namespace. A namespace has the following properties:
   
 Note that searches against a namespace **may not be reproducible over time**. 
 
+The service is expected to contain <1000 namespaces, although there is no hard limit.
+
 Most input strings do not allow empty strings and have a maximum size of 256 unicode code points.
 
 ## Requirements
@@ -160,9 +162,13 @@ OR
 
 ## API
 
+`GET /namespace`
+
+List all namespaces.
+
 `GET /namespace/<namespace id>`
 
-Returns information about a namespace.
+Returns information about a specific namespace.
 
 `POST /namespace/<namespace id>/search`
 

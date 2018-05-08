@@ -2,6 +2,7 @@ package us.kbase.assemblyhomology.storage;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
@@ -42,6 +43,8 @@ public interface AssemblyHomologyStorage {
 	
 	// may need more specific methods later, like incrementing the seq count
 	void createOrReplaceNamespace(Namespace namespace) throws AssemblyHomologyStorageException;
+	
+	Set<Namespace> getNamespaces() throws AssemblyHomologyStorageException;
 	
 	Namespace getNamespace(NamespaceID namespace)
 			throws AssemblyHomologyStorageException, NoSuchNamespaceException;

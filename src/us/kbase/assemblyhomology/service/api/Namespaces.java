@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -53,13 +54,19 @@ public class Namespaces {
 
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
+	public List<Map<String, Object>> getNamespaces() throws AssemblyHomologyStorageException {
+		return ah.getNamespaces().stream().map(ns -> fromNamespace(ns))
+				.collect(Collectors.toList());
+	}
+	
+	@GET
+	@Produces(MediaType.APPLICATION_JSON)
 	@javax.ws.rs.Path(ServicePaths.NAMESPACE_SELECT)
 	public Map<String, Object> getNamespace(
 			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespace)
 			throws NoSuchNamespaceException, MissingParameterException,
 				IllegalParameterException, AssemblyHomologyStorageException {
-		final Namespace ns = ah.getNamespace(new NamespaceID(namespace));
-		return fromNamespace(ns);
+		return fromNamespace(ah.getNamespace(new NamespaceID(namespace)));
 	}
 
 	private Map<String, Object> fromNamespace(final Namespace ns) {

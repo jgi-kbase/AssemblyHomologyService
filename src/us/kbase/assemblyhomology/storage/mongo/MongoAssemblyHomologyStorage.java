@@ -10,10 +10,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -278,6 +280,21 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	}
 
 	@Override
+	public Set<Namespace> getNamespaces() throws AssemblyHomologyStorageException {
+		final Set<Namespace> ret = new HashSet<>();
+		try {
+			final FindIterable<Document> cur = db.getCollection(COL_NAMESPACES).find();
+			for (final Document ns: cur) {
+				ret.add(toNamespace(ns));
+			}
+		} catch (MongoException e) {
+			throw new AssemblyHomologyStorageException(
+					"Connection to database failed: " + e.getMessage(), e);
+		}
+		return ret;
+	}
+	
+	@Override
 	public Namespace getNamespace(final NamespaceID namespace)
 			throws AssemblyHomologyStorageException, NoSuchNamespaceException {
 		checkNotNull(namespace, "namespace");
@@ -285,10 +302,15 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 				COL_NAMESPACES, new Document(Fields.NAMESPACE_ID, namespace.getName()));
 		if (ns == null) {
 			throw new NoSuchNamespaceException(namespace.getName());
+		} else {
+			return toNamespace(ns);
 		}
+	}
+
+	private Namespace toNamespace(final Document ns) throws AssemblyHomologyStorageException {
 		try {
 			return Namespace.getBuilder(
-					namespace,
+					new NamespaceID(ns.getString(Fields.NAMESPACE_ID)),
 					new MinHashSketchDatabase(
 							new MinHashImplementationName(
 									ns.getString(Fields.NAMESPACE_IMPLEMENTATION)),
