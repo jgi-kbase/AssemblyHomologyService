@@ -1,0 +1,6 @@
+[assemblyhomology]
+mongo-host={{ default .Env.mongo_host "ci-mongo" }}
+mongo-db={{ default .Env.mongo_db "auth2" }}
+mongo-user={{ default .Env.mongo_user "" }}
+mongo-pwd={{ default .Env.mongo_pwd "" }}
+temp-dir={{default .Env.temp_dir "./tmp_ah" }}
