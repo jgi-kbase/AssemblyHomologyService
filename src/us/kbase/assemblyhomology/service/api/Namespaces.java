@@ -16,6 +16,7 @@ import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 
@@ -90,10 +91,13 @@ public class Namespaces {
 	@javax.ws.rs.Path(ServicePaths.NAMESPACE_SEARCH)
 	public Map<String, Object> searchNamespace(
 			@Context HttpServletRequest request,
-			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespace)
+			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespace,
+			@QueryParam("notstrict") final String notStrict)
 			throws IOException, NoSuchNamespaceException, IllegalParameterException,
 			//TODO NOW CODE remove MinhashException when AssyHomol doesn't throw it
 				MissingParameterException, AssemblyHomologyStorageException, MinHashException { 
+		final int maxReturn = 10;
+		final boolean strict = notStrict == null;
 		final Namespace ns = ah.getNamespace(new NamespaceID(namespace));
 		final Optional<Path> expectedFileExtension =
 				ah.getExpectedFileExtension(ns.getSketchDatabase().getImplementationName());
@@ -108,7 +112,7 @@ public class Namespaces {
 			tempFile = Files.createTempFile(tempDir, "assyhomol_input", ext);
 			Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
 			//TODO NOW implement return count
-			res = ah.measureDistance(new NamespaceID(namespace), tempFile, 100);
+			res = ah.measureDistance(new NamespaceID(namespace), tempFile, maxReturn, strict);
 		} finally {
 			if (tempFile != null) {
 				Files.delete(tempFile);
@@ -117,6 +121,7 @@ public class Namespaces {
 		final MinHashImplementationInformation impl = res.getImplementationInformation();
 		final Map<String, Object> ret = new HashMap<>();
 		ret.put(Fields.NAMESPACE, fromNamespace(res.getNamespace()));
+		ret.put(Fields.DIST_WARNINGS, res.getWarnings());
 		ret.put(Fields.DIST_IMPLEMENTATION, impl.getImplementationName().getName());
 		ret.put(Fields.DIST_IMPLEMENTATION_VERSION, impl.getImplementationVersion());
 		ret.put(Fields.DISTANCES, res.getDistances().stream()

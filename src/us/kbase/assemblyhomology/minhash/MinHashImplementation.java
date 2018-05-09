@@ -22,7 +22,8 @@ public interface MinHashImplementation {
 	MinHashDistanceSet computeDistance(
 			MinHashSketchDatabase query,
 			MinHashSketchDatabase reference,
-			int maxReturnCount)
+			int maxReturnCount,
+			boolean strict)
 			throws MinHashException;
 	
 }

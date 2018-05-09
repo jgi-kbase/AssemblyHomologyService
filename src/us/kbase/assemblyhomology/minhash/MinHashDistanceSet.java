@@ -3,6 +3,8 @@ package us.kbase.assemblyhomology.minhash;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -17,16 +19,19 @@ public class MinHashDistanceSet {
 	private final MinHashSketchDatabase reference;
 	// distance to the query sequence
 	private final Set<MinHashDistance> distances;
+	private final List<String> warnings;
 
 	// might want a builder here?
 	public MinHashDistanceSet(
 			final MinHashSketchDatabase query,
 			final MinHashSketchDatabase reference,
-			final Set<MinHashDistance> distances) {
+			final Set<MinHashDistance> distances,
+			final List<String> warnings) {
 		checkNotNull(query, "query");
 		checkNotNull(reference, "reference");
 		// check for duplicate sequence IDs?
 		Util.checkNoNullsInCollection(distances, "distances");
+		Util.checkNoNullsOrEmpties(warnings, "warnings");
 		if (query.getSequenceCount() != 1) { // may want to relax list later
 			throw new IllegalArgumentException("Query may only contain 1 sequence");
 		}
@@ -35,6 +40,7 @@ public class MinHashDistanceSet {
 		this.query = query;
 		this.reference = reference;
 		this.distances = Collections.unmodifiableSet(new TreeSet<>(distances));
+		this.warnings = Collections.unmodifiableList(new LinkedList<>(warnings));
 	}
 
 	public MinHashSketchDatabase getQuery() {
@@ -52,6 +58,10 @@ public class MinHashDistanceSet {
 	public Set<MinHashDistance> getDistances() {
 		return distances;
 	}
+	
+	public List<String> getWarnings() {
+		return warnings;
+	}
 
 	@Override
 	public String toString() {
@@ -62,6 +72,8 @@ public class MinHashDistanceSet {
 		builder.append(reference);
 		builder.append(", distances=");
 		builder.append(distances);
+		builder.append(", warnings=");
+		builder.append(warnings);
 		builder.append("]");
 		return builder.toString();
 	}
