@@ -38,6 +38,7 @@ public class Fields {
 	public static final String DIST_RELATED_IDS = "relatedids";
 	public static final String DIST_SCI_NAME = "sciname";
 	public static final String DIST_SOURCE_ID = "sourceid";
+	public static final String DIST_WARNINGS = "warnings";
 	
 	/* errors */
 	

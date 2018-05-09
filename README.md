@@ -174,12 +174,15 @@ List all namespaces.
 
 Returns information about a specific namespace.
 
-`POST /namespace/<namespace id>/search`
+`POST /namespace/<namespace id>/search[?notstrict]`
 
 Performs a search with the sketch database provided in the `POST` body against the sketch
 database associated with the namespace. `curl -T` is useful for this:  
 `curl -X POST -T kb_refseq_ci_1000_15792_446_1.msh http://localhost:20000/namespace/mynamespace/search`  
-Currently the input sketch database must contain only one sequence.
+Currently the input sketch database must contain only one sequence with a single kmer size.
+If `notstrict` is omitted, the server will return an error if the query sketch size is greater
+than the namespace sketch size. If `notstrict` is included, the server will return a warning
+instead. Any other parameter mismatches will result in an error.
 
 ## Developer notes
 

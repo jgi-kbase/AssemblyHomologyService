@@ -211,15 +211,16 @@ public class Mash implements MinHashImplementation {
 	public MinHashDistanceSet computeDistance(
 			final MinHashSketchDatabase query,
 			final MinHashSketchDatabase reference,
-			final int maxReturnCount)
-			throws MashException {
+			final int maxReturnCount,
+			final boolean strict)
+			throws MinHashException {
 		checkNotNull(query, "query");
 		checkNotNull(reference, "reference");
 		if (query.getSequenceCount() != 1) {
 			// may want to relax this, but that'll require changing a bunch of stuff
 			throw new IllegalArgumentException("Only 1 query sequence is allowed");
 		}
-		query.checkCompatibility(reference);
+		final List<String> warnings = reference.checkIsQueriableBy(query, strict);
 		// may need to be smarter about this for really large collections
 		List<MinHashDistance> dists = processMashOutput(PROC, false, "dist", "-d", "0.5",
 					reference.getLocation().getPathToFile().get().toString(),
@@ -228,7 +229,7 @@ public class Mash implements MinHashImplementation {
 			Collections.sort(dists);
 			dists = dists.subList(0, maxReturnCount);
 		}
-		return new MinHashDistanceSet(query, reference, new HashSet<>(dists));
+		return new MinHashDistanceSet(query, reference, new HashSet<>(dists), warnings);
 	}
 	
 	private static class ParamsAndSize {
@@ -269,14 +270,14 @@ public class Mash implements MinHashImplementation {
 		System.out.println(ids);
 		
 		final MinHashSketchDatabase query = mash.getDatabase(new MinHashDBLocation(Paths.get(
-				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000_15792_446_1.msh")));
+				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000_15792_446_1_hashes1500.msh")));
 		System.out.println(query.getImplementationName());
 		System.out.println(query.getLocation());
 		System.out.println(query.getParameterSet());
 		System.out.println(query.getSequenceCount());
 		System.out.println(mash.getSketchIDs(query));
 		
-		final MinHashDistanceSet dists = mash.computeDistance(query, db, 30);
+		final MinHashDistanceSet dists = mash.computeDistance(query, db, 30, false);
 		System.out.println(dists);
 		System.out.println(dists.getDistances().size());
 	}

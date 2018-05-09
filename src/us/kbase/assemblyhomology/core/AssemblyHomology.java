@@ -88,7 +88,8 @@ public class AssemblyHomology {
 	public SequenceMatches measureDistance(
 			final NamespaceID namespaceID,
 			final Path sketchDB,
-			int returnCount)
+			int returnCount,
+			boolean strict)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException,
 				IllegalParameterException, MinHashException {
 		checkNotNull(namespaceID, "namespaceID");
@@ -100,7 +101,7 @@ public class AssemblyHomology {
 		final Namespace ns = getNamespace(namespaceID);
 		final MinHashImplementation impl = getImplementation(
 				ns.getSketchDatabase().getImplementationName());
-		final MinHashDistanceSet dists = getDistances(ns, sketchDB, impl, returnCount);
+		final MinHashDistanceSet dists = getDistances(ns, sketchDB, impl, returnCount, strict);
 		final List<String> ids = dists.getDistances().stream().map(d -> d.getSequenceID())
 				.collect(Collectors.toList());
 		final List<SequenceMetadata> seqmeta;
@@ -119,14 +120,16 @@ public class AssemblyHomology {
 				.collect(Collectors.toList());
 		
 		// return query id?
-		return new SequenceMatches(ns, impl.getImplementationInformation(), distNMeta);
+		return new SequenceMatches(
+				ns, impl.getImplementationInformation(), distNMeta, dists.getWarnings());
 	}
 
 	private MinHashDistanceSet getDistances(
 			final Namespace ns,
 			final Path sketchDB,
 			final MinHashImplementation impl,
-			int returnCount)
+			int returnCount,
+			final boolean strict)
 			throws IllegalParameterException, MinHashException {
 		final MinHashSketchDatabase query;
 		try {
@@ -142,14 +145,15 @@ public class AssemblyHomology {
 					"Query sketch database must have exactly one query");
 		}
 		try {
-			ns.getSketchDatabase().checkCompatibility(query);
-		} catch (IllegalArgumentException e) {
-			//TODO NOW CODE better exception
-			throw new IllegalParameterException(e.getMessage(), e);
+			ns.getSketchDatabase().checkIsQueriableBy(query, strict);
+		} catch (MinHashException e) {
+			throw new IllegalParameterException(String.format(
+					"Unable to query namespace %s with input sketch: %s",
+					ns.getId().getName(), e.getMessage()), e);
 		}
 		final MinHashDistanceSet res;
 		try {
-			res = impl.computeDistance(query, ns.getSketchDatabase(), returnCount);
+			res = impl.computeDistance(query, ns.getSketchDatabase(), returnCount, strict);
 		} catch (MinHashException e) {
 			//TODO NOW CODE better exception, need to try different failure modes, maybe need a set of exceptions
 			// that being said, everything should be ok from the user point of view now, so just rethrow
@@ -188,7 +192,8 @@ public class AssemblyHomology {
 				nsid,
 				Paths.get("/home/crusherofheads/kb_refseq_sourmash/" +
 						"kb_refseq_ci_1000_15792_446_1.msh"),
-				50);
+				50,
+				false);
 		System.out.println(dists);
 		System.out.println(dists.getNamespace());
 		System.out.println(dists.getImplementationInformation());
