@@ -149,6 +149,7 @@ public class Mash implements MinHashImplementation {
 	public List<String> getSketchIDs(final MinHashSketchDatabase db) throws MashException {
 		final List<String> ids = new LinkedList<>();
 		processMashOutput(
+				//TODO CODE make less brittle
 				l -> ids.add(l.split("\\s+")[2].trim()),
 				true,
 				"info", "-t", db.getLocation().getPathToFile().get().toString());
