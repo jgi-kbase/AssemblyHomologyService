@@ -11,8 +11,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -33,6 +31,7 @@ import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
+import us.kbase.assemblyhomology.util.CappedTreeSet;
 
 public class Mash implements MinHashImplementation {
 	
@@ -148,20 +147,21 @@ public class Mash implements MinHashImplementation {
 	
 	@Override
 	public List<String> getSketchIDs(final MinHashSketchDatabase db) throws MashException {
-		return processMashOutput(
-				//TODO CODE make less brittle
-				l -> l.split("\\s+")[2].trim(),
+		final List<String> ids = new LinkedList<>();
+		processMashOutput(
+				l -> ids.add(l.split("\\s+")[2].trim()),
 				true,
 				"info", "-t", db.getLocation().getPathToFile().get().toString());
+		return ids;
 	}
 	
-	private interface LineProcessor<T> {
-		T processline(String line);
+	private interface LineCollector {
+		void collect(String line);
 	}
 	
 	// use for large output, creates a temp file
-	private <T> List<T> processMashOutput(
-			final LineProcessor<T> lineProcessor,
+	private void processMashOutput(
+			final LineCollector lineCollector,
 			final boolean skipHeader,
 			final String... command)
 			throws MashException {
@@ -169,7 +169,6 @@ public class Mash implements MinHashImplementation {
 		try {
 			tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
 			getMashOutput(tempFile, command);
-			final List<T> results = new LinkedList<>();
 			try (final InputStream is = Files.newInputStream(tempFile)) {
 				final BufferedReader br = new BufferedReader(new InputStreamReader(
 						is, StandardCharsets.UTF_8));
@@ -177,10 +176,9 @@ public class Mash implements MinHashImplementation {
 					br.readLine();
 				}
 				for (String line = br.readLine(); line != null; line = br.readLine()) {
-					results.add(lineProcessor.processline(line));
+					lineCollector.collect(line);
 				}
 			}
-			return results;
 		} catch (IOException e) {
 			throw new MashException(e.getMessage(), e);
 		} finally {
@@ -194,18 +192,23 @@ public class Mash implements MinHashImplementation {
 		}
 	}
 	
-	private final LineProcessor<MinHashDistance> PROC = new LineProcessor<MinHashDistance>() {
+	private static class DistanceCollector implements LineCollector {
+		
+		private final CappedTreeSet<MinHashDistance> dists;
+		
+		public DistanceCollector(final int size) {
+			dists = new CappedTreeSet<>(size, true);
+		}
 
 		@Override
-		public MinHashDistance processline(final String line) {
+		public void collect(final String line) {
 			//TODO CODE nasty & brittle
 			final String[] sl = line.trim().split("\\s+");
 			final String id = sl[0].trim();
 			final double distance = Double.parseDouble(sl[2].trim());
-			return new MinHashDistance(id, distance);
+			dists.add(new MinHashDistance(id, distance));
 		}
-		
-	};
+	}
 	
 	@Override
 	public MinHashDistanceSet computeDistance(
@@ -221,15 +224,12 @@ public class Mash implements MinHashImplementation {
 			throw new IllegalArgumentException("Only 1 query sequence is allowed");
 		}
 		final List<String> warnings = reference.checkIsQueriableBy(query, strict);
-		// may need to be smarter about this for really large collections
-		List<MinHashDistance> dists = processMashOutput(PROC, false, "dist", "-d", "0.5",
+		final DistanceCollector distanceProcessor = new DistanceCollector(maxReturnCount);
+		processMashOutput(distanceProcessor, false, "dist", "-d", "0.5",
 					reference.getLocation().getPathToFile().get().toString(),
 					query.getLocation().getPathToFile().get().toString());
-		if (maxReturnCount > 0 && maxReturnCount <= dists.size()) {
-			Collections.sort(dists);
-			dists = dists.subList(0, maxReturnCount);
-		}
-		return new MinHashDistanceSet(query, reference, new HashSet<>(dists), warnings);
+		return new MinHashDistanceSet(
+				query, reference, distanceProcessor.dists.toSortedSet(), warnings);
 	}
 	
 	private static class ParamsAndSize {
