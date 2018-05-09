@@ -92,11 +92,12 @@ public class Namespaces {
 	public Map<String, Object> searchNamespace(
 			@Context HttpServletRequest request,
 			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespace,
-			@QueryParam("notstrict") final String notStrict)
+			@QueryParam("notstrict") final String notStrict,
+			@QueryParam("max") final String max)
 			throws IOException, NoSuchNamespaceException, IllegalParameterException,
 			//TODO NOW CODE remove MinhashException when AssyHomol doesn't throw it
 				MissingParameterException, AssemblyHomologyStorageException, MinHashException { 
-		final int maxReturn = 10;
+		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
 		final Namespace ns = ah.getNamespace(new NamespaceID(namespace));
 		final Optional<Path> expectedFileExtension =
@@ -111,7 +112,6 @@ public class Namespaces {
 		try (final InputStream is = request.getInputStream()) {
 			tempFile = Files.createTempFile(tempDir, "assyhomol_input", ext);
 			Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
-			//TODO NOW implement return count
 			res = ah.measureDistance(new NamespaceID(namespace), tempFile, maxReturn, strict);
 		} finally {
 			if (tempFile != null) {
@@ -128,6 +128,17 @@ public class Namespaces {
 				.map(d -> fromDistance(d))
 				.collect(Collectors.toList()));
 		return ret;
+	}
+
+	private int getMaxReturn(final String max) throws IllegalParameterException {
+		if (max == null) {
+			return -1;
+		}
+		try {
+			return Integer.parseInt(max);
+		} catch (NumberFormatException e) {
+			throw new IllegalParameterException("Illegal value for max: " + max);
+		}
 	}
 
 	private Map<String, Object> fromDistance(final SequenceDistanceAndMetadata dist) {
