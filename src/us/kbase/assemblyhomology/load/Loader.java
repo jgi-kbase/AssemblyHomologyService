@@ -73,9 +73,9 @@ public class Loader {
 		checkNotNull(sketchDBlocation, "sketchDBlocation");
 		checkNotNull(namespaceYAML, "namespaceYAML");
 		checkNotNull(sequenceMetaYAML, "sequenceMetaYAML");
-		final MinHashSketchDatabase sketchDB = minhashImpl.getDatabase(
-				new MinHashSketchDBName("<unused>"), sketchDBlocation);
 		final NamespaceLoadInfo nsinfo = loadNameSpaceInfo(namespaceYAML);
+		final MinHashSketchDatabase sketchDB = minhashImpl.getDatabase(
+				new MinHashSketchDBName(nsinfo.getId().getName()), sketchDBlocation);
 		final Set<String> seqmetaIDs = loadSequenceMetaIDs(sequenceMetaYAML);
 		final Set<String> skdbIDs = new HashSet<>(minhashImpl.getSketchIDs(sketchDB));
 		checkEqual(seqmetaIDs, sequenceMetaYAML, skdbIDs, sketchDBlocation);
