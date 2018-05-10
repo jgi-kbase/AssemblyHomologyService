@@ -6,7 +6,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.servlet.ServletContainer;
 
-public class StandaloneAuthServer {
+public class StandaloneAssemblyHomologyServer {
 
 	private Integer port = null;
 	private Server server;
@@ -38,9 +38,9 @@ public class StandaloneAuthServer {
 	}
 	
 	public static class ServerThread extends Thread {
-		private final StandaloneAuthServer server;
+		private final StandaloneAssemblyHomologyServer server;
 		
-		public ServerThread(final StandaloneAuthServer server) {
+		public ServerThread(final StandaloneAssemblyHomologyServer server) {
 			this.server = server;
 		}
 		
@@ -55,6 +55,6 @@ public class StandaloneAuthServer {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		new StandaloneAuthServer().start(Integer.valueOf(args[0]));
+		new StandaloneAssemblyHomologyServer().start(Integer.valueOf(args[0]));
 	}
 }
