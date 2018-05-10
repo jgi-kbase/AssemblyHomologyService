@@ -119,6 +119,10 @@ public class Namespace {
 			checkNotNull(sketchDatabase, "sketchDatabase");
 			checkNotNull(loadID, "loadID");
 			checkNotNull(creation, "creation");
+			if (!id.getName().equals(sketchDatabase.getName().getName())) {
+				// code smell here. Think about this later.
+				throw new IllegalArgumentException("Namespace ID must equal sketch DB ID");
+			}
 			this.id = id;
 			this.sketchDatabase = sketchDatabase;
 			this.loadID = loadID;

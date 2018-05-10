@@ -1,5 +1,6 @@
 package us.kbase.assemblyhomology.minhash;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static us.kbase.assemblyhomology.util.Util.exceptOnEmpty;
 
 public class MinHashDistance implements Comparable<MinHashDistance> {
@@ -7,18 +8,28 @@ public class MinHashDistance implements Comparable<MinHashDistance> {
 	//TODO JAVADOC
 	//TODO TEST
 	
+	private final MinHashSketchDBName referenceDBName;
 	private final String sequenceID;
 	private final double distance;
 	
-	public MinHashDistance(final String sequenceID, final double distance) {
+	public MinHashDistance(
+			final MinHashSketchDBName referenceDBName,
+			final String sequenceID,
+			final double distance) {
+		checkNotNull(referenceDBName, "referenceDBName");
 		exceptOnEmpty(sequenceID, "sequenceID");
 		if (distance < 0 || distance > 1) {
 			throw new IllegalArgumentException("Illegal distance value: " + distance);
 		}
+		this.referenceDBName = referenceDBName;
 		this.sequenceID = sequenceID;
 		this.distance = distance;
 	}
 
+	public MinHashSketchDBName getReferenceDBName() {
+		return referenceDBName;
+	}
+	
 	public String getSequenceID() {
 		return sequenceID;
 	}
@@ -30,13 +41,19 @@ public class MinHashDistance implements Comparable<MinHashDistance> {
 	@Override
 	public int compareTo(final MinHashDistance o) {
 		final int dc = Double.compare(distance, o.distance);
-		return dc == 0 ? sequenceID.compareTo(o.sequenceID) : dc;
+		if (dc != 0) {
+			return dc;
+		}
+		final int refdb = referenceDBName.compareTo(o.referenceDBName);
+		return refdb == 0 ? sequenceID.compareTo(o.sequenceID) : refdb;
 	}
 
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashDistance [sequenceID=");
+		builder.append("MinHashDistance [referenceDBName=");
+		builder.append(referenceDBName);
+		builder.append(", sequenceID=");
 		builder.append(sequenceID);
 		builder.append(", distance=");
 		builder.append(distance);
@@ -51,6 +68,7 @@ public class MinHashDistance implements Comparable<MinHashDistance> {
 		long temp;
 		temp = Double.doubleToLongBits(distance);
 		result = prime * result + (int) (temp ^ (temp >>> 32));
+		result = prime * result + ((referenceDBName == null) ? 0 : referenceDBName.hashCode());
 		result = prime * result + ((sequenceID == null) ? 0 : sequenceID.hashCode());
 		return result;
 	}
@@ -68,6 +86,13 @@ public class MinHashDistance implements Comparable<MinHashDistance> {
 		}
 		MinHashDistance other = (MinHashDistance) obj;
 		if (Double.doubleToLongBits(distance) != Double.doubleToLongBits(other.distance)) {
+			return false;
+		}
+		if (referenceDBName == null) {
+			if (other.referenceDBName != null) {
+				return false;
+			}
+		} else if (!referenceDBName.equals(other.referenceDBName)) {
 			return false;
 		}
 		if (sequenceID == null) {

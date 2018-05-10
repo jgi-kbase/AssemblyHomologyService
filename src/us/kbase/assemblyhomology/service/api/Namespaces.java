@@ -6,8 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.inject.Inject;
@@ -32,6 +34,7 @@ import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
+import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
@@ -91,7 +94,7 @@ public class Namespaces {
 	@javax.ws.rs.Path(ServicePaths.NAMESPACE_SEARCH)
 	public Map<String, Object> searchNamespace(
 			@Context HttpServletRequest request,
-			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespace,
+			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespaces,
 			@QueryParam("notstrict") final String notStrict,
 			@QueryParam("max") final String max)
 			throws IOException, NoSuchNamespaceException, IllegalParameterException,
@@ -99,9 +102,15 @@ public class Namespaces {
 				MissingParameterException, AssemblyHomologyStorageException, MinHashException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
-		final Namespace ns = ah.getNamespace(new NamespaceID(namespace));
+		final Set<Namespace> nsids = ah.getNamespaces(getNamespaceIDs(namespaces));
+		final Set<MinHashImplementationName> impls = nsids.stream().map(
+				n -> n.getSketchDatabase().getImplementationName()).collect(Collectors.toSet());
+		if (impls.size() != 1) {
+			throw new IllegalParameterException(
+					"Selected namespaces must have the same MinHash implementation");
+		}
 		final Optional<Path> expectedFileExtension =
-				ah.getExpectedFileExtension(ns.getSketchDatabase().getImplementationName());
+				ah.getExpectedFileExtension(impls.iterator().next());
 		String ext = ".tmp";
 		if (expectedFileExtension.isPresent()) {
 			ext += "." + expectedFileExtension.get().toString();
@@ -112,7 +121,9 @@ public class Namespaces {
 		try (final InputStream is = request.getInputStream()) {
 			tempFile = Files.createTempFile(tempDir, "assyhomol_input", ext);
 			Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
-			res = ah.measureDistance(new NamespaceID(namespace), tempFile, maxReturn, strict);
+			res = ah.measureDistance(
+					nsids.stream().map(n -> n.getId()).collect(Collectors.toSet()),
+					tempFile, maxReturn, strict);
 		} finally {
 			if (tempFile != null) {
 				Files.delete(tempFile);
@@ -120,13 +131,27 @@ public class Namespaces {
 		}
 		final MinHashImplementationInformation impl = res.getImplementationInformation();
 		final Map<String, Object> ret = new HashMap<>();
-		ret.put(Fields.NAMESPACE, fromNamespace(res.getNamespace()));
+		ret.put(Fields.DIST_NAMESPACES, res.getNamespaces().stream().map(n -> fromNamespace(n))
+				.collect(Collectors.toList()));
 		ret.put(Fields.DIST_WARNINGS, res.getWarnings());
 		ret.put(Fields.DIST_IMPLEMENTATION, impl.getImplementationName().getName());
 		ret.put(Fields.DIST_IMPLEMENTATION_VERSION, impl.getImplementationVersion());
 		ret.put(Fields.DISTANCES, res.getDistances().stream()
 				.map(d -> fromDistance(d))
 				.collect(Collectors.toList()));
+		return ret;
+	}
+
+	private Set<NamespaceID> getNamespaceIDs(final String namespaces)
+			throws MissingParameterException, IllegalParameterException {
+		if (namespaces == null) {
+			throw new MissingParameterException("namespaces");
+		}
+		final String[] ids = namespaces.split(",");
+		final Set<NamespaceID> ret = new HashSet<>();
+		for (final String id: ids) {
+			ret.add(new NamespaceID(id.trim()));
+		}
 		return ret;
 	}
 
@@ -147,6 +172,7 @@ public class Namespaces {
 		ret.put(Fields.DIST_RELATED_IDS, dist.getMetadata().getRelatedIDs());
 		ret.put(Fields.DIST_SCI_NAME, dist.getMetadata().getScientificName().orNull());
 		ret.put(Fields.DIST_SOURCE_ID, dist.getMetadata().getSourceID());
+		ret.put(Fields.DIST_NAMESPACE_ID, dist.getNamespaceID().getName());
 		return ret;
 	}
 	
