@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 
@@ -248,10 +249,12 @@ public class Mash implements MinHashImplementation {
 			final Collection<MinHashSketchDatabase> references,
 			final boolean strict)
 			throws IncompatibleSketchesException {
-		//TODO NOW make warning class and return db id, process it upstream to make warning namespace specific
 		final List<String> warnings = new LinkedList<>();
 		for (final MinHashSketchDatabase db: references) {
-			warnings.addAll(db.checkIsQueriableBy(query, strict));
+			// may want to change this to a class with more info about the source of the warning, but YAGNI
+			warnings.addAll(db.checkIsQueriableBy(query, strict).stream()
+					.map(s -> "Sketch DB " + db.getName().getName() + ": " + s)
+					.collect(Collectors.toList()));
 		}
 		return warnings;
 	}

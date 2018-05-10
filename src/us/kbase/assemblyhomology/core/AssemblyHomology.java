@@ -118,12 +118,12 @@ public class AssemblyHomology {
 		final Map<String, Namespace> idToNS = namespaces.stream()
 				.collect(Collectors.toMap(n -> n.getId().getName(), n -> n));
 		final MinHashImplementation impl = getImplementation(namespaces);
-		final MinHashDistanceSet dists = getDistances(
+		final DistReturn distret = getDistances(
 				namespaces, sketchDB, impl, returnCount, strict);
 		final Map<Namespace, Map<String, SequenceMetadata>> idToSeq = 
-				getSequenceMetadata(idToNS, dists);
+				getSequenceMetadata(idToNS, distret.dists);
 		final List<SequenceDistanceAndMetadata> distNMeta = new LinkedList<>();
-		for (final MinHashDistance d: dists.getDistances()) {
+		for (final MinHashDistance d: distret.dists.getDistances()) {
 			final Namespace ns = idToNS.get(d.getReferenceDBName().getName());
 			final SequenceMetadata seq = idToSeq.get(ns).get(d.getSequenceID());
 			distNMeta.add(new SequenceDistanceAndMetadata(ns.getId(), d, seq));
@@ -131,7 +131,7 @@ public class AssemblyHomology {
 		
 		// return query id?
 		return new SequenceMatches(
-				namespaces, impl.getImplementationInformation(), distNMeta, dists.getWarnings());
+				namespaces, impl.getImplementationInformation(), distNMeta, distret.warnings);
 	}
 
 	private Map<Namespace, Map<String, SequenceMetadata>> getSequenceMetadata(
@@ -162,7 +162,18 @@ public class AssemblyHomology {
 		return ret;
 	}
 
-	private MinHashDistanceSet getDistances(
+	private static class DistReturn {
+		
+		private final MinHashDistanceSet dists;
+		private final List<String> warnings;
+		
+		private DistReturn(MinHashDistanceSet dists, List<String> warnings) {
+			this.dists = dists;
+			this.warnings = warnings;
+		}
+	}
+	
+	private DistReturn getDistances(
 			final Set<Namespace> namespaces,
 			final Path sketchDB,
 			final MinHashImplementation impl,
@@ -180,14 +191,16 @@ public class AssemblyHomology {
 					"Error loading query sketch database: " + e.getMessage(), e);
 		}
 		if (query.getSequenceCount() != 1) {
-			//TODO NOW CODe more specific exception
+			//TODO NOW CODE more specific exception
 			throw new IllegalParameterException(
 					"Query sketch database must have exactly one query");
 		}
+		final List<String> warnings = new LinkedList<>();
 		for (final Namespace ns: namespaces) {
 			try {
-				//TODO NOW make warnings list here
-				ns.getSketchDatabase().checkIsQueriableBy(query, strict);
+				warnings.addAll(ns.getSketchDatabase().checkIsQueriableBy(query, strict).stream()
+						.map(s -> "Namespace " + ns.getId().getName() + ": " + s)
+						.collect(Collectors.toList()));
 			} catch (IncompatibleSketchesException e) {
 				throw new IllegalParameterException(String.format(
 						"Unable to query namespace %s with input sketch: %s",
@@ -196,15 +209,15 @@ public class AssemblyHomology {
 		}
 		final List<MinHashSketchDatabase> dbs = namespaces.stream()
 				.map(n -> n.getSketchDatabase()).collect(Collectors.toList());
-		final MinHashDistanceSet res;
+		final MinHashDistanceSet dists;
 		try {
-			res = impl.computeDistance(query, dbs, returnCount, strict);
+			dists = impl.computeDistance(query, dbs, returnCount, strict);
 		} catch (MinHashException e) {
 			//TODO NOW CODE better exception, need to try different failure modes, maybe need a set of exceptions
 			// that being said, everything should be ok from the user point of view now, so just rethrow
 			throw e;
 		}
-		return res;
+		return new DistReturn(dists, warnings);
 	}
 
 	private MinHashImplementation getImplementation(final Set<Namespace> ns)
