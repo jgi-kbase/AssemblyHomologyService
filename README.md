@@ -166,6 +166,9 @@ OR
 
 ## API
 
+Note that although namespace kmer sizes are returned in a list to support potential future
+improvements, currently the service only supports one kmer size per namespace.
+
 `GET /namespace`
 
 List all namespaces.
