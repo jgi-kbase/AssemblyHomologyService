@@ -1,6 +1,7 @@
 package us.kbase.assemblyhomology.minhash.mash;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -28,7 +30,9 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
+import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.util.CappedTreeSet;
@@ -137,12 +141,15 @@ public class Mash implements MinHashImplementation {
 	}
 
 	@Override
-	public MinHashSketchDatabase getDatabase(final MinHashDBLocation location)
+	public MinHashSketchDatabase getDatabase(
+			final MinHashSketchDBName dbname,
+			final MinHashDBLocation location)
 			throws MashException {
+		checkNotNull(dbname, "dbname");
 		checkNotNull(location, "location");
 		final ParamsAndSize pns = getParametersAndSize(location.getPathToFile().get());
 		return new MinHashSketchDatabase(
-				info.getImplementationName(), pns.params, location, pns.size);
+				dbname, info.getImplementationName(), pns.params, location, pns.size);
 	}
 	
 	@Override
@@ -196,6 +203,7 @@ public class Mash implements MinHashImplementation {
 	private static class DistanceCollector implements LineCollector {
 		
 		private final CappedTreeSet<MinHashDistance> dists;
+		private MinHashSketchDBName dbname;
 		
 		public DistanceCollector(final int size) {
 			dists = new CappedTreeSet<>(size, true);
@@ -207,32 +215,47 @@ public class Mash implements MinHashImplementation {
 			final String[] sl = line.trim().split("\\s+");
 			final String id = sl[0].trim();
 			final double distance = Double.parseDouble(sl[2].trim());
-			dists.add(new MinHashDistance(id, distance));
+			dists.add(new MinHashDistance(dbname, id, distance));
 		}
 	}
 	
 	@Override
 	public MinHashDistanceSet computeDistance(
 			final MinHashSketchDatabase query,
-			final MinHashSketchDatabase reference,
+			final Collection<MinHashSketchDatabase> references,
 			final int maxReturnCount,
 			final boolean strict)
-			throws MinHashException {
+			throws MinHashException, IncompatibleSketchesException {
 		checkNotNull(query, "query");
-		checkNotNull(reference, "reference");
+		checkNoNullsInCollection(references, "references");
 		if (query.getSequenceCount() != 1) {
 			// may want to relax this, but that'll require changing a bunch of stuff
 			throw new IllegalArgumentException("Only 1 query sequence is allowed");
 		}
-		final List<String> warnings = reference.checkIsQueriableBy(query, strict);
+		final List<String> warnings = checkQueryable(query, references, strict);
 		final DistanceCollector distanceProcessor = new DistanceCollector(maxReturnCount);
-		processMashOutput(distanceProcessor, false, "dist", "-d", "0.5",
-					reference.getLocation().getPathToFile().get().toString(),
-					query.getLocation().getPathToFile().get().toString());
-		return new MinHashDistanceSet(
-				query, reference, distanceProcessor.dists.toSortedSet(), warnings);
+		for (final MinHashSketchDatabase ref: references) {
+			distanceProcessor.dbname = ref.getName();
+			processMashOutput(distanceProcessor, false, "dist", "-d", "0.5",
+						ref.getLocation().getPathToFile().get().toString(),
+						query.getLocation().getPathToFile().get().toString());
+		}
+		return new MinHashDistanceSet(distanceProcessor.dists.toSortedSet(), warnings);
 	}
 	
+	private List<String> checkQueryable(
+			final MinHashSketchDatabase query,
+			final Collection<MinHashSketchDatabase> references,
+			final boolean strict)
+			throws IncompatibleSketchesException {
+		//TODO NOW make warning class and return db id, process it upstream to make warning namespace specific
+		final List<String> warnings = new LinkedList<>();
+		for (final MinHashSketchDatabase db: references) {
+			warnings.addAll(db.checkIsQueriableBy(query, strict));
+		}
+		return warnings;
+	}
+
 	private static class ParamsAndSize {
 		final MinHashParameters params;
 		final int size;
@@ -260,7 +283,9 @@ public class Mash implements MinHashImplementation {
 		final MinHashImplementation mash = new Mash(Paths.get("."));
 		System.out.println(mash.getImplementationInformation());
 		
-		final MinHashSketchDatabase db = mash.getDatabase(new MinHashDBLocation(Paths.get(
+		final MinHashSketchDatabase db = mash.getDatabase(
+				new MinHashSketchDBName("dbname"),
+				new MinHashDBLocation(Paths.get(
 				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000.msh")));
 		System.out.println(db.getImplementationName());
 		System.out.println(db.getLocation());
@@ -270,7 +295,9 @@ public class Mash implements MinHashImplementation {
 		System.out.println(ids.size());
 		System.out.println(ids);
 		
-		final MinHashSketchDatabase query = mash.getDatabase(new MinHashDBLocation(Paths.get(
+		final MinHashSketchDatabase query = mash.getDatabase(
+				new MinHashSketchDBName("dbname2"),
+				new MinHashDBLocation(Paths.get(
 				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000_15792_446_1_hashes1500.msh")));
 		System.out.println(query.getImplementationName());
 		System.out.println(query.getLocation());
@@ -278,7 +305,7 @@ public class Mash implements MinHashImplementation {
 		System.out.println(query.getSequenceCount());
 		System.out.println(mash.getSketchIDs(query));
 		
-		final MinHashDistanceSet dists = mash.computeDistance(query, db, 30, false);
+		final MinHashDistanceSet dists = mash.computeDistance(query, Arrays.asList(db), 30, false);
 		System.out.println(dists);
 		System.out.println(dists.getDistances().size());
 	}

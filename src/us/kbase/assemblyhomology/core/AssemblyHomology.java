@@ -9,8 +9,10 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -22,11 +24,14 @@ import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
+import us.kbase.assemblyhomology.minhash.MinHashDistance;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
+import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.mash.MashFactory;
@@ -69,6 +74,17 @@ public class AssemblyHomology {
 		return storage.getNamespaces();
 	}
 	
+	public Set<Namespace> getNamespaces(final Set<NamespaceID> ids)
+			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
+		checkNoNullsInCollection(ids, "ids");
+		final Set<Namespace> namespaces = new HashSet<>();
+		for (final NamespaceID id: ids) {
+			// add a bulk method if this proves too slow
+			namespaces.add(storage.getNamespace(id));
+		}
+		return namespaces;
+	}
+	
 	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
 	public Namespace getNamespace(final NamespaceID namespaceID)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
@@ -86,46 +102,68 @@ public class AssemblyHomology {
 	}
 	
 	public SequenceMatches measureDistance(
-			final NamespaceID namespaceID,
+			final Set<NamespaceID> namespaceIDs,
 			final Path sketchDB,
 			int returnCount,
 			boolean strict)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException,
 				IllegalParameterException, MinHashException {
-		checkNotNull(namespaceID, "namespaceID");
+		checkNoNullsInCollection(namespaceIDs, "namespaceIDs");
 		checkNotNull(sketchDB, "sketchDB");
 		if (returnCount > MAX_RETURN || returnCount < 0) {
 			returnCount = DEFAULT_RETURN;
 		}
 		
-		final Namespace ns = getNamespace(namespaceID);
-		final MinHashImplementation impl = getImplementation(
-				ns.getSketchDatabase().getImplementationName());
-		final MinHashDistanceSet dists = getDistances(ns, sketchDB, impl, returnCount, strict);
-		final List<String> ids = dists.getDistances().stream().map(d -> d.getSequenceID())
-				.collect(Collectors.toList());
-		final List<SequenceMetadata> seqmeta;
-		try{
-			seqmeta = storage.getSequenceMetadata(ns.getId(), ns.getLoadID(), ids);
-		} catch (NoSuchSequenceException e) {
-			throw new IllegalStateException(String.format(
-					"Database is corrupt. Unable to find sequences from sketch file for " +
-					"namespace %s: %s", ns.getId().getName(), e.getMessage()), e);
+		final Set<Namespace> namespaces = getNamespaces(namespaceIDs);
+		final Map<String, Namespace> idToNS = namespaces.stream()
+				.collect(Collectors.toMap(n -> n.getId().getName(), n -> n));
+		final MinHashImplementation impl = getImplementation(namespaces);
+		final MinHashDistanceSet dists = getDistances(
+				namespaces, sketchDB, impl, returnCount, strict);
+		final Map<Namespace, Map<String, SequenceMetadata>> idToSeq = 
+				getSequenceMetadata(idToNS, dists);
+		final List<SequenceDistanceAndMetadata> distNMeta = new LinkedList<>();
+		for (final MinHashDistance d: dists.getDistances()) {
+			final Namespace ns = idToNS.get(d.getReferenceDBName().getName());
+			final SequenceMetadata seq = idToSeq.get(ns).get(d.getSequenceID());
+			distNMeta.add(new SequenceDistanceAndMetadata(ns.getId(), d, seq));
 		}
-		final Map<String, SequenceMetadata> idToSeq = seqmeta.stream()
-				.collect(Collectors.toMap(s -> s.getID(), s -> s));
-		
-		final List<SequenceDistanceAndMetadata> distNMeta = dists.getDistances().stream()
-				.map(d -> new SequenceDistanceAndMetadata(d, idToSeq.get(d.getSequenceID())))
-				.collect(Collectors.toList());
 		
 		// return query id?
 		return new SequenceMatches(
-				ns, impl.getImplementationInformation(), distNMeta, dists.getWarnings());
+				namespaces, impl.getImplementationInformation(), distNMeta, dists.getWarnings());
+	}
+
+	private Map<Namespace, Map<String, SequenceMetadata>> getSequenceMetadata(
+			final Map<String, Namespace> idToNS,
+			final MinHashDistanceSet dists)
+			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
+		final Map<Namespace, List<String>> ids = new HashMap<>();
+		for (final MinHashDistance dist: dists.getDistances()) {
+			final Namespace ns = idToNS.get(dist.getReferenceDBName().getName());
+			if (!ids.containsKey(ns)) {
+				ids.put(ns, new LinkedList<>());
+			}
+			ids.get(ns).add(dist.getSequenceID());
+		}
+		final Map<Namespace, Map<String, SequenceMetadata>> ret = new HashMap<>();
+		for (final Entry<Namespace, List<String>> e: ids.entrySet()) {
+			final List<SequenceMetadata> meta;
+			try {
+				meta = storage.getSequenceMetadata(
+						e.getKey().getId(), e.getKey().getLoadID(), e.getValue());
+			} catch (NoSuchSequenceException err) {
+				throw new IllegalStateException(String.format(
+						"Database is corrupt. Unable to find sequences from sketch file for " +
+						"namespace %s: %s", e.getKey().getId().getName(), err.getMessage()), err);
+			}
+			ret.put(e.getKey(), meta.stream().collect(Collectors.toMap(s -> s.getID(), s -> s)));
+		}
+		return ret;
 	}
 
 	private MinHashDistanceSet getDistances(
-			final Namespace ns,
+			final Set<Namespace> namespaces,
 			final Path sketchDB,
 			final MinHashImplementation impl,
 			int returnCount,
@@ -133,7 +171,9 @@ public class AssemblyHomology {
 			throws IllegalParameterException, MinHashException {
 		final MinHashSketchDatabase query;
 		try {
-			query = impl.getDatabase(new MinHashDBLocation(sketchDB));
+			query = impl.getDatabase(
+					new MinHashSketchDBName("<query>"),
+					new MinHashDBLocation(sketchDB));
 		} catch (MinHashException e) {
 			//TODO NOW CODE this needs some work - specific exception for bad db with error code
 			throw new IllegalParameterException(
@@ -144,16 +184,21 @@ public class AssemblyHomology {
 			throw new IllegalParameterException(
 					"Query sketch database must have exactly one query");
 		}
-		try {
-			ns.getSketchDatabase().checkIsQueriableBy(query, strict);
-		} catch (MinHashException e) {
-			throw new IllegalParameterException(String.format(
-					"Unable to query namespace %s with input sketch: %s",
-					ns.getId().getName(), e.getMessage()), e);
+		for (final Namespace ns: namespaces) {
+			try {
+				//TODO NOW make warnings list here
+				ns.getSketchDatabase().checkIsQueriableBy(query, strict);
+			} catch (IncompatibleSketchesException e) {
+				throw new IllegalParameterException(String.format(
+						"Unable to query namespace %s with input sketch: %s",
+						ns.getId().getName(), e.getMessage()), e);
+			}
 		}
+		final List<MinHashSketchDatabase> dbs = namespaces.stream()
+				.map(n -> n.getSketchDatabase()).collect(Collectors.toList());
 		final MinHashDistanceSet res;
 		try {
-			res = impl.computeDistance(query, ns.getSketchDatabase(), returnCount, strict);
+			res = impl.computeDistance(query, dbs, returnCount, strict);
 		} catch (MinHashException e) {
 			//TODO NOW CODE better exception, need to try different failure modes, maybe need a set of exceptions
 			// that being said, everything should be ok from the user point of view now, so just rethrow
@@ -162,9 +207,16 @@ public class AssemblyHomology {
 		return res;
 	}
 
-	private MinHashImplementation getImplementation(
-			final MinHashImplementationName implementationName) throws MinHashInitException {
-		final String impl = implementationName.getName().toLowerCase();
+	private MinHashImplementation getImplementation(final Set<Namespace> ns)
+			throws MinHashInitException, IllegalParameterException {
+		final Set<MinHashImplementationName> implnames = ns.stream()
+				.map(n -> n.getSketchDatabase().getImplementationName())
+				.collect(Collectors.toSet());
+		if (implnames.size() != 1) {
+			throw new IllegalParameterException(
+					"The selected namespaces must share the same implementation");
+		}
+		final String impl = implnames.iterator().next().getName().toLowerCase();
 		if (!impls.containsKey(impl)) {
 			throw new IllegalStateException(String.format(
 					"Application is misconfigured. Implementation %s stored in database but " +
@@ -189,13 +241,13 @@ public class AssemblyHomology {
 		System.out.println(ah.getNamespace(nsid));
 		
 		final SequenceMatches dists = ah.measureDistance(
-				nsid,
+				new HashSet<>(Arrays.asList(nsid)),
 				Paths.get("/home/crusherofheads/kb_refseq_sourmash/" +
 						"kb_refseq_ci_1000_15792_446_1.msh"),
-				50,
+				10,
 				false);
 		System.out.println(dists);
-		System.out.println(dists.getNamespace());
+		System.out.println(dists.getNamespaces());
 		System.out.println(dists.getImplementationInformation());
 		System.out.println();
 		for (final SequenceDistanceAndMetadata s: dists.getDistances()) {

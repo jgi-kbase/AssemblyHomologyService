@@ -35,6 +35,8 @@ public class Fields {
 	public static final String DIST_IMPLEMENTATION = "impl";
 	public static final String DIST_IMPLEMENTATION_VERSION = "implver";
 	public static final String DIST_DISTANCE = "dist";
+	public static final String DIST_NAMESPACES = "namespaces";
+	public static final String DIST_NAMESPACE_ID = "namespaceid";
 	public static final String DIST_RELATED_IDS = "relatedids";
 	public static final String DIST_SCI_NAME = "sciname";
 	public static final String DIST_SOURCE_ID = "sourceid";

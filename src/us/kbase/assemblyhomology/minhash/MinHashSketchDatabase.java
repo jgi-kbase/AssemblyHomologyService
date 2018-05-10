@@ -7,33 +7,42 @@ import java.util.List;
 
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
-import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
+import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 
 public class MinHashSketchDatabase {
 	
 	//TODO TEST
 	//TODO JAVADOC
 
+	private final MinHashSketchDBName name;
 	private final MinHashImplementationName minHashImplementationName;
 	private final MinHashParameters parameterSet;
 	private final MinHashDBLocation location;
 	private final int sequenceCount;
 	
+	// a builder would be nice. Everything's required though.
 	public MinHashSketchDatabase(
+			final MinHashSketchDBName dbname,
 			final MinHashImplementationName minHashImplName,
 			final MinHashParameters parameterSet,
 			final MinHashDBLocation location,
 			final int sequenceCount) {
+		checkNotNull(dbname, "dbname");
 		checkNotNull(minHashImplName, "minHashImplName");
 		checkNotNull(parameterSet, "parameterSet");
 		checkNotNull(location, "location");
 		if (sequenceCount < 1) {
 			throw new IllegalArgumentException("sequenceCount must be at least 1");
 		}
+		this.name = dbname;
 		this.minHashImplementationName = minHashImplName;
 		this.parameterSet = parameterSet;
 		this.location = location;
 		this.sequenceCount = sequenceCount;
+	}
+
+	public MinHashSketchDBName getName() {
+		return name;
 	}
 
 	public MinHashImplementationName getImplementationName() {
@@ -59,14 +68,14 @@ public class MinHashSketchDatabase {
 	 * will return warnings. Some parameter differences (e.g. kmer size) will always cause an
 	 * exception to be thrown.
 	 * @return warnings regarding database parameter mismatches, if any.
-	 * @throws MinHashException if the database parameters don't match.
+	 * @throws IncompatibleSketchesException if the database parameters don't match.
 	 */
 	public List<String> checkIsQueriableBy(final MinHashSketchDatabase query, final boolean strict)
-			throws MinHashException {
+			throws IncompatibleSketchesException {
 		final List<String> warnings = new LinkedList<>();
 		if (!getImplementationName().equals(query.getImplementationName())) {
 			// need to check version?
-			throw new MinHashException(String.format(
+			throw new IncompatibleSketchesException(String.format(
 					"Implementations for sketches do not match: %s %s",
 					getImplementationName(), query.getImplementationName()));
 		}
@@ -74,25 +83,25 @@ public class MinHashSketchDatabase {
 		final MinHashParameters qp = query.getParameterSet();
 		//TODO FEATURE allow multiple kmer sizes
 		if (rp.getKmerSize() != qp.getKmerSize()) {
-			throw new MinHashException(String.format(
+			throw new IncompatibleSketchesException(String.format(
 					"Kmer size for sketches are not compatible: %s %s",
 					rp.getKmerSize(), qp.getKmerSize()));
 		}
 		if (rp.getScaling().isPresent() ^ qp.getScaling().isPresent()) { // xor
-			throw new MinHashException(
+			throw new IncompatibleSketchesException(
 					"Both sketches must use either absolute sketch counts or scaling");
 		}
 		if (rp.getScaling().isPresent()) {
 			// may need to adjust this when we have an implementation that supports scaling
 			if (!rp.getScaling().get().equals(qp.getScaling().get())) {
-				throw new MinHashException(String.format(
+				throw new IncompatibleSketchesException(String.format(
 						"Scaling paramters for sketches are not compatible: %s %s",
 						rp.getScaling().get(), qp.getScaling().get()));
 			}
 		} else {
 			if (!rp.getSketchSize().get().equals(qp.getSketchSize().get())) {
 				if (strict) {
-					throw new MinHashException(String.format(
+					throw new IncompatibleSketchesException(String.format(
 							"Query sketch size %s does not match target %s",
 							qp.getSketchSize().get(), rp.getSketchSize().get()));
 				}
@@ -101,7 +110,7 @@ public class MinHashSketchDatabase {
 							"Query sketch size %s is larger than target sketch size %s",
 							qp.getSketchSize().get(), rp.getSketchSize().get()));
 				} else {
-					throw new MinHashException(String.format(
+					throw new IncompatibleSketchesException(String.format(
 							"Query sketch size %s may not be smaller than the target sketch " +
 							"size %s",
 							qp.getSketchSize().get(), rp.getSketchSize().get()));
@@ -121,9 +130,69 @@ public class MinHashSketchDatabase {
 	}
 
 	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((location == null) ? 0 : location.hashCode());
+		result = prime * result + ((minHashImplementationName == null) ? 0 : minHashImplementationName.hashCode());
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime * result + ((parameterSet == null) ? 0 : parameterSet.hashCode());
+		result = prime * result + sequenceCount;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		MinHashSketchDatabase other = (MinHashSketchDatabase) obj;
+		if (location == null) {
+			if (other.location != null) {
+				return false;
+			}
+		} else if (!location.equals(other.location)) {
+			return false;
+		}
+		if (minHashImplementationName == null) {
+			if (other.minHashImplementationName != null) {
+				return false;
+			}
+		} else if (!minHashImplementationName.equals(other.minHashImplementationName)) {
+			return false;
+		}
+		if (name == null) {
+			if (other.name != null) {
+				return false;
+			}
+		} else if (!name.equals(other.name)) {
+			return false;
+		}
+		if (parameterSet == null) {
+			if (other.parameterSet != null) {
+				return false;
+			}
+		} else if (!parameterSet.equals(other.parameterSet)) {
+			return false;
+		}
+		if (sequenceCount != other.sequenceCount) {
+			return false;
+		}
+		return true;
+	}
+
+	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashSketchDatabase [minHashImplementationName=");
+		builder.append("MinHashSketchDatabase [name=");
+		builder.append(name);
+		builder.append(", minHashImplementationName=");
 		builder.append(minHashImplementationName);
 		builder.append(", parameterSet=");
 		builder.append(parameterSet);

@@ -31,6 +31,7 @@ import us.kbase.assemblyhomology.core.SequenceMetadata;
 import us.kbase.assemblyhomology.load.exceptions.LoadInputParseException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
+import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.mash.Mash;
@@ -72,7 +73,8 @@ public class Loader {
 		checkNotNull(sketchDBlocation, "sketchDBlocation");
 		checkNotNull(namespaceYAML, "namespaceYAML");
 		checkNotNull(sequenceMetaYAML, "sequenceMetaYAML");
-		final MinHashSketchDatabase sketchDB = minhashImpl.getDatabase(sketchDBlocation);
+		final MinHashSketchDatabase sketchDB = minhashImpl.getDatabase(
+				new MinHashSketchDBName("<unused>"), sketchDBlocation);
 		final NamespaceLoadInfo nsinfo = loadNameSpaceInfo(namespaceYAML);
 		final Set<String> seqmetaIDs = loadSequenceMetaIDs(sequenceMetaYAML);
 		final Set<String> skdbIDs = new HashSet<>(minhashImpl.getSketchIDs(sketchDB));

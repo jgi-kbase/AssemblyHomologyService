@@ -26,6 +26,7 @@ import us.kbase.assemblyhomology.load.exceptions.LoadInputParseException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
+import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
 public class NamespaceLoadInfo {
@@ -141,6 +142,7 @@ public class NamespaceLoadInfo {
 		
 		System.out.println(nsload.toNamespace(
 				new MinHashSketchDatabase(
+						new MinHashSketchDBName("db name"),
 						new MinHashImplementationName("foo"),
 						MinHashParameters.getBuilder(31).withSketchSize(10).build(),
 						new MinHashDBLocation(Paths.get("/tmp/fake")),

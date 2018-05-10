@@ -45,6 +45,7 @@ import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
+import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
@@ -312,6 +313,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 			return Namespace.getBuilder(
 					new NamespaceID(ns.getString(Fields.NAMESPACE_ID)),
 					new MinHashSketchDatabase(
+							new MinHashSketchDBName(ns.getString(Fields.NAMESPACE_ID)),
 							new MinHashImplementationName(
 									ns.getString(Fields.NAMESPACE_IMPLEMENTATION)),
 							buildParameters(ns),
@@ -467,6 +469,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		final Namespace ns = Namespace.getBuilder(
 				new NamespaceID("foo"),
 				new MinHashSketchDatabase(
+						new MinHashSketchDBName("dbname"),
 						new MinHashImplementationName("Mash"),
 						MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
 						new MinHashDBLocation(Paths.get("/tmp/fake")),
@@ -485,6 +488,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		final Namespace ns2 = Namespace.getBuilder(
 				new NamespaceID("foo"),
 				new MinHashSketchDatabase(
+						new MinHashSketchDBName("dbname"),
 						new MinHashImplementationName("Mash"),
 						MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
 						new MinHashDBLocation(Paths.get("/tmp/fake2")),
