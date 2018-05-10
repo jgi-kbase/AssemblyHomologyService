@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -81,7 +82,7 @@ public class Namespaces {
 		ret.put(Fields.NAMESPACE_ID, ns.getId().getName());
 		ret.put(Fields.NAMESPACE_IMPLEMENTATION, db.getImplementationName().getName());
 		ret.put(Fields.NAMESPACE_SEQ_COUNT, db.getSequenceCount());
-		ret.put(Fields.NAMESPACE_KMER_SIZE, params.getKmerSize());
+		ret.put(Fields.NAMESPACE_KMER_SIZE, Arrays.asList(params.getKmerSize()));
 		ret.put(Fields.NAMESPACE_SCALING, params.getScaling().orNull());
 		ret.put(Fields.NAMESPACE_SKETCH_SIZE, params.getSketchSize().orNull());
 		ret.put(Fields.NAMESPACE_DB_ID, ns.getSourceDatabaseID());

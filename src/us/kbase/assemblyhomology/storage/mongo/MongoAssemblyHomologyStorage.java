@@ -256,7 +256,8 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 				.append(Fields.NAMESPACE_DESCRIPTION, namespace.getDescription().orNull())
 				.append(Fields.NAMESPACE_IMPLEMENTATION,
 						sketchDB.getImplementationName().getName())
-				.append(Fields.NAMESPACE_KMER_SIZE, sketchDB.getParameterSet().getKmerSize())
+				.append(Fields.NAMESPACE_KMER_SIZE,
+						Arrays.asList(sketchDB.getParameterSet().getKmerSize()))
 				.append(Fields.NAMESPACE_SKETCH_SIZE,
 						sketchDB.getParameterSet().getSketchSize().orNull())
 				.append(Fields.NAMESPACE_SCALING_FACTOR,
@@ -334,8 +335,10 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	}
 
 	private MinHashParameters buildParameters(final Document ns) {
-		final MinHashParameters.Builder b = MinHashParameters.getBuilder(
-				ns.getInteger(Fields.NAMESPACE_KMER_SIZE));
+		@SuppressWarnings("unchecked")
+		final List<Integer> kmerSizes = (List<Integer>) ns.get(Fields.NAMESPACE_KMER_SIZE);
+		
+		final MinHashParameters.Builder b = MinHashParameters.getBuilder(kmerSizes.get(0));
 		final Integer sketchSize = ns.getInteger(Fields.NAMESPACE_SKETCH_SIZE);
 		if (sketchSize == null) {
 			return b.withScaling(ns.getInteger(Fields.NAMESPACE_SCALING_FACTOR)).build();
