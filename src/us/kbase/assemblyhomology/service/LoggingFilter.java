@@ -15,6 +15,8 @@ import javax.ws.rs.container.ContainerResponseFilter;
 
 import org.slf4j.LoggerFactory;
 
+import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
+
 /** The logger for the service. Sets up the logging info (e.g. the method, a random call ID,
  * and the IP address) for each request and logs the method, path, status code, and user agent on
  * a response.
@@ -33,18 +35,22 @@ public class LoggingFilter implements ContainerRequestFilter,
 	
 	private HttpServletRequest servletRequest;
 	private SLF4JAutoLogger logger;
+	private AssemblyHomologyConfig cfg;
 	
 	@Inject
-	public LoggingFilter(final HttpServletRequest servletRequest, final SLF4JAutoLogger logger) {
+	public LoggingFilter(
+			final HttpServletRequest servletRequest,
+			final SLF4JAutoLogger logger,
+			final AssemblyHomologyConfig cfg) {
 		this.servletRequest = servletRequest;
 		this.logger = logger;
+		this.cfg = cfg;
 	}
 	
 	@Override
 	public void filter(final ContainerRequestContext reqcon)
 			throws IOException {
-		//TODO NOW get dont-trust-ip-headers from config
-		boolean ignoreIPheaders = false;
+		boolean ignoreIPheaders = cfg.isIgnoreIPHeaders();
 		logger.setCallInfo(
 				reqcon.getMethod(),
 				(String.format("%.16f", Math.random())).substring(2),
