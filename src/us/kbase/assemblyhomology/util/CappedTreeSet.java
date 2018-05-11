@@ -12,8 +12,6 @@ import java.util.TreeSet;
  * @param <T> the type of objects in the set.
  */
 public class CappedTreeSet<T extends Comparable<T>> {
-	
-	//TODO TESTS
 
 	// for a generally useful implementation allow a comparator in the constructor
 	// and other constructors with default args other than size
@@ -125,32 +123,4 @@ public class CappedTreeSet<T extends Comparable<T>> {
 		return true;
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("CappedTreeSet [tree=");
-		builder.append(tree);
-		builder.append(", size=");
-		builder.append(size);
-		builder.append(", descending=");
-		builder.append(descending);
-		builder.append("]");
-		return builder.toString();
-	}
-	
-	public static void main(final String[] args) {
-		final CappedTreeSet<Integer> cts = new CappedTreeSet<>(3, false);
-		cts.add(10);
-		cts.add(5);
-		cts.add(20);
-		System.out.println(cts);
-		cts.add(30);
-		System.out.println(cts);
-		cts.add(4);
-		System.out.println(cts);
-		cts.add(15);
-		System.out.println(cts);
-		cts.add(7);
-		System.out.println(cts);
-	}
 }
