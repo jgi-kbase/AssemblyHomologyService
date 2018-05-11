@@ -48,5 +48,5 @@ jobs:
         - IMAGE_NAME=kbase/assembly_homology build/push2dockerhub.sh
 after_success:
   - ls test-reports
-  - bash <(curl -s https://codecov.io/bash) -t 05721a16-048a-43d1-9647-144b5249ebd0 -f test-reports/coverage-report.xml
+  - bash <(curl -s https://codecov.io/bash) -t ca6b147a-8c8e-44dd-902f-13ad64611cdd -f test-reports/coverage-report.xml
 
