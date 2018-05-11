@@ -241,7 +241,7 @@ public class Mash implements MinHashImplementation {
 						ref.getLocation().getPathToFile().get().toString(),
 						query.getLocation().getPathToFile().get().toString());
 		}
-		return new MinHashDistanceSet(distanceProcessor.dists.toSortedSet(), warnings);
+		return new MinHashDistanceSet(distanceProcessor.dists.toTreeSet(), warnings);
 	}
 	
 	private List<String> checkQueryable(
