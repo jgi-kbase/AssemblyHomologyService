@@ -240,5 +240,3 @@ Anything else is mapped to 500.
   that overwrite some, but not all, of the prior load's data.
 * Search namespaces (no free text search)
 * Update source ID, source DB ID, and description fields of namespace without reload
-* Support input and target sketch DBs with multiple sketch sizes. This makes searching across
-  namespaces possible if the namespaces have different sketch sizes.

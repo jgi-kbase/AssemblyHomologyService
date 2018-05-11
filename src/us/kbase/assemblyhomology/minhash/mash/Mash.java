@@ -272,7 +272,6 @@ public class Mash implements MinHashImplementation {
 		final String mashout = getMashOutput("info", "-H", path.toString());
 		//TODO CODE this is nasty. Use a regex or something so we can have 2 problems
 		final String[] lines = mashout.split("\n");
-		// TODO NOW test with multiple kmer sizes
 		final int kmerSize = Integer.parseInt(lines[2].trim().split("\\s+")[2].trim());
 		final int sketchSize = Integer.parseInt(lines[4].trim().split("\\s+")[4].trim());
 		final int size = Integer.parseInt(lines[5].trim().split("\\s+")[1].trim());
