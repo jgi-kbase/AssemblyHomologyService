@@ -81,7 +81,6 @@ public class MinHashSketchDatabase {
 		}
 		final MinHashParameters rp = getParameterSet();
 		final MinHashParameters qp = query.getParameterSet();
-		//TODO FEATURE allow multiple kmer sizes
 		if (rp.getKmerSize() != qp.getKmerSize()) {
 			throw new IncompatibleSketchesException(String.format(
 					"Kmer size for sketches are not compatible: %s %s",
