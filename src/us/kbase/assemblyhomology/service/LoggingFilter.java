@@ -12,7 +12,6 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
-import javax.ws.rs.core.Context;
 
 import org.slf4j.LoggerFactory;
 
@@ -26,17 +25,20 @@ public class LoggingFilter implements ContainerRequestFilter,
 		ContainerResponseFilter {
 	
 	//TODO TEST
+	//TODO JAVADOC
 	
 	private static final String X_FORWARDED_FOR = "X-Forwarded-For";
 	private static final String X_REAL_IP = "X-Real-IP";
 	private static final String USER_AGENT = "User-Agent";
 	
-	//TODO CODE is there a way to inject these via a constructor? Makes testing a lot easier
-	@Context
 	private HttpServletRequest servletRequest;
+	private SLF4JAutoLogger logger;
 	
 	@Inject
-	private SLF4JAutoLogger logger;
+	public LoggingFilter(final HttpServletRequest servletRequest, final SLF4JAutoLogger logger) {
+		this.servletRequest = servletRequest;
+		this.logger = logger;
+	}
 	
 	@Override
 	public void filter(final ContainerRequestContext reqcon)
