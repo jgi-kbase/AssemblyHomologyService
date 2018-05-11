@@ -36,7 +36,9 @@ public class AssemblyHomologyConfig {
 	private static final String KEY_MONGO_USER = "mongo-user";
 	private static final String KEY_MONGO_PWD = "mongo-pwd";
 	private static final String KEY_TEMP_DIR = "temp-dir";
+	private static final String KEY_IGNORE_IP_HEADERS = "dont-trust-x-ip-headers";
 	
+	private static final String TRUE = "true";
 	
 	private final String mongoHost;
 	private final String mongoDB;
@@ -44,6 +46,7 @@ public class AssemblyHomologyConfig {
 	private final Optional<char[]> mongoPwd;
 	private final Path tempDir;
 	private final SLF4JAutoLogger logger;
+	private final boolean ignoreIPHeaders;
 
 	public AssemblyHomologyConfig() throws AssemblyHomologyConfigurationException {
 		this(getConfigPathFromEnv(), false);
@@ -61,8 +64,8 @@ public class AssemblyHomologyConfig {
 					"thisisafakekeythatshouldntexistihope",
 					JsonServerSyslog.LOG_LEVEL_INFO, true));
 		}
-		
 		final Map<String, String> cfg = getConfig(filepath);
+		ignoreIPHeaders = TRUE.equals(getString(KEY_IGNORE_IP_HEADERS, cfg));
 		tempDir = Paths.get(getString(KEY_TEMP_DIR, cfg, true));
 		mongoHost = getString(KEY_MONGO_HOST, cfg, true);
 		mongoDB = getString(KEY_MONGO_DB, cfg, true);
@@ -212,5 +215,9 @@ public class AssemblyHomologyConfig {
 	
 	public SLF4JAutoLogger getLogger() {
 		return logger;
+	}
+	
+	public boolean isIgnoreIPHeaders() {
+		return ignoreIPHeaders;
 	}
 }
