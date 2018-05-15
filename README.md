@@ -239,4 +239,10 @@ Anything else is mapped to 500.
   is older than some time period, and deletes it. E.g. cleans up unfinished loads and reloads
   that overwrite some, but not all, of the prior load's data.
 * Search namespaces (no free text search)
-* Update source ID, source DB ID, and description fields of namespace without reload
+* HTTP2 support
+* Private data (KBase, JGI)
+* (Semi-?) realtime data updates
+  * May be scheduled batch updates rather than near instantaneous
+* Other implementations (SourMash, FastANI)
+* Return implementation specific statistics (e.g. mash p-values etc)
+* Collapsing closely related sequences
