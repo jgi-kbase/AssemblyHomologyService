@@ -48,7 +48,7 @@ public class TestCommon {
 		}
 		final String s100 = sb.toString();
 		final StringBuilder sb2 = new StringBuilder();
-		for (int i = 0; i < 100; i++) {
+		for (int i = 0; i < 10; i++) {
 			sb2.append(s100);
 		}
 		LONG101 = s100 + "a";
