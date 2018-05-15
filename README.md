@@ -4,6 +4,10 @@ This repo contains the KBase / JGI Assembly Homology Service (AHS). The service 
 assembly matching based on implementations of the
 [MinHash algorithm](https://ieeexplore.ieee.org/abstract/document/666900/?reload=tru).
 
+Build status (master):
+[![Build Status](https://travis-ci.org/kbaseIncubator/AssemblyHomologyService.svg?branch=master)](https://travis-ci.org/kbaseIncubator/AssemblyHomologyService)
+[![codecov](https://codecov.io/gh/kbaseIncubator/AssemblyHomologyService/branch/master/graph/badge.svg)](https://codecov.io/gh/kbaseIncubator/AssemblyHomologyService)
+
 ## Usage
 
 MinHash sketch databases are organized by namespaces, where there is a 1:1 relationship between
@@ -168,6 +172,10 @@ OR
 
 Note that although namespace kmer sizes are returned in a list to support potential future
 improvements, currently the service only supports one kmer size per namespace.
+
+`GET /`
+
+General server information including git commit, version, and server time.
 
 `GET /namespace`
 
