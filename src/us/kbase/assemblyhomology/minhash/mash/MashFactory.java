@@ -9,11 +9,12 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 
+/** A factory for a Mash implementation of {@link MinHashImplementation}.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MashFactory implements MinHashImplementationFactory {
 
-	//TODO JAVADOC
-	//TODO TEST
-	
 	@Override
 	public MinHashImplementation getImplementation(final Path tempFileDirectory)
 			throws MinHashInitException {

@@ -41,6 +41,52 @@ public class MinHashImplementationInformation {
 	}
 
 	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((expectedFileExtension == null) ? 0 : expectedFileExtension.hashCode());
+		result = prime * result + ((implementationName == null) ? 0 : implementationName.hashCode());
+		result = prime * result + ((implementationVersion == null) ? 0 : implementationVersion.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		MinHashImplementationInformation other = (MinHashImplementationInformation) obj;
+		if (expectedFileExtension == null) {
+			if (other.expectedFileExtension != null) {
+				return false;
+			}
+		} else if (!expectedFileExtension.equals(other.expectedFileExtension)) {
+			return false;
+		}
+		if (implementationName == null) {
+			if (other.implementationName != null) {
+				return false;
+			}
+		} else if (!implementationName.equals(other.implementationName)) {
+			return false;
+		}
+		if (implementationVersion == null) {
+			if (other.implementationVersion != null) {
+				return false;
+			}
+		} else if (!implementationVersion.equals(other.implementationVersion)) {
+			return false;
+		}
+		return true;
+	}
+
+	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("MinHashImplementationInformation [implementationName=");

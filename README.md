@@ -27,7 +27,7 @@ Most input strings do not allow empty strings and have a maximum size of 256 uni
 
 ## MinHash implementations
 
-Currently only [Mash](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0997-x)
+Currently only [Mash v2.0](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-016-0997-x)
 is supported. Mash is configured to never return sequences with a distance greater than 0.5.
 
 ## Requirements
