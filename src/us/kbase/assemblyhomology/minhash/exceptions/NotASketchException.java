@@ -19,7 +19,7 @@ public class NotASketchException extends MinHashException {
 		this.mashOutput = null;
 	}
 	
-	/** Create an exception with error output from the MinHash implemenation
+	/** Create an exception with error output from the MinHash implementation.
 	 * @param message the exception message.
 	 * @param minHashOutput any output from the MinHash implementation related to the error.
 	 * Typically standard out from a CLI. This information is not included in the exception

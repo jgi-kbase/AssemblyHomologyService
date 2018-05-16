@@ -192,7 +192,7 @@ public class AssemblyHomology {
 		} catch (NotASketchException e) {
 			if (e.getMinHashErrorOutput().isPresent()) {
 				LoggerFactory.getLogger(getClass()).error(
-						"minhash implementation stderr:\n {}", e.getMinHashErrorOutput().get());
+						"minhash implementation stderr:\n{}", e.getMinHashErrorOutput().get());
 			}
 			throw new InvalidSketchException("The input sketch is not a valid sketch.", e);
 		} catch (MinHashException e) {

@@ -1,6 +1,6 @@
 package us.kbase.assemblyhomology.core.exceptions;
 
-/** Thrown when a parameter has an illegal value.
+/** Thrown when a file is not a valid MinHash sketch.
  * @author gaprice@lbl.gov
  *
  */
