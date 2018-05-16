@@ -1,4 +1,5 @@
 # To run tests, copy this file to test.cfg and set the values below appropriately.
+# Note that to run tests, the mash binary must be on the build path.
 
 [assemblyhomologytest]
 

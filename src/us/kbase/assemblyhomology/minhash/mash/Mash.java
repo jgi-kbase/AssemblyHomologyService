@@ -76,6 +76,10 @@ public class Mash implements MinHashImplementation {
 		}
 		info = getInfo();
 	}
+	
+	public Path getTemporaryFileDirectory() {
+		return tempFileDirectory;
+	}
 
 	private MinHashImplementationInformation getInfo() throws MinHashInitException {
 		try {
