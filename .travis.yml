@@ -22,7 +22,7 @@ install:
   - git clone https://github.com/kbase/jars
   - wget https://github.com/marbl/Mash/releases/download/v2.0/mash-Linux64-v2.0.tar
   - tar -xzf mash-Linux64-v2.0.tar
-  - export PATH=$PATH:$PWD/mash-linux64-v2.0
+  - export PATH=$PATH:$PWD/mash-Linux64-v2.0
   - cd -
 
 script:
