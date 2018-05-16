@@ -100,20 +100,20 @@ public class Mash implements MinHashImplementation {
 		try {
 			final String version = getVersion(getMashOutput("-h"));
 			return new MinHashImplementationInformation(MASH, version, MASH_FILE_EXT);
-		} catch (MashException e) {
+		} catch (MinHashException e) {
 			throw new MinHashInitException(e.getMessage(), e);
 		}
 	}
 	
 	// only use when expecting a small amount of output, otherwise will put entire output in mem
 	// or more likely deadlock
-	private String getMashOutput(final String... arguments) throws MashException {
+	private String getMashOutput(final String... arguments) throws MinHashException {
 		return getMashOutput(null, arguments);
 	}
 
 	// returns null if outputPath is not null
 	private String getMashOutput(final Path outputPath, final String... arguments)
-			throws MashException {
+			throws MinHashException {
 		final List<String> command = new LinkedList<>(Arrays.asList(MASH.getName()));
 		command.addAll(Arrays.asList(arguments));
 		try {
@@ -125,13 +125,13 @@ public class Mash implements MinHashImplementation {
 			}
 			final Process mash = pb.start();
 			if (!mash.waitFor(30L, TimeUnit.SECONDS)) {
-				throw new MashException(String.format(
+				throw new MinHashException(String.format(
 						"Timed out waiting for %s to run", MASH.getName()));
 			}
 			if (mash.exitValue() != 0) {
 				try (final InputStream is = mash.getErrorStream()) {
 					//may need different types of exceptions based on the output text
-					throw new MashException(String.format(
+					throw new MinHashException(String.format(
 							"Error running %s: %s", MASH.getName(), IOUtils.toString(is)));
 				}
 			}
@@ -143,7 +143,7 @@ public class Mash implements MinHashImplementation {
 				}
 			}
 		} catch (IOException | InterruptedException e) {
-			throw new MashException(String.format(
+			throw new MinHashException(String.format(
 					"Error running %s: ", MASH.getName()) + e.getMessage(), e);
 		}
 	}
@@ -164,7 +164,7 @@ public class Mash implements MinHashImplementation {
 	public MinHashSketchDatabase getDatabase(
 			final MinHashSketchDBName dbname,
 			final MinHashDBLocation location)
-			throws MashException {
+			throws MinHashException {
 		checkNotNull(dbname, "dbname");
 		checkNotNull(location, "location");
 		final ParamsAndSize pns = getParametersAndSize(location.getPathToFile().get());
@@ -173,7 +173,7 @@ public class Mash implements MinHashImplementation {
 	}
 	
 	@Override
-	public List<String> getSketchIDs(final MinHashSketchDatabase db) throws MashException {
+	public List<String> getSketchIDs(final MinHashSketchDatabase db) throws MinHashException {
 		final List<String> ids = new LinkedList<>();
 		processMashOutput(
 				//TODO CODE make less brittle
@@ -192,7 +192,7 @@ public class Mash implements MinHashImplementation {
 			final LineCollector lineCollector,
 			final boolean skipHeader,
 			final String... command)
-			throws MashException {
+			throws MinHashException {
 		Path tempFile = null;
 		try {
 			tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
@@ -208,13 +208,13 @@ public class Mash implements MinHashImplementation {
 				}
 			}
 		} catch (IOException e) {
-			throw new MashException(e.getMessage(), e);
+			throw new MinHashException(e.getMessage(), e);
 		} finally {
 			if (tempFile != null) {
 				try {
 					Files.delete(tempFile);
 				} catch (IOException e) {
-					throw new MashException(e.getMessage(), e);
+					throw new MinHashException(e.getMessage(), e);
 				}
 			}
 		}
@@ -287,7 +287,7 @@ public class Mash implements MinHashImplementation {
 		}
 	}
 	
-	private ParamsAndSize getParametersAndSize(final Path path) throws MashException {
+	private ParamsAndSize getParametersAndSize(final Path path) throws MinHashException {
 		final String mashout = getMashOutput("info", "-H", path.toString());
 		//TODO CODE this is nasty. Use a regex or something so we can have 2 problems
 		final String[] lines = mashout.split("\n");
