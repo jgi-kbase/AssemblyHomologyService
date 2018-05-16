@@ -143,7 +143,8 @@
     <copy todir="${classes}">
       <fileset dir="${src}">
         <patternset>
-          <include name="**/*.testdata"/>
+          <include name="**/*.msh"/>
+          <include name="**/*.txt"/>
         </patternset>
       </fileset>
     </copy>
@@ -231,12 +232,12 @@
       <structure name="Assembly Homology Unit Tests">
         <classfiles>
           <fileset dir="${classes}">
-            <exclude name="**/test/**" />
+            <exclude name="**/test/**"/>
           </fileset>
         </classfiles>
         <sourcefiles encoding="UTF-8">
           <fileset dir="${src}">
-            <exclude name="**/test/**" />
+            <exclude name="**/test/**"/>
           </fileset>
         </sourcefiles>
       </structure>
@@ -258,6 +259,7 @@
         <formatter type="plain" usefile="false" />
         <sysproperty key="ASSEMHOMOL_TEST_CONFIG" value="${testcfg}"/>
         <test name="us.kbase.test.assemblyhomology.minhash.mash.MashFactoryTest"/>
+        <test name="us.kbase.test.assemblyhomology.minhash.mash.MashTest"/>
         <test name="us.kbase.test.assemblyhomology.util.CappedTreeSetTest"/>
         <test name="us.kbase.test.assemblyhomology.util.PathRestreamableTest"/>
         <test name="us.kbase.test.assemblyhomology.util.UtilTest"/>

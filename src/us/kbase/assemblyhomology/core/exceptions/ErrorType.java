@@ -21,6 +21,8 @@ public enum ErrorType {
 	MISSING_PARAMETER		(30000, "Missing input parameter"),
 	/** An input parameter had an illegal value. */
 	ILLEGAL_PARAMETER		(30001, "Illegal input parameter"),
+	/** The input sketch was not a valid sketch. */
+	INVALID_SKETCH			(30010, "Invalid sketch"),
 	/** There is no namespace with the specified name. */
 	NO_SUCH_NAMESPACE		(50000, "No such namespace"),
 	/** There is no sequence with the specified name. */

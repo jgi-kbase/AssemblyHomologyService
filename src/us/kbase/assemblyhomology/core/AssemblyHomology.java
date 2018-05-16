@@ -16,11 +16,14 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.LoggerFactory;
+
 import com.google.common.base.Optional;
 import com.mongodb.MongoClient;
 
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
@@ -34,6 +37,7 @@ import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
+import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
 import us.kbase.assemblyhomology.minhash.mash.MashFactory;
 import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
@@ -107,7 +111,7 @@ public class AssemblyHomology {
 			int returnCount,
 			boolean strict)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException,
-				IllegalParameterException, MinHashException {
+				IllegalParameterException, MinHashException, InvalidSketchException {
 		checkNoNullsInCollection(namespaceIDs, "namespaceIDs");
 		checkNotNull(sketchDB, "sketchDB");
 		if (returnCount > MAX_RETURN || returnCount < 0) {
@@ -179,14 +183,21 @@ public class AssemblyHomology {
 			final MinHashImplementation impl,
 			int returnCount,
 			final boolean strict)
-			throws IllegalParameterException, MinHashException {
+			throws IllegalParameterException, MinHashException, InvalidSketchException {
 		final MinHashSketchDatabase query;
 		try {
 			query = impl.getDatabase(
 					new MinHashSketchDBName("<query>"),
 					new MinHashDBLocation(sketchDB));
+		} catch (NotASketchException e) {
+			if (e.getMinHashErrorOutput().isPresent()) {
+				LoggerFactory.getLogger(getClass()).error(
+						"minhash implementation stderr:\n{}", e.getMinHashErrorOutput().get());
+			}
+			throw new InvalidSketchException("The input sketch is not a valid sketch.", e);
 		} catch (MinHashException e) {
-			//TODO NOW CODE this needs some work - specific exception for bad db with error code
+			// there may be other error types that are not the user's fault here, but hard to
+			// know without lots of experiments. Deal with them as they come up.
 			throw new IllegalParameterException(
 					"Error loading query sketch database: " + e.getMessage(), e);
 		}

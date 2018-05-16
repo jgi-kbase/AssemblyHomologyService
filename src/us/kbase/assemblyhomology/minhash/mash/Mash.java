@@ -34,6 +34,7 @@ import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
+import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
 import us.kbase.assemblyhomology.util.CappedTreeSet;
 
 /** A wrapper for the mash implementation of the MinHash algorithm. Expects the mash binary
@@ -84,7 +85,8 @@ public class Mash implements MinHashImplementation {
 		try {
 			Files.createDirectories(tempFileDirectory);
 		} catch (IOException e) {
-			throw new MinHashInitException(e.getMessage(), e);
+			throw new MinHashInitException(
+					"Couldn't create temporary directory: " + e.getMessage(), e);
 		}
 		info = getInfo();
 	}
@@ -101,6 +103,8 @@ public class Mash implements MinHashImplementation {
 			final String version = getVersion(getMashOutput("-h"));
 			return new MinHashImplementationInformation(MASH, version, MASH_FILE_EXT);
 		} catch (MinHashException e) {
+			// don't know how to test this other than leaving mash off the system path
+			// so test manually
 			throw new MinHashInitException(e.getMessage(), e);
 		}
 	}
@@ -125,14 +129,13 @@ public class Mash implements MinHashImplementation {
 			}
 			final Process mash = pb.start();
 			if (!mash.waitFor(30L, TimeUnit.SECONDS)) {
+				// not sure how to test this
 				throw new MinHashException(String.format(
 						"Timed out waiting for %s to run", MASH.getName()));
 			}
 			if (mash.exitValue() != 0) {
 				try (final InputStream is = mash.getErrorStream()) {
-					//may need different types of exceptions based on the output text
-					throw new MinHashException(String.format(
-							"Error running %s: %s", MASH.getName(), IOUtils.toString(is)));
+					throw handleMashException(IOUtils.toString(is));
 				}
 			}
 			if (outputPath != null) {
@@ -143,9 +146,25 @@ public class Mash implements MinHashImplementation {
 				}
 			}
 		} catch (IOException | InterruptedException e) {
+			// this is also very difficult to test
 			throw new MinHashException(String.format(
 					"Error running %s: ", MASH.getName()) + e.getMessage(), e);
 		}
+	}
+
+	private MinHashException handleMashException(String exceptionText)
+			throws MinHashException {
+		exceptionText = exceptionText.trim();
+		// this is a little bit brittle.
+		// the "does not look like a sketch" response must be handled at the point of input
+		// there may be other responses though, can't test all possible inputs
+		if (exceptionText.contains("terminate called")) {
+			throw new NotASketchException(
+					MASH.getName() + " could not read sketch", exceptionText);
+		}
+		// not sure how to test this.
+		return new MinHashException(String.format(
+				"Error running %s: %s", MASH.getName(), exceptionText));
 	}
 
 	private String getVersion(final String mashHelpOut) {
@@ -167,13 +186,23 @@ public class Mash implements MinHashImplementation {
 			throws MinHashException {
 		checkNotNull(dbname, "dbname");
 		checkNotNull(location, "location");
+		checkFileExtension(location);
 		final ParamsAndSize pns = getParametersAndSize(location.getPathToFile().get());
 		return new MinHashSketchDatabase(
 				dbname, info.getImplementationName(), pns.params, location, pns.size);
 	}
+
+	private void checkFileExtension(final MinHashDBLocation location) throws NotASketchException {
+		final String locStr = location.getPathToFile().get().toString();
+		if (!locStr.endsWith("." + MASH_FILE_EXT.toString())) {
+			throw new NotASketchException(locStr);
+		}
+	}
 	
 	@Override
 	public List<String> getSketchIDs(final MinHashSketchDatabase db) throws MinHashException {
+		checkNotNull(db, "db");
+		checkFileExtension(db.getLocation());
 		final List<String> ids = new LinkedList<>();
 		processMashOutput(
 				//TODO CODE make less brittle
@@ -267,9 +296,11 @@ public class Mash implements MinHashImplementation {
 			final MinHashSketchDatabase query,
 			final Collection<MinHashSketchDatabase> references,
 			final boolean strict)
-			throws IncompatibleSketchesException {
+			throws IncompatibleSketchesException, NotASketchException {
+		checkFileExtension(query.getLocation());
 		final List<String> warnings = new LinkedList<>();
 		for (final MinHashSketchDatabase db: references) {
+			checkFileExtension(query.getLocation());
 			// may want to change this to a class with more info about the source of the warning, but YAGNI
 			warnings.addAll(db.checkIsQueriableBy(query, strict).stream()
 					.map(s -> "Sketch DB " + db.getName().getName() + ": " + s)
@@ -281,7 +312,7 @@ public class Mash implements MinHashImplementation {
 	private static class ParamsAndSize {
 		final MinHashParameters params;
 		final int size;
-		private ParamsAndSize(MinHashParameters params, int size) {
+		private ParamsAndSize(final MinHashParameters params, final int size) {
 			this.params = params;
 			this.size = size;
 		}
