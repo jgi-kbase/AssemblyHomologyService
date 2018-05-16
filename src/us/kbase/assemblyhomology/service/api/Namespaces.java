@@ -32,6 +32,7 @@ import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
@@ -100,7 +101,8 @@ public class Namespaces {
 			@QueryParam("max") final String max)
 			throws IOException, NoSuchNamespaceException, IllegalParameterException,
 			//TODO NOW CODE remove MinhashException when AssyHomol doesn't throw it
-				MissingParameterException, AssemblyHomologyStorageException, MinHashException { 
+				MissingParameterException, AssemblyHomologyStorageException,
+				MinHashException, InvalidSketchException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
 		final Set<Namespace> nsids = ah.getNamespaces(getNamespaceIDs(namespaces));
