@@ -20,8 +20,6 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 
-import com.google.common.base.Optional;
-
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
@@ -38,9 +36,13 @@ import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.util.CappedTreeSet;
 
+/** A wrapper for the mash implementation of the MinHash algorithm. Expects the mash binary
+ * to be available on the command line.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class Mash implements MinHashImplementation {
 	
-	//TODO JAVADOC
 	//TODO TEST
 	
 	//TODO ZZLATER CODE consider JNA to bind directly to the mash libs? That would allow controlling the version of Mash.
@@ -55,17 +57,27 @@ public class Mash implements MinHashImplementation {
 	}
 	private final static Path MASH_FILE_EXT = Paths.get("msh");
 	
+	/** Get the name of this implementation - in this case mash.
+	 * @return the implementation name.
+	 */
 	public static MinHashImplementationName getImplementationName() {
 		return MASH;
 	}
 	
-	public static Optional<Path> getExpectedFileExtension() {
-		return Optional.of(MASH_FILE_EXT);
+	/** Get the file extension mash requires for input files.
+	 * @return the expected file extension.
+	 */
+	public static Path getExpectedFileExtension() {
+		return MASH_FILE_EXT;
 	}
 	
 	private final MinHashImplementationInformation info;
 	private final Path tempFileDirectory;
 	
+	/** Create a new mash wrapper.
+	 * @param tempFileDirectory a directory in which temporary files may be stored.
+	 * @throws MinHashInitException if the wrapper could not be initialized.
+	 */
 	public Mash(final Path tempFileDirectory) throws MinHashInitException {
 		checkNotNull(tempFileDirectory, "tempFileDirectory");
 		this.tempFileDirectory = tempFileDirectory;
@@ -77,6 +89,9 @@ public class Mash implements MinHashImplementation {
 		info = getInfo();
 	}
 	
+	/** Get the location the wrapper is using to store temporary files.
+	 * @return the temporary file directory.
+	 */
 	public Path getTemporaryFileDirectory() {
 		return tempFileDirectory;
 	}

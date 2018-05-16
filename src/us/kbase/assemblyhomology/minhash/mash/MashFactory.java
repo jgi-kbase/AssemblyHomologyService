@@ -28,7 +28,7 @@ public class MashFactory implements MinHashImplementationFactory {
 	
 	@Override
 	public Optional<Path> getExpectedFileExtension() {
-		return Mash.getExpectedFileExtension();
+		return Optional.of(Mash.getExpectedFileExtension());
 	}
 
 }
