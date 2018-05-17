@@ -14,11 +14,12 @@ import com.google.common.base.Optional;
  */
 public class MinHashDBLocation {
 
-	//TODO JAVADOC
-	//TODO TEST
-	
 	private final Path pathToFile;
 	
+	/** Create a new location.
+	 * @param pathToFile the path to the sketch database file.
+	 * @throws IllegalArgumentException if the file does not exist.
+	 */
 	public MinHashDBLocation(final Path pathToFile) {
 		checkNotNull(pathToFile, "pathToFile");
 		if (!Files.exists(pathToFile)) {
@@ -28,17 +29,12 @@ public class MinHashDBLocation {
 		this.pathToFile = pathToFile;
 	}
 
+	/** Get the sketch database location. Currently will always return the path, but returns
+	 * an {@link Optional} to allow for expansion in the future.
+	 * @return
+	 */
 	public Optional<Path> getPathToFile() {
 		return Optional.of(pathToFile);
-	}
-
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashDBLocation [pathToFile=");
-		builder.append(pathToFile);
-		builder.append("]");
-		return builder.toString();
 	}
 
 	@Override
