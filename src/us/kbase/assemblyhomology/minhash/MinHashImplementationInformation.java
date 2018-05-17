@@ -7,35 +7,52 @@ import java.nio.file.Path;
 
 import com.google.common.base.Optional;
 
+/** Information about an implementation of the MinHash algorithm - the name of the implementation,
+ * the version of the implementation, and the file extension, if any, that the implementation
+ * expects.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MinHashImplementationInformation {
-	
-	//TODO JAVADOC
-	//TODO TEST
 	
 	private final MinHashImplementationName implementationName;
 	private final String implementationVersion;
 	private final Optional<Path> expectedFileExtension;
 	
+	/** Create the implementation information.
+	 * @param implementationName the name of the implementation.
+	 * @param implementationVersion the version of the implementation.
+	 * @param expectedFileExt the file extension expected by the implementation.
+	 * Null is acceptable.
+	 */
 	public MinHashImplementationInformation(
 			final MinHashImplementationName implementationName,
 			final String implementationVersion,
-			final Path mashFileExt) {
+			final Path expectedFileExt) {
 		checkNotNull(implementationName, "implementationName");
 		exceptOnEmpty(implementationVersion, "implementationVersion");
-		checkNotNull(mashFileExt, "expectedFileExtension");
 		this.implementationName = implementationName;
 		this.implementationVersion = implementationVersion;
-		this.expectedFileExtension = Optional.of(mashFileExt);
+		this.expectedFileExtension = Optional.fromNullable(expectedFileExt);
 	}
 
+	/** Get the implementation name.
+	 * @return the implementation name.
+	 */
 	public MinHashImplementationName getImplementationName() {
 		return implementationName;
 	}
 
+	/** Get the version of the implementation.
+	 * @return the implementation version.
+	 */
 	public String getImplementationVersion() {
 		return implementationVersion;
 	}
 	
+	/** Get the expected file extension for the implementation if one exists.
+	 * @return the expected file extension or {@link Optional#absent()}.
+	 */
 	public Optional<Path> getExpectedFileExtension() {
 		return expectedFileExtension;
 	}
@@ -84,18 +101,5 @@ public class MinHashImplementationInformation {
 			return false;
 		}
 		return true;
-	}
-
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashImplementationInformation [implementationName=");
-		builder.append(implementationName);
-		builder.append(", implementationVersion=");
-		builder.append(implementationVersion);
-		builder.append(", expectedFileExtension=");
-		builder.append(expectedFileExtension);
-		builder.append("]");
-		return builder.toString();
 	}
 }
