@@ -3,15 +3,21 @@ package us.kbase.assemblyhomology.minhash;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static us.kbase.assemblyhomology.util.Util.exceptOnEmpty;
 
+/** A MinHash distance from a query sequence to a reference sequence.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MinHashDistance implements Comparable<MinHashDistance> {
 
-	//TODO JAVADOC
-	//TODO TEST
-	
 	private final MinHashSketchDBName referenceDBName;
 	private final String sequenceID;
 	private final double distance;
 	
+	/** Create a distance.
+	 * @param referenceDBName the name of the database containing the reference sequence.
+	 * @param sequenceID the ID of the reference sequence.
+	 * @param distance the distance between the query sequence and the reference sequence.
+	 */
 	public MinHashDistance(
 			final MinHashSketchDBName referenceDBName,
 			final String sequenceID,
@@ -26,14 +32,23 @@ public class MinHashDistance implements Comparable<MinHashDistance> {
 		this.distance = distance;
 	}
 
+	/** Get the name of the reference database containing the reference sequence.
+	 * @return the reference database name.
+	 */
 	public MinHashSketchDBName getReferenceDBName() {
 		return referenceDBName;
 	}
 	
+	/** Get the ID of the reference sequence.
+	 * @return the sequence ID.
+	 */
 	public String getSequenceID() {
 		return sequenceID;
 	}
 
+	/** Get the MinHash distance between the query sequence and the reference sequence.
+	 * @return
+	 */
 	public double getDistance() {
 		return distance;
 	}
@@ -46,19 +61,6 @@ public class MinHashDistance implements Comparable<MinHashDistance> {
 		}
 		final int refdb = referenceDBName.compareTo(o.referenceDBName);
 		return refdb == 0 ? sequenceID.compareTo(o.sequenceID) : refdb;
-	}
-
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashDistance [referenceDBName=");
-		builder.append(referenceDBName);
-		builder.append(", sequenceID=");
-		builder.append(sequenceID);
-		builder.append(", distance=");
-		builder.append(distance);
-		builder.append("]");
-		return builder.toString();
 	}
 
 	@Override
