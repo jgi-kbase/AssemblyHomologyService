@@ -42,6 +42,44 @@ public class MinHashDistanceSet {
 	}
 
 	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((distances == null) ? 0 : distances.hashCode());
+		result = prime * result + ((warnings == null) ? 0 : warnings.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		MinHashDistanceSet other = (MinHashDistanceSet) obj;
+		if (distances == null) {
+			if (other.distances != null) {
+				return false;
+			}
+		} else if (!distances.equals(other.distances)) {
+			return false;
+		}
+		if (warnings == null) {
+			if (other.warnings != null) {
+				return false;
+			}
+		} else if (!warnings.equals(other.warnings)) {
+			return false;
+		}
+		return true;
+	}
+
+	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("MinHashDistanceSet [distances=");

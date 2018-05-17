@@ -44,8 +44,6 @@ import us.kbase.assemblyhomology.util.CappedTreeSet;
  */
 public class Mash implements MinHashImplementation {
 	
-	//TODO TEST
-	
 	//TODO ZZLATER CODE consider JNA to bind directly to the mash libs? That would allow controlling the version of Mash.
 	
 	private final static MinHashImplementationName MASH;
@@ -236,6 +234,7 @@ public class Mash implements MinHashImplementation {
 					lineCollector.collect(line);
 				}
 			}
+		// all of the below is really hard to test
 		} catch (IOException e) {
 			throw new MinHashException(e.getMessage(), e);
 		} finally {
@@ -281,6 +280,9 @@ public class Mash implements MinHashImplementation {
 			// may want to relax this, but that'll require changing a bunch of stuff
 			throw new IllegalArgumentException("Only 1 query sequence is allowed");
 		}
+		if (maxReturnCount < 1) {
+			throw new IllegalArgumentException("maxReturnCount must be > 0");
+		}
 		final List<String> warnings = checkQueryable(query, references, strict);
 		final DistanceCollector distanceProcessor = new DistanceCollector(maxReturnCount);
 		for (final MinHashSketchDatabase ref: references) {
@@ -300,7 +302,7 @@ public class Mash implements MinHashImplementation {
 		checkFileExtension(query.getLocation());
 		final List<String> warnings = new LinkedList<>();
 		for (final MinHashSketchDatabase db: references) {
-			checkFileExtension(query.getLocation());
+			checkFileExtension(db.getLocation());
 			// may want to change this to a class with more info about the source of the warning, but YAGNI
 			warnings.addAll(db.checkIsQueriableBy(query, strict).stream()
 					.map(s -> "Sketch DB " + db.getName().getName() + ": " + s)
@@ -331,36 +333,4 @@ public class Mash implements MinHashImplementation {
 						.build(),
 				size);
 	}
-
-	public static void main(final String[] args) throws MinHashException {
-		final MinHashImplementation mash = new Mash(Paths.get("."));
-		System.out.println(mash.getImplementationInformation());
-		
-		final MinHashSketchDatabase db = mash.getDatabase(
-				new MinHashSketchDBName("dbname"),
-				new MinHashDBLocation(Paths.get(
-				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000.msh")));
-		System.out.println(db.getImplementationName());
-		System.out.println(db.getLocation());
-		System.out.println(db.getParameterSet());
-		System.out.println(db.getSequenceCount());
-		final List<String> ids = mash.getSketchIDs(db);
-		System.out.println(ids.size());
-		System.out.println(ids);
-		
-		final MinHashSketchDatabase query = mash.getDatabase(
-				new MinHashSketchDBName("dbname2"),
-				new MinHashDBLocation(Paths.get(
-				"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000_15792_446_1_hashes1500.msh")));
-		System.out.println(query.getImplementationName());
-		System.out.println(query.getLocation());
-		System.out.println(query.getParameterSet());
-		System.out.println(query.getSequenceCount());
-		System.out.println(mash.getSketchIDs(query));
-		
-		final MinHashDistanceSet dists = mash.computeDistance(query, Arrays.asList(db), 30, false);
-		System.out.println(dists);
-		System.out.println(dists.getDistances().size());
-	}
-
 }
