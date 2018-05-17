@@ -8,24 +8,26 @@ import java.util.TreeSet;
 
 import us.kbase.assemblyhomology.util.Util;
 
+/** A set of distances from a query sequence to zero or more reference sequences.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MinHashDistanceSet {
 	
-	//TODO JAVADOC
-	//TODO TEST
-
 	// distance to the query sequence
 	private final Set<MinHashDistance> distances;
 	private final List<String> warnings;
 
-	// might want a builder here?
+	/** Create a distance set.
+	 * @param distances the distances.
+	 * @param warnings any warnings associated with the distances.
+	 */
 	public MinHashDistanceSet(
 			final Set<MinHashDistance> distances,
 			final List<String> warnings) {
 		// check for duplicate sequence IDs?
 		Util.checkNoNullsInCollection(distances, "distances");
 		Util.checkNoNullsOrEmpties(warnings, "warnings");
-		// we don't check DB compatibility given that the presence of distance measurements
-		// implies they must be compatible
 		this.distances = Collections.unmodifiableSet(new TreeSet<>(distances));
 		this.warnings = Collections.unmodifiableList(new LinkedList<>(warnings));
 	}
@@ -37,6 +39,9 @@ public class MinHashDistanceSet {
 		return distances;
 	}
 	
+	/** Get any warnings associated with the distances.
+	 * @return the warnings.
+	 */
 	public List<String> getWarnings() {
 		return warnings;
 	}
@@ -77,16 +82,5 @@ public class MinHashDistanceSet {
 			return false;
 		}
 		return true;
-	}
-
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashDistanceSet [distances=");
-		builder.append(distances);
-		builder.append(", warnings=");
-		builder.append(warnings);
-		builder.append("]");
-		return builder.toString();
 	}
 }

@@ -260,6 +260,7 @@
         <sysproperty key="ASSEMHOMOL_TEST_CONFIG" value="${testcfg}"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDBLocationTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDistanceTest"/>
+      	<test name="us.kbase.test.assemblyhomology.minhash.MinHashDistanceSetTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.mash.MashFactoryTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.mash.MashTest"/>
         <test name="us.kbase.test.assemblyhomology.util.CappedTreeSetTest"/>
