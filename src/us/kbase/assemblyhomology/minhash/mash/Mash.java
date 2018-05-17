@@ -273,7 +273,7 @@ public class Mash implements MinHashImplementation {
 			final Collection<MinHashSketchDatabase> references,
 			final int maxReturnCount,
 			final boolean strict)
-			throws MinHashException, IncompatibleSketchesException {
+			throws MinHashException, NotASketchException, IncompatibleSketchesException {
 		checkNotNull(query, "query");
 		checkNoNullsInCollection(references, "references");
 		if (query.getSequenceCount() != 1) {
