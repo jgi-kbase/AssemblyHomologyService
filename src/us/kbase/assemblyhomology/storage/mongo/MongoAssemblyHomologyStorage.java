@@ -16,12 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.bson.Document;
 
-import com.google.common.base.Optional;
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
@@ -51,9 +48,12 @@ import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
 import us.kbase.assemblyhomology.storage.exceptions.StorageInitException;
 
+/** MongoDB storage for the assembly homology application.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 
-	//TODO JAVADOC
 	//TODO TEST
 
 	/* Don't use mongo built in object mapping to create the returned objects
@@ -80,9 +80,9 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	private static final Map<String, Map<List<String>, IndexOptions>> INDEXES;
 	private static final IndexOptions IDX_UNIQ = new IndexOptions().unique(true);
-	private static final IndexOptions IDX_SPARSE = new IndexOptions().sparse(true);
-	private static final IndexOptions IDX_UNIQ_SPARSE =
-			new IndexOptions().unique(true).sparse(true);
+//	private static final IndexOptions IDX_SPARSE = new IndexOptions().sparse(true);
+//	private static final IndexOptions IDX_UNIQ_SPARSE =
+//			new IndexOptions().unique(true).sparse(true);
 	static {
 		//hardcoded indexes
 		INDEXES = new HashMap<String, Map<List<String>, IndexOptions>>();
@@ -108,11 +108,15 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	private final MongoDatabase db;
 	
+	/** Create MongoDB based storage for the Assembly Homology application.
+	 * @param db the Mongo database the storage system will use.
+	 * @throws StorageInitException if the storage system could not be initialized.
+	 */
 	public MongoAssemblyHomologyStorage(final MongoDatabase db) throws StorageInitException {
 		checkNotNull(db, "db");
 		this.db = db;
+		ensureIndexes(); // MUST come before check config;
 		checkConfig();
-		ensureIndexes();
 	}
 	
 	private void checkConfig() throws StorageInitException  {
@@ -180,8 +184,11 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	}
 
 	private static class DuplicateKeyExceptionChecker {
-		// super hacky and fragile, but doesn't seem another way to do this.
 		
+		// might need this stuff later, so keeping for now.
+		
+		/*
+		// super hacky and fragile, but doesn't seem another way to do this.
 		private final Pattern keyPattern = Pattern.compile("dup key:\\s+\\{ : \"(.*)\" \\}");
 		private final Pattern indexPattern = Pattern.compile(
 				"duplicate key error (index|collection): " +
@@ -219,12 +226,13 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 				key = Optional.absent();
 			}
 			
-		}
+		} */
 		
 		public static boolean isDuplicate(final MongoWriteException mwe) {
 			return mwe.getError().getCategory().equals(ErrorCategory.DUPLICATE_KEY);
 		}
-
+		
+		/*
 		public boolean isDuplicate() {
 			return isDuplicate;
 		}
@@ -241,6 +249,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		public Optional<String> getKey() {
 			return key;
 		}
+		*/
 	}
 	
 	@Override
