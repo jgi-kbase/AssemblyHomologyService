@@ -264,6 +264,7 @@
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashImplementationInformationTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashImplementationNameTest"/>
       	<test name="us.kbase.test.assemblyhomology.minhash.MinHashParametersTest"/>
+      	<test name="us.kbase.test.assemblyhomology.minhash.MinHashSketchDatabaseTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.mash.MashFactoryTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.mash.MashTest"/>
         <test name="us.kbase.test.assemblyhomology.util.CappedTreeSetTest"/>
