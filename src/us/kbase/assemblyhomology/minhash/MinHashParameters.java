@@ -2,11 +2,12 @@ package us.kbase.assemblyhomology.minhash;
 
 import com.google.common.base.Optional;
 
+/** A set of parameters for a MinHash sketch database.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MinHashParameters {
 
-	//TODO TEST
-	//TODO JAVADOC
-	
 	private final int kmerSize;
 	private final Optional<Integer> sketchSize;
 	private final Optional<Integer> scaling;
@@ -20,31 +21,28 @@ public class MinHashParameters {
 		this.scaling = Optional.fromNullable(scaling);
 	}
 
+	/** Get the kmer size used to create the sketch.
+	 * @return
+	 */
 	public int getKmerSize() {
 		return kmerSize;
 	}
 
+	/** Get the number of hashes in the sketch. Mutually exclusive with scaling.
+	 * @return the number of hashes in the sketch, or absent if the sketch is scaled.
+	 */
 	public Optional<Integer> getSketchSize() {
 		return sketchSize;
 	}
 
+	/** Get the scaling parameter for the sketch. Mutually exclusive with an absolute size.
+	 * @return the sketch's scaling parameter, or absent if the sketch was generated with
+	 * an absolute size.
+	 */
 	public Optional<Integer> getScaling() {
 		return scaling;
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashParameters [kmerSize=");
-		builder.append(kmerSize);
-		builder.append(", sketchSize=");
-		builder.append(sketchSize);
-		builder.append(", scaling=");
-		builder.append(scaling);
-		builder.append("]");
-		return builder.toString();
-	}
-	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -87,10 +85,18 @@ public class MinHashParameters {
 		return true;
 	}
 
+	/** Get a builder for {@link MinHashParameters}.
+	 * @param kmerSize the kmer size used to create the sketch.
+	 * @return a new builder.
+	 */
 	public static Builder getBuilder(final int kmerSize) {
 		return new Builder(kmerSize);
 	}
 	
+	/** A builder for a {@link MinHashParameters}.
+	 * @author gaprice@lbl.gov
+	 *
+	 */
 	public static class Builder {
 		
 		private final int kmerSize;
@@ -104,24 +110,36 @@ public class MinHashParameters {
 			this.kmerSize = kmerSize;
 		}
 		
+		/** Add a sketch size to the builder. Removes any scaling already set.
+		 * @param sketchSize the sketch size.
+		 * @return this builder.
+		 */
 		public Builder withSketchSize(final int sketchSize) {
 			if (sketchSize < 1) {
-				throw new IllegalArgumentException("sketchSize <1");
+				throw new IllegalArgumentException("sketchSize < 1");
 			}
 			this.sketchSize = sketchSize;
 			this.scaling = null;
 			return this;
 		}
 		
+		/** Add a scaling parameter to the builder. Removes any sketch size already set.
+		 * @param scaling the scaling parameter.
+		 * @return this builder.
+		 */
 		public Builder withScaling(final int scaling) {
 			if (scaling < 1) {
-				throw new IllegalArgumentException("scaling <1");
+				throw new IllegalArgumentException("scaling < 1");
 			}
 			this.sketchSize = null;
 			this.scaling = scaling;
 			return this;
 		}
 		
+		/** Builder the {@link MinHashParameters}.
+		 * One of the scaling parameter or the sketch size must have been set.
+		 * @return a new {@link MinHashParameters}.
+		 */
 		public MinHashParameters build() {
 			if (sketchSize == null && scaling == null) {
 				throw new IllegalStateException("One of scaling or sketchSize must be set");
