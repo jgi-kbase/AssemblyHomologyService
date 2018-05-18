@@ -60,6 +60,68 @@ public class SequenceMetadata {
 	}
 
 	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((creation == null) ? 0 : creation.hashCode());
+		result = prime * result + ((id == null) ? 0 : id.hashCode());
+		result = prime * result + ((relatedIDs == null) ? 0 : relatedIDs.hashCode());
+		result = prime * result + ((scientificName == null) ? 0 : scientificName.hashCode());
+		result = prime * result + ((sourceID == null) ? 0 : sourceID.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		SequenceMetadata other = (SequenceMetadata) obj;
+		if (creation == null) {
+			if (other.creation != null) {
+				return false;
+			}
+		} else if (!creation.equals(other.creation)) {
+			return false;
+		}
+		if (id == null) {
+			if (other.id != null) {
+				return false;
+			}
+		} else if (!id.equals(other.id)) {
+			return false;
+		}
+		if (relatedIDs == null) {
+			if (other.relatedIDs != null) {
+				return false;
+			}
+		} else if (!relatedIDs.equals(other.relatedIDs)) {
+			return false;
+		}
+		if (scientificName == null) {
+			if (other.scientificName != null) {
+				return false;
+			}
+		} else if (!scientificName.equals(other.scientificName)) {
+			return false;
+		}
+		if (sourceID == null) {
+			if (other.sourceID != null) {
+				return false;
+			}
+		} else if (!sourceID.equals(other.sourceID)) {
+			return false;
+		}
+		return true;
+	}
+
+	@Override
 	public String toString() {
 		StringBuilder builder2 = new StringBuilder();
 		builder2.append("SequenceMetadata [id=");
