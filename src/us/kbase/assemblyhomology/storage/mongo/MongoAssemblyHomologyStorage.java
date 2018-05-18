@@ -306,13 +306,13 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	}
 	
 	@Override
-	public Namespace getNamespace(final NamespaceID namespace)
+	public Namespace getNamespace(final NamespaceID namespaceID)
 			throws AssemblyHomologyStorageException, NoSuchNamespaceException {
-		checkNotNull(namespace, "namespace");
+		checkNotNull(namespaceID, "namespaceID");
 		final Document ns = findOne(
-				COL_NAMESPACES, new Document(Fields.NAMESPACE_ID, namespace.getName()));
+				COL_NAMESPACES, new Document(Fields.NAMESPACE_ID, namespaceID.getName()));
 		if (ns == null) {
-			throw new NoSuchNamespaceException(namespace.getName());
+			throw new NoSuchNamespaceException(namespaceID.getName());
 		} else {
 			return toNamespace(ns);
 		}

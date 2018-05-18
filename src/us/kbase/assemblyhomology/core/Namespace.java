@@ -70,6 +70,84 @@ public class Namespace {
 	}
 
 	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((creation == null) ? 0 : creation.hashCode());
+		result = prime * result + ((dataSourceID == null) ? 0 : dataSourceID.hashCode());
+		result = prime * result + ((description == null) ? 0 : description.hashCode());
+		result = prime * result + ((id == null) ? 0 : id.hashCode());
+		result = prime * result + ((loadID == null) ? 0 : loadID.hashCode());
+		result = prime * result + ((sketchDatabase == null) ? 0 : sketchDatabase.hashCode());
+		result = prime * result + ((sourceDatabaseID == null) ? 0 : sourceDatabaseID.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		Namespace other = (Namespace) obj;
+		if (creation == null) {
+			if (other.creation != null) {
+				return false;
+			}
+		} else if (!creation.equals(other.creation)) {
+			return false;
+		}
+		if (dataSourceID == null) {
+			if (other.dataSourceID != null) {
+				return false;
+			}
+		} else if (!dataSourceID.equals(other.dataSourceID)) {
+			return false;
+		}
+		if (description == null) {
+			if (other.description != null) {
+				return false;
+			}
+		} else if (!description.equals(other.description)) {
+			return false;
+		}
+		if (id == null) {
+			if (other.id != null) {
+				return false;
+			}
+		} else if (!id.equals(other.id)) {
+			return false;
+		}
+		if (loadID == null) {
+			if (other.loadID != null) {
+				return false;
+			}
+		} else if (!loadID.equals(other.loadID)) {
+			return false;
+		}
+		if (sketchDatabase == null) {
+			if (other.sketchDatabase != null) {
+				return false;
+			}
+		} else if (!sketchDatabase.equals(other.sketchDatabase)) {
+			return false;
+		}
+		if (sourceDatabaseID == null) {
+			if (other.sourceDatabaseID != null) {
+				return false;
+			}
+		} else if (!sourceDatabaseID.equals(other.sourceDatabaseID)) {
+			return false;
+		}
+		return true;
+	}
+
+	@Override
 	public String toString() {
 		StringBuilder builder2 = new StringBuilder();
 		builder2.append("Namespace [id=");
