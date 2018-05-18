@@ -2,32 +2,34 @@ package us.kbase.assemblyhomology.minhash;
 
 import static us.kbase.assemblyhomology.util.Util.exceptOnEmpty;
 
+/** The name of a sketch database.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MinHashSketchDBName implements Comparable<MinHashSketchDBName>{
 
 	private final String name;
 	
+	/** Create a sketch database name.
+	 * @param name the name.
+	 */
 	public MinHashSketchDBName(final String name) {
 		exceptOnEmpty(name, "name");
 		this.name = name;
 	}
 
+	/** Get the sketch database name.
+	 * @return the name.
+	 */
 	public String getName() {
 		return name;
 	}
 
+	@Override
 	public int compareTo(final MinHashSketchDBName o) {
 		return name.compareTo(o.name);
 	}
 	
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashSketchDBName [name=");
-		builder.append(name);
-		builder.append("]");
-		return builder.toString();
-	}
-
 	@Override
 	public int hashCode() {
 		final int prime = 31;
