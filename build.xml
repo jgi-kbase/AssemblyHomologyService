@@ -289,6 +289,7 @@
         <formatter type="plain" usefile="false" />
         <sysproperty key="ASSEMHOMOL_TEST_CONFIG" value="${testcfg}"/>
         <test name="us.kbase.test.assemblyhomology.storage.MongoAssemblyHomologyStorageStartupTest"/>
+        <test name="us.kbase.test.assemblyhomology.storage.MongoAssemblyHomologyStorageOpsTest"/>
       </junit>
     </jacoco:coverage>
     <fail message="Test failure detected, check test results." if="test.failed" />
