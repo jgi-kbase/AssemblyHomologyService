@@ -1,7 +1,7 @@
 package us.kbase.assemblyhomology.storage.exceptions;
 
 /** 
- * Thrown when an exception occurs regarding the assembly homology storage system
+ * Thrown when an exception occurs regarding the assembly homology storage system.
  * @author gaprice@lbl.gov
  *
  */

@@ -11,16 +11,17 @@ import java.util.Map;
 
 import com.google.common.base.Optional;
 
+/** Metadata about a genomic sequence.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class SequenceMetadata {
 	
-	//TODO JAVADOC
-	//TODO TEST
-	
-	public final String id;
-	public final String sourceID;
-	public final Optional<String> scientificName;
-	public Map<String, String> relatedIDs;
-	private Instant creation;
+	private final String id;
+	private final String sourceID;
+	private final Optional<String> scientificName;
+	private final Map<String, String> relatedIDs;
+	private final Instant creation;
 	
 	private SequenceMetadata(
 			final String id,
@@ -35,26 +36,38 @@ public class SequenceMetadata {
 		this.relatedIDs = Collections.unmodifiableMap(relatedIDs);
 	}
 
-	public Map<String, String> getRelatedIDs() {
-		return relatedIDs;
-	}
-
-	public void setRelatedIDs(Map<String, String> relatedIDs) {
-		this.relatedIDs = relatedIDs;
-	}
-
+	/** Get the local ID for the sequence. This is typically an ID used locally to match the
+	 * sequence with other data.
+	 * @return the sequence's ID.
+	 */
 	public String getID() {
 		return id;
 	}
 
+	/** Get the time this sequence record was created.
+	 * @return the creation date.
+	 */
 	public Instant getCreation() {
 		return creation;
 	}
 
+	/** Get related, but not primary IDs for the the sequence.
+	 * @return the related IDs.
+	 */
+	public Map<String, String> getRelatedIDs() {
+		return relatedIDs;
+	}
+
+	/** Get the ID for the sequence from the source database where the sequence originates.
+	 * @return the source ID.
+	 */
 	public String getSourceID() {
 		return sourceID;
 	}
 
+	/** Get the scientific name for the organism associated with the sequence, if any.
+	 * @return the scientific name or absent().
+	 */
 	public Optional<String> getScientificName() {
 		return scientificName;
 	}
@@ -121,23 +134,13 @@ public class SequenceMetadata {
 		return true;
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder2 = new StringBuilder();
-		builder2.append("SequenceMetadata [id=");
-		builder2.append(id);
-		builder2.append(", sourceID=");
-		builder2.append(sourceID);
-		builder2.append(", scientificName=");
-		builder2.append(scientificName);
-		builder2.append(", relatedIDs=");
-		builder2.append(relatedIDs);
-		builder2.append(", creation=");
-		builder2.append(creation);
-		builder2.append("]");
-		return builder2.toString();
-	}
-
+	/** Get a {@link SequenceMetadata} builder.
+	 * @param id the ID of the sequence.
+	 * @param sourceID the ID of the sequence in the source database from which the sequence
+	 * originates.
+	 * @param creation the time the sequence record was created.
+	 * @return a new {@link SequenceMetadata} builder.
+	 */
 	public static Builder getBuilder(
 			final String id,
 			final String sourceID,
@@ -145,6 +148,10 @@ public class SequenceMetadata {
 		return new Builder(id, sourceID, creation);
 	}
 	
+	/** A builder for {@link SequenceMetadata}.
+	 * @author gaprice@lbl.gov
+	 *
+	 */
 	public static class Builder {
 		
 		private final String id;
@@ -162,6 +169,11 @@ public class SequenceMetadata {
 			this.creation = creation;
 		}
 		
+		/** Add a scientific name for the sequence to the builder. Ignored if null or
+		 * whitespace only.
+		 * @param scientificName the scientific name.
+		 * @return this builder.
+		 */
 		public Builder withNullableScientificName(final String scientificName) {
 			if (isNullOrEmpty(scientificName)) {
 				this.scientificName = null;
@@ -171,6 +183,11 @@ public class SequenceMetadata {
 			return this;
 		}
 		
+		/** Add a related ID for the sequence to the builder.
+		 * @param idType the type of the ID, for example NBCI or ReferenceGenome.
+		 * @param id the ID.
+		 * @return this builder.
+		 */
 		public Builder withRelatedID(final String idType, final String id) {
 			exceptOnEmpty(idType, "idType");
 			exceptOnEmpty(id, "id");
@@ -178,6 +195,9 @@ public class SequenceMetadata {
 			return this;
 		}
 		
+		/** Builder the {@link SequenceMetadata}.
+		 * @return the metadata.
+		 */
 		public SequenceMetadata build() {
 			return new SequenceMetadata(id, sourceID, creation, scientificName, relatedIDs);
 		}
