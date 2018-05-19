@@ -5,22 +5,21 @@ import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 import static us.kbase.assemblyhomology.util.Util.checkNoNullsOrEmpties;
 
 import java.nio.file.Paths;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import org.bson.Document;
 
 import com.mongodb.ErrorCategory;
-import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.FindIterable;
@@ -53,8 +52,6 @@ import us.kbase.assemblyhomology.storage.exceptions.StorageInitException;
  *
  */
 public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
-
-	//TODO TEST
 
 	/* Don't use mongo built in object mapping to create the returned objects
 	 * since that tightly couples the classes to the storage implementation.
@@ -391,11 +388,11 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	@Override
 	public void saveSequenceMetadata(
-			final NamespaceID namespace,
+			final NamespaceID namespaceID,
 			final LoadID loadID,
 			final Collection<SequenceMetadata> seqmeta)
 			throws AssemblyHomologyStorageException {
-		checkNotNull(namespace, "namespace");
+		checkNotNull(namespaceID, "namespaceID");
 		checkNotNull(loadID, "loadID");
 		checkNoNullsInCollection(seqmeta, "seqmeta");
 		// if loop too slow try https://docs.mongodb.com/manual/reference/method/Bulk/
@@ -407,7 +404,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 					.append(Fields.SEQMETA_RELATED_IDS, meta.getRelatedIDs());
 			
 			final Document query = new Document()
-					.append(Fields.SEQMETA_NAMESPACE_ID, namespace.getName())
+					.append(Fields.SEQMETA_NAMESPACE_ID, namespaceID.getName())
 					.append(Fields.SEQMETA_LOAD_ID, loadID.getName())
 					.append(Fields.SEQMETA_SEQUENCE_ID, meta.getID());
 			upsert(COL_SEQUENCE_METADATA, query, dmeta);
@@ -425,37 +422,44 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	@Override
 	public List<SequenceMetadata> getSequenceMetadata(
-			final NamespaceID namespace,
+			final NamespaceID namespaceID,
 			final LoadID loadID,
 			final List<String> sequenceIDs)
-			throws AssemblyHomologyStorageException, NoSuchSequenceException,
-				NoSuchNamespaceException {
-		checkNotNull(namespace, "namespace");
+			throws AssemblyHomologyStorageException, NoSuchSequenceException {
+		checkNotNull(namespaceID, "namespaceID");
+		checkNotNull(loadID, "loadID");
 		checkNoNullsOrEmpties(sequenceIDs, "sequenceIDs");
 		final Document query = new Document()
-				.append(Fields.SEQMETA_NAMESPACE_ID, namespace.getName())
+				.append(Fields.SEQMETA_NAMESPACE_ID, namespaceID.getName())
 				.append(Fields.SEQMETA_LOAD_ID, loadID.getName())
 				.append(Fields.SEQMETA_SEQUENCE_ID, new Document("$in", sequenceIDs));
-		final List<SequenceMetadata> ret = new LinkedList<>();
 		try {
 			final FindIterable<Document> docs = db.getCollection(
 					COL_SEQUENCE_METADATA).find(query);
+			final Map<String, SequenceMetadata> idToSeq = new HashMap<>();
 			for (final Document d: docs) {
-				ret.add(toSequenceMeta(d));
+				final SequenceMetadata sm = toSequenceMeta(d);
+				idToSeq.put(sm.getID(), sm);
 			}
-			if (ret.size() != sequenceIDs.size()) {
-				//TODO ERRHANDLING be more specific - provide some sequence IDs
+			if (idToSeq.size() != sequenceIDs.size()) {
+				final Set<String> missing = new HashSet<>(sequenceIDs);
+				missing.removeAll(idToSeq.keySet());
 				throw new NoSuchSequenceException(String.format(
-						"Missing sequence in namespace %s with load id %s",
-						namespace.getName(), loadID.getName()));
+						"Missing sequence(s) in namespace %s with load id %s: %s",
+						namespaceID.getName(), loadID.getName(), getUpTo3SeqIDs(missing)));
 			}
-			return ret;
+			return sequenceIDs.stream().map(id -> idToSeq.get(id)).collect(Collectors.toList());
 		} catch (MongoException e) {
 			throw new AssemblyHomologyStorageException(
 					"Connection to database failed: " + e.getMessage(), e);
 		}
 	}
 	
+	private String getUpTo3SeqIDs(final Set<String> missing) {
+		return String.join(" ", new TreeSet<>(missing).stream().limit(3)
+				.collect(Collectors.toList()));
+	}
+
 	private SequenceMetadata toSequenceMeta(final Document d) {
 		final SequenceMetadata.Builder b = SequenceMetadata.getBuilder(
 				d.getString(Fields.SEQMETA_SEQUENCE_ID),
@@ -470,65 +474,4 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		}
 		return b.build();
 	}
-
-	public static void main(final String[] args) throws Exception {
-		@SuppressWarnings("resource")
-		final MongoClient mc = new MongoClient("localhost");
-		final AssemblyHomologyStorage storage = new MongoAssemblyHomologyStorage(
-				mc.getDatabase("assemblyhomology"));
-		
-		
-		final Namespace ns = Namespace.getBuilder(
-				new NamespaceID("foo"),
-				new MinHashSketchDatabase(
-						new MinHashSketchDBName("dbname"),
-						new MinHashImplementationName("Mash"),
-						MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
-						new MinHashDBLocation(Paths.get("/tmp/fake")),
-						2400),
-				new LoadID("some UUID"),
-				Instant.ofEpochMilli(20000))
-				.withNullableDescription("desc")
-				.withNullableSourceDatabaseID("CI Refseq")
-				.withNullableDataSourceID(new DataSourceID("some ds id"))
-				.build();
-		
-		storage.createOrReplaceNamespace(ns);
-		
-		System.out.println(storage.getNamespace(new NamespaceID("foo")));
-		
-		final Namespace ns2 = Namespace.getBuilder(
-				new NamespaceID("foo"),
-				new MinHashSketchDatabase(
-						new MinHashSketchDBName("dbname"),
-						new MinHashImplementationName("Mash"),
-						MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
-						new MinHashDBLocation(Paths.get("/tmp/fake2")),
-						2400),
-				new LoadID("load1"),
-				Instant.ofEpochMilli(30000))
-				.withNullableDescription("desc2")
-				.withNullableSourceDatabaseID("CI Refseq2")
-				.build();
-		
-		storage.createOrReplaceNamespace(ns2);
-		
-		System.out.println(storage.getNamespace(new NamespaceID("foo")));
-		
-		final List<SequenceMetadata> seqmeta = Arrays.asList(
-				SequenceMetadata.getBuilder("smfoo", "sid", Instant.ofEpochMilli(10000))
-						.withNullableScientificName("sciname")
-						.withRelatedID("Genome", "5/6/7")
-						.withRelatedID("NCBI", "GCF_stuff")
-						.build(),
-				SequenceMetadata.getBuilder("smfoo2", "sid2", Instant.ofEpochMilli(20000))
-						.build());
-		
-		storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("load1"), seqmeta);
-		
-		System.out.println(storage.getSequenceMetadata(
-				new NamespaceID("foo"), Arrays.asList("smfoo", "smfoo2")));
-				
-	}
-
 }
