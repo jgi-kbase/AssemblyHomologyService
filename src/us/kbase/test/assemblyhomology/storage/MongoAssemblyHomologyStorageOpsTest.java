@@ -8,6 +8,10 @@ import static us.kbase.test.assemblyhomology.TestCommon.set;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -22,7 +26,9 @@ import us.kbase.assemblyhomology.core.DataSourceID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
+import us.kbase.assemblyhomology.core.SequenceMetadata;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
+import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
@@ -272,6 +278,16 @@ public class MongoAssemblyHomologyStorageOpsTest {
 	}
 	
 	@Test
+	public void createNamespaceFail() {
+		try {
+			manager.storage.createOrReplaceNamespace(null);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, new NullPointerException("namespace"));
+		}
+	}
+	
+	@Test
 	public void getNamespaceFail() throws Exception {
 		final MongoAssemblyHomologyStorage s = manager.storage;
 		final Namespace ns = Namespace.getBuilder(
@@ -340,6 +356,284 @@ public class MongoAssemblyHomologyStorageOpsTest {
 			final Exception expected) {
 		try {
 			storage.getNamespace(nsid);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, expected);
+		}
+	}
+	
+	@Test
+	public void sequenceMetaSaveAndGet() throws Exception {
+		final SequenceMetadata sm1 = SequenceMetadata.getBuilder(
+				"id1", "sid1", Instant.ofEpochMilli(10000))
+				.build();
+		
+		final SequenceMetadata sm2 = SequenceMetadata.getBuilder(
+				"id2", "sid2", Instant.ofEpochMilli(20000))
+				.withNullableScientificName("sciname")
+				.withRelatedID("foo", "bar")
+				.withRelatedID("baz", "bat")
+				.build();
+		
+		manager.storage.saveSequenceMetadata(new NamespaceID("ns"), new LoadID("l"),
+				Arrays.asList(sm1, sm2));
+		
+		List<SequenceMetadata> got = manager.storage.getSequenceMetadata(
+				new NamespaceID("ns"), new LoadID("l"), Arrays.asList("id2", "id1"));
+		
+		assertThat("incorrect seqs", got, is(Arrays.asList(
+				SequenceMetadata.getBuilder("id2", "sid2", Instant.ofEpochMilli(20000))
+						.withNullableScientificName("sciname")
+						.withRelatedID("foo", "bar")
+						.withRelatedID("baz", "bat")
+						.build(),
+				SequenceMetadata.getBuilder("id1", "sid1", Instant.ofEpochMilli(10000)).build())));
+		
+		got = manager.storage.getSequenceMetadata(
+				new NamespaceID("ns"), new LoadID("l"), Arrays.asList("id2"));
+		
+		assertThat("incorrect seqs", got, is(Arrays.asList(
+				SequenceMetadata.getBuilder("id2", "sid2", Instant.ofEpochMilli(20000))
+						.withNullableScientificName("sciname")
+						.withRelatedID("foo", "bar")
+						.withRelatedID("baz", "bat")
+						.build())));
+		
+		got = manager.storage.getSequenceMetadata(
+				new NamespaceID("ns"), new LoadID("l"), Arrays.asList("id1"));
+		
+		assertThat("incorrect seqs", got, is(Arrays.asList(
+				SequenceMetadata.getBuilder("id1", "sid1", Instant.ofEpochMilli(10000)).build())));
+	}
+	
+	@Test
+	public void sequenceMetaSaveAndGetWithoutLoadID() throws Exception {
+		final SequenceMetadata sm1 = SequenceMetadata.getBuilder(
+				"id1", "sid1", Instant.ofEpochMilli(10000))
+				.build();
+		
+		manager.storage.createOrReplaceNamespace(Namespace.getBuilder(
+				new NamespaceID("foo"),
+				new MinHashSketchDatabase(
+						new MinHashSketchDBName("foo"),
+						new MinHashImplementationName("mash"),
+						MinHashParameters.getBuilder(31).withScaling(2500).build(),
+						new MinHashDBLocation(EMPTY_FILE_MSH),
+						16),
+				new LoadID("bar"),
+				Instant.ofEpochMilli(10000))
+				.build());
+		
+		manager.storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("bar"),
+				Arrays.asList(sm1));
+		
+		final List<SequenceMetadata> got = manager.storage.getSequenceMetadata(
+				new NamespaceID("foo"), Arrays.asList("id1"));
+		
+		assertThat("incorrect seqs", got, is(Arrays.asList(
+				SequenceMetadata.getBuilder("id1", "sid1", Instant.ofEpochMilli(10000)).build())));
+	}
+	
+	@Test
+	public void sequenceMetaReplace() throws Exception {
+		final SequenceMetadata sm1 = SequenceMetadata.getBuilder(
+				"id1", "sid1", Instant.ofEpochMilli(10000))
+				.build();
+		
+		manager.storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("bar"),
+				Arrays.asList(sm1));
+		
+		final SequenceMetadata sm2 = SequenceMetadata.getBuilder(
+				"id1", "sid2", Instant.ofEpochMilli(20000))
+				.withNullableScientificName("sciname")
+				.withRelatedID("foo", "bar")
+				.withRelatedID("baz", "bat")
+				.build();
+		
+		manager.storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("bar"),
+				Arrays.asList(sm2));
+		
+		final List<SequenceMetadata> got = manager.storage.getSequenceMetadata(
+				new NamespaceID("foo"), new LoadID("bar"), Arrays.asList("id1"));
+		
+		assertThat("incorrect seqs", got, is(Arrays.asList(
+				SequenceMetadata.getBuilder("id1", "sid2", Instant.ofEpochMilli(20000))
+						.withNullableScientificName("sciname")
+						.withRelatedID("foo", "bar")
+						.withRelatedID("baz", "bat")
+						.build())));
+	}
+	
+	@Test
+	public void sequenceMetadataEmpty() throws Exception {
+		// just test this doesn't fail
+		manager.storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("bar"),
+				Collections.emptyList());
+	}
+	
+	@Test
+	public void saveSequenceMetadataFail() throws Exception {
+		final MongoAssemblyHomologyStorage storage = manager.storage;
+		final NamespaceID n = new NamespaceID("baz");
+		final LoadID l = new LoadID("bar");
+		final SequenceMetadata sm1 = SequenceMetadata.getBuilder(
+				"id1", "sid1", Instant.ofEpochMilli(10000))
+				.build();
+		final List<SequenceMetadata> s = Arrays.asList(sm1);
+		
+		failSaveSequenceMetadata(storage, null, l, s, new NullPointerException("namespaceID"));
+		failSaveSequenceMetadata(storage, n, null, s, new NullPointerException("loadID"));
+		failSaveSequenceMetadata(storage, n, l, null, new NullPointerException("seqmeta"));
+		failSaveSequenceMetadata(storage, n, l, Arrays.asList(sm1, null),
+				new NullPointerException("Null item in collection seqmeta"));
+	}
+	
+	private void failSaveSequenceMetadata(
+			final MongoAssemblyHomologyStorage storage,
+			final NamespaceID nsID,
+			final LoadID loadID,
+			final Collection<SequenceMetadata> seqs,
+			final Exception expected) {
+		try {
+			storage.saveSequenceMetadata(nsID, loadID, seqs);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, expected);
+		}
+	}
+	
+	@Test
+	public void getSequenceMetadataFailBadInput() throws Exception {
+		final MongoAssemblyHomologyStorage storage = manager.storage;
+		final NamespaceID n = new NamespaceID("foo");
+		final LoadID l = new LoadID("bar");
+		final List<String> i = Arrays.asList("id1");
+		
+		storage.createOrReplaceNamespace(Namespace.getBuilder(
+				new NamespaceID("foo"),
+				new MinHashSketchDatabase(
+						new MinHashSketchDBName("foo"),
+						new MinHashImplementationName("mash"),
+						MinHashParameters.getBuilder(31).withScaling(2500).build(),
+						new MinHashDBLocation(EMPTY_FILE_MSH),
+						16),
+				new LoadID("bar"),
+				Instant.ofEpochMilli(10000))
+				.build());
+		
+		failGetSequenceMetadata(storage, null, i, new NullPointerException("namespaceID"));
+		failGetSequenceMetadata(storage, null, l, i, new NullPointerException("namespaceID"));
+		failGetSequenceMetadata(storage, n, null, i, new NullPointerException("loadID"));
+		failGetSequenceMetadata(storage, n, null, new NullPointerException("sequenceIDs"));
+		failGetSequenceMetadata(storage, n, l, null, new NullPointerException("sequenceIDs"));
+		failGetSequenceMetadata(storage, n, Arrays.asList("id", null),
+				new IllegalArgumentException(
+						"Null or whitespace only string in collection sequenceIDs"));
+		failGetSequenceMetadata(storage, n, l, Arrays.asList("id", null),
+				new IllegalArgumentException(
+						"Null or whitespace only string in collection sequenceIDs"));
+		failGetSequenceMetadata(storage, n, Arrays.asList("id", "  \t   \n "),
+				new IllegalArgumentException(
+						"Null or whitespace only string in collection sequenceIDs"));
+		failGetSequenceMetadata(storage, n, l, Arrays.asList("id", "  \t   \n "),
+				new IllegalArgumentException(
+						"Null or whitespace only string in collection sequenceIDs"));
+	}
+	
+	@Test
+	public void getSequenceMetadataFailNoSuchNamespace() throws Exception {
+		final MongoAssemblyHomologyStorage storage = manager.storage;
+		final NamespaceID n = new NamespaceID("foo1");
+		final LoadID l = new LoadID("bar");
+		final SequenceMetadata sm1 = SequenceMetadata.getBuilder(
+				"id1", "sid1", Instant.ofEpochMilli(10000))
+				.build();
+		final List<String> i = Arrays.asList("id1");
+		
+		storage.saveSequenceMetadata(n, l, Arrays.asList(sm1));
+		
+		storage.createOrReplaceNamespace(Namespace.getBuilder(
+				new NamespaceID("foo"),
+				new MinHashSketchDatabase(
+						new MinHashSketchDBName("foo"),
+						new MinHashImplementationName("mash"),
+						MinHashParameters.getBuilder(31).withScaling(2500).build(),
+						new MinHashDBLocation(EMPTY_FILE_MSH),
+						16),
+				new LoadID("bar"),
+				Instant.ofEpochMilli(10000))
+				.build());
+		
+		failGetSequenceMetadata(storage, n, i, new NoSuchNamespaceException("foo1"));
+	}
+	
+	@Test
+	public void getSequenceMetadataFailNoSuchSequence() throws Exception {
+		final MongoAssemblyHomologyStorage storage = manager.storage;
+		final NamespaceID n = new NamespaceID("foo");
+		final LoadID l = new LoadID("bar");
+		
+		storage.saveSequenceMetadata(n, l, Arrays.asList(SequenceMetadata.getBuilder(
+				"id1", "sid1", Instant.ofEpochMilli(10000))
+				.build()));
+		
+		storage.saveSequenceMetadata(new NamespaceID("other"), l,
+				Arrays.asList(SequenceMetadata.getBuilder(
+						"id2", "sid2", Instant.ofEpochMilli(10000))
+						.build()));
+		
+		storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("other"),
+				Arrays.asList(SequenceMetadata.getBuilder(
+						"id3", "sid3", Instant.ofEpochMilli(10000))
+						.build()));
+		
+		storage.createOrReplaceNamespace(Namespace.getBuilder(
+				new NamespaceID("foo"),
+				new MinHashSketchDatabase(
+						new MinHashSketchDBName("foo"),
+						new MinHashImplementationName("mash"),
+						MinHashParameters.getBuilder(31).withScaling(2500).build(),
+						new MinHashDBLocation(EMPTY_FILE_MSH),
+						16),
+				new LoadID("bar"),
+				Instant.ofEpochMilli(10000))
+				.build());
+		
+		failGetSequenceMetadata(storage, n, Arrays.asList("id1", "id2"),
+				new NoSuchSequenceException(
+						"Missing sequence(s) in namespace foo with load id bar: id2"));
+		failGetSequenceMetadata(storage, n, l, Arrays.asList("id1", "id2"),
+				new NoSuchSequenceException(
+						"Missing sequence(s) in namespace foo with load id bar: id2"));
+		failGetSequenceMetadata(storage, n, Arrays.asList("id2", "id4", "id5", "id1", "id3"),
+				new NoSuchSequenceException(
+						"Missing sequence(s) in namespace foo with load id bar: id2 id3 id4"));
+		failGetSequenceMetadata(storage, n, l, Arrays.asList("id2", "id4", "id5", "id1", "id3"),
+				new NoSuchSequenceException(
+						"Missing sequence(s) in namespace foo with load id bar: id2 id3 id4"));
+	}
+	
+	private void failGetSequenceMetadata(
+			final MongoAssemblyHomologyStorage storage,
+			final NamespaceID nsID,
+			final List<String> ids,
+			final Exception expected) {
+		try {
+			storage.getSequenceMetadata(nsID, ids);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, expected);
+		}
+	}
+	
+	private void failGetSequenceMetadata(
+			final MongoAssemblyHomologyStorage storage,
+			final NamespaceID nsID,
+			final LoadID loadID,
+			final List<String> ids,
+			final Exception expected) {
+		try {
+			storage.getSequenceMetadata(nsID, loadID, ids);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);
