@@ -1,4 +1,4 @@
-package us.kbase.assemblyhomology.core;
+package us.kbase.assemblyhomology.build;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
@@ -15,6 +15,7 @@ import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoDatabase;
 
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
+import us.kbase.assemblyhomology.core.AssemblyHomology;
 import us.kbase.assemblyhomology.minhash.mash.MashFactory;
 import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.StorageInitException;

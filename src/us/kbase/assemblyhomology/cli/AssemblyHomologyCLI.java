@@ -18,9 +18,9 @@ import com.mongodb.MongoClient;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import us.kbase.assemblyhomology.build.AssemblyHomologyBuilder;
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfigurationException;
-import us.kbase.assemblyhomology.core.AssemblyHomologyBuilder;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
