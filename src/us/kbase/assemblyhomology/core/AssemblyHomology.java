@@ -4,8 +4,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,10 +17,10 @@ import java.util.stream.Collectors;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Optional;
-import com.mongodb.MongoClient;
 
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
-import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
@@ -34,14 +32,11 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
-import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
-import us.kbase.assemblyhomology.minhash.mash.MashFactory;
 import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
-import us.kbase.assemblyhomology.storage.mongo.MongoAssemblyHomologyStorage;
 
 /** The core class in the AssemblyHomology software. Handles integrating the data from the
  * storage system with the data returned when matching a query sequence against a sketch database
@@ -50,8 +45,6 @@ import us.kbase.assemblyhomology.storage.mongo.MongoAssemblyHomologyStorage;
  *
  */
 public class AssemblyHomology {
-	
-	//TODO TEST
 	
 	private static final int DEFAULT_RETURN = 10;
 	private static final int MAX_RETURN = 100;
@@ -153,9 +146,11 @@ public class AssemblyHomology {
 	 * @throws NoSuchNamespaceException if one of the namespace IDs doesn't exist in the system.
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
-	 * @throws IllegalParameterException TODO better exception
-	 * @throws MinHashException TODO better exception
 	 * @throws InvalidSketchException if the input sketch is invalid.
+	 * @throws IncompatibleNamespacesException if the selected namespaces have different
+	 * MinHash implementations.
+	 * @throws IncompatibleSketchesException if the input sketch's parameters are not
+	 * compatible with any of the selected namespaces' sketch databases.
 	 */
 	public SequenceMatches measureDistance(
 			final Set<NamespaceID> namespaceIDs,
@@ -163,9 +158,13 @@ public class AssemblyHomology {
 			int returnCount,
 			boolean strict)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException,
-				IllegalParameterException, MinHashException, InvalidSketchException {
+				InvalidSketchException, IncompatibleNamespacesException,
+				IncompatibleSketchesException {
 		checkNoNullsInCollection(namespaceIDs, "namespaceIDs");
 		checkNotNull(sketchDB, "sketchDB");
+		if (namespaceIDs.isEmpty()) {
+			throw new IllegalArgumentException("No namespace IDs provided");
+		}
 		if (returnCount > MAX_RETURN || returnCount < 1) {
 			returnCount = DEFAULT_RETURN;
 		}
@@ -179,7 +178,7 @@ public class AssemblyHomology {
 		final Map<Namespace, Map<String, SequenceMetadata>> idToSeq = 
 				getSequenceMetadata(idToNS, distret.dists);
 		final List<SequenceDistanceAndMetadata> distNMeta = new LinkedList<>();
-		for (final MinHashDistance d: distret.dists.getDistances()) {
+		for (final MinHashDistance d: distret.dists) {
 			final Namespace ns = idToNS.get(d.getReferenceDBName().getName());
 			final SequenceMetadata seq = idToSeq.get(ns).get(d.getSequenceID());
 			distNMeta.add(new SequenceDistanceAndMetadata(ns.getID(), d, seq));
@@ -192,10 +191,10 @@ public class AssemblyHomology {
 
 	private Map<Namespace, Map<String, SequenceMetadata>> getSequenceMetadata(
 			final Map<String, Namespace> idToNS,
-			final MinHashDistanceSet dists)
+			final Set<MinHashDistance> dists)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
 		final Map<Namespace, List<String>> ids = new HashMap<>();
-		for (final MinHashDistance dist: dists.getDistances()) {
+		for (final MinHashDistance dist: dists) {
 			final Namespace ns = idToNS.get(dist.getReferenceDBName().getName());
 			if (!ids.containsKey(ns)) {
 				ids.put(ns, new LinkedList<>());
@@ -220,11 +219,11 @@ public class AssemblyHomology {
 
 	private static class DistReturn {
 		
-		private final MinHashDistanceSet dists;
-		private final List<String> warnings;
+		private final Set<MinHashDistance> dists;
+		private final Set<String> warnings;
 		
-		private DistReturn(MinHashDistanceSet dists, List<String> warnings) {
-			this.dists = dists;
+		private DistReturn(final Set<MinHashDistance> set, final Set<String> warnings) {
+			this.dists = set;
 			this.warnings = warnings;
 		}
 	}
@@ -235,7 +234,41 @@ public class AssemblyHomology {
 			final MinHashImplementation impl,
 			int returnCount,
 			final boolean strict)
-			throws IllegalParameterException, MinHashException, InvalidSketchException {
+			throws InvalidSketchException, IncompatibleSketchesException {
+		final MinHashSketchDatabase query = getQueryDB(sketchDB, impl);
+		final Set<String> warnings = new HashSet<>();
+		for (final Namespace ns: namespaces) {
+			try {
+				warnings.addAll(ns.getSketchDatabase().checkIsQueriableBy(query, strict).stream()
+						.map(s -> "Namespace " + ns.getID().getName() + ": " + s)
+						.collect(Collectors.toList()));
+			} catch (
+					us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException e) {
+				throw new IncompatibleSketchesException(String.format(
+						"Unable to query namespace %s with input sketch: %s",
+						ns.getID().getName(), e.getMessage()), e);
+			}
+		}
+		final Set<MinHashSketchDatabase> dbs = namespaces.stream()
+				.map(n -> n.getSketchDatabase()).collect(Collectors.toSet());
+		final MinHashDistanceSet dists;
+		try {
+			dists = impl.computeDistance(query, dbs, returnCount, strict);
+		} catch (MinHashException e) {
+			/* At this point minhash should work, and the user input should be ok.
+			 * Hard to know how to respond to exceptions. For now just bail.
+			 * when failure modes are better understood / logged, could expand
+			 * the exception hierarchy and responses.
+			 */
+			throw new IllegalStateException("Unexpected error running MinHash implementation " +
+					impl.getImplementationInformation().getImplementationName().getName(), e);
+		}
+		// ignore warnings since we gather them above
+		return new DistReturn(dists.getDistances(), warnings);
+	}
+
+	private MinHashSketchDatabase getQueryDB(final Path sketchDB, final MinHashImplementation impl)
+			throws InvalidSketchException {
 		final MinHashSketchDatabase query;
 		try {
 			query = impl.getDatabase(
@@ -256,41 +289,18 @@ public class AssemblyHomology {
 		}
 		if (query.getSequenceCount() != 1) {
 			throw new InvalidSketchException(
-					"Query sketch database must have exactly one query");
+					"Query sketch database must have exactly one sketch");
 		}
-		final List<String> warnings = new LinkedList<>();
-		for (final Namespace ns: namespaces) {
-			try {
-				warnings.addAll(ns.getSketchDatabase().checkIsQueriableBy(query, strict).stream()
-						.map(s -> "Namespace " + ns.getID().getName() + ": " + s)
-						.collect(Collectors.toList()));
-			} catch (IncompatibleSketchesException e) {
-				//TODO NOW CODE more specific exception
-				throw new IllegalParameterException(String.format(
-						"Unable to query namespace %s with input sketch: %s",
-						ns.getID().getName(), e.getMessage()), e);
-			}
-		}
-		final List<MinHashSketchDatabase> dbs = namespaces.stream()
-				.map(n -> n.getSketchDatabase()).collect(Collectors.toList());
-		final MinHashDistanceSet dists;
-		try {
-			dists = impl.computeDistance(query, dbs, returnCount, strict);
-		} catch (MinHashException e) {
-			//TODO NOW CODE better exception, need to try different failure modes, maybe need a set of exceptions
-			// that being said, everything should be ok from the user point of view now, so just rethrow
-			throw e;
-		}
-		return new DistReturn(dists, warnings);
+		return query;
 	}
 
 	private MinHashImplementation getImplementation(final Set<Namespace> ns)
-			throws MinHashInitException, IllegalParameterException {
+			throws IncompatibleNamespacesException {
 		final Set<MinHashImplementationName> implnames = ns.stream()
 				.map(n -> n.getSketchDatabase().getImplementationName())
 				.collect(Collectors.toSet());
 		if (implnames.size() != 1) {
-			throw new IllegalParameterException( //TODO NOW better exception
+			throw new IncompatibleNamespacesException(
 					"The selected namespaces must share the same implementation");
 		}
 		final String impl = implnames.iterator().next().getName().toLowerCase();
@@ -299,37 +309,11 @@ public class AssemblyHomology {
 					"Application is misconfigured. Implementation %s stored in database but " +
 					"not available.", impl));
 		}
-		//TODO NOW CODE catch and wrap min hash exception
-		return impls.get(impl).getImplementation(tempFileDirectory);
-	}
-	
-	public static void main(final String[] args) throws Exception {
-		@SuppressWarnings("resource")
-		final MongoClient mc = new MongoClient("localhost");
-		final AssemblyHomologyStorage storage = new MongoAssemblyHomologyStorage(
-				mc.getDatabase("assembly_homology_test"));
-		
-		final AssemblyHomology ah = new AssemblyHomology(
-				storage,
-				new HashSet<>(Arrays.asList(new MashFactory())),
-				Paths.get("./temp_delete"));
-		
-		final NamespaceID nsid = new NamespaceID("mynamespace");
-		System.out.println(ah.getNamespace(nsid));
-		
-		final SequenceMatches dists = ah.measureDistance(
-				new HashSet<>(Arrays.asList(nsid)),
-				Paths.get("/home/crusherofheads/kb_refseq_sourmash/" +
-						"kb_refseq_ci_1000_15792_446_1.msh"),
-				10,
-				false);
-		System.out.println(dists);
-		System.out.println(dists.getNamespaces());
-		System.out.println(dists.getImplementationInformation());
-		System.out.println();
-		for (final SequenceDistanceAndMetadata s: dists.getDistances()) {
-			System.out.println(s);
+		try {
+			return impls.get(impl).getImplementation(tempFileDirectory);
+		} catch (MinHashInitException e) {
+			throw new IllegalStateException(String.format("Application is misconfigured. " +
+					"Error attempting to build the %s MinHash implementation.", impl), e);
 		}
 	}
-
 }

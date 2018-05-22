@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
+import static us.kbase.test.assemblyhomology.TestCommon.set;
 
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -125,7 +126,7 @@ public class SequenceMatchesTest {
 								SequenceMetadata.getBuilder(
 										"sid2", "source2", Instant.ofEpochMilli(20000)).build())
 						),
-				Arrays.asList("warn1", "warn2"));
+				set("warn1", "warn2"));
 		
 		final Set<Namespace> expectedNS = new HashSet<>(Arrays.asList(
 				Namespace.getBuilder(new NamespaceID("foo"),
@@ -168,7 +169,7 @@ public class SequenceMatchesTest {
 				new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"), "2.0", Paths.get("msh"))));
 		assertThat("incorrect dists", sm.getDistances(), is(expectedDist));
-		assertThat("incorrect warnings", sm.getWarnings(), is(Arrays.asList("warn1", "warn2")));
+		assertThat("incorrect warnings", sm.getWarnings(), is(set("warn1", "warn2")));
 	}
 	
 	@Test
@@ -194,7 +195,7 @@ public class SequenceMatchesTest {
 		final MinHashImplementationInformation ii = new MinHashImplementationInformation(
 				new MinHashImplementationName("mash"), "2.0", Paths.get("msh"));
 		final List<SequenceDistanceAndMetadata> d = Arrays.asList(sm);
-		final List<String> w = Arrays.asList("warn1");
+		final Set<String> w = set("warn1");
 		
 		failSeqMatchConstruct(null, ii, d, w, new NullPointerException("namespaces"));
 		failSeqMatchConstruct(new HashSet<>(Arrays.asList(ns, null)), ii, d, w,
@@ -205,10 +206,10 @@ public class SequenceMatchesTest {
 		failSeqMatchConstruct(nss, ii, Arrays.asList(sm, null), w,
 				new NullPointerException("Null item in collection distances"));
 		failSeqMatchConstruct(nss, ii, d, null, new NullPointerException("warnings"));
-		failSeqMatchConstruct(nss, ii, d, Arrays.asList("warn1", null),
+		failSeqMatchConstruct(nss, ii, d, set("warn1", null),
 				new IllegalArgumentException(
 						"Null or whitespace only string in collection warnings"));
-		failSeqMatchConstruct(nss, ii, d, Arrays.asList("warn1", "  \t   \n   "),
+		failSeqMatchConstruct(nss, ii, d, set("warn1", "  \t   \n   "),
 				new IllegalArgumentException(
 						"Null or whitespace only string in collection warnings"));
 	}
@@ -217,7 +218,7 @@ public class SequenceMatchesTest {
 			final Set<Namespace> namespaces,
 			final MinHashImplementationInformation implementationInformation,
 			final List<SequenceDistanceAndMetadata> distances,
-			final List<String> warnings,
+			final Set<String> warnings,
 			final Exception expected) {
 		try {
 			new SequenceMatches(namespaces, implementationInformation, distances, warnings);
@@ -265,7 +266,7 @@ public class SequenceMatchesTest {
 				SequenceMetadata.getBuilder(
 						"sid2", "source2", Instant.ofEpochMilli(20000)).build());
 		
-		final List<String> warnings = new LinkedList<>();
+		final Set<String> warnings = new HashSet<>();
 		warnings.add("warn1");
 		
 		final SequenceMatches sm = new SequenceMatches(
@@ -285,7 +286,7 @@ public class SequenceMatchesTest {
 				new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"), "2.0", Paths.get("msh"))));
 		assertThat("incorrect dists", sm.getDistances(), is(Arrays.asList(dist1)));
-		assertThat("incorrect warnings", sm.getWarnings(), is(Arrays.asList("warn1")));
+		assertThat("incorrect warnings", sm.getWarnings(), is(set("warn1")));
 	}
 	
 	@Test
@@ -312,7 +313,7 @@ public class SequenceMatchesTest {
 								new MinHashDistance(new MinHashSketchDBName("foo"), "sid", 0.34),
 								SequenceMetadata.getBuilder(
 										"sid", "source", Instant.ofEpochMilli(10000)).build())),
-				Arrays.asList("warn1"));
+				set("warn1"));
 		
 		try {
 			sm.getNamespaces().add(

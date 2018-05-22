@@ -26,7 +26,7 @@ public class SequenceMatches {
 	private final Set<Namespace> namespaces;
 	private final MinHashImplementationInformation implementationInformation;
 	private final List<SequenceDistanceAndMetadata> distances;
-	private final List<String> warnings;
+	private final Set<String> warnings;
 	
 	/** Create a set of matches.
 	 * @param namespaces the namespaces containing sequences that were matched against.
@@ -39,7 +39,7 @@ public class SequenceMatches {
 			final Set<Namespace> namespaces,
 			final MinHashImplementationInformation implementationInformation,
 			final List<SequenceDistanceAndMetadata> distances,
-			final List<String> warnings) {
+			final Set<String> warnings) {
 		checkNoNullsInCollection(namespaces, "namespaces");
 		checkNotNull(implementationInformation, "implementationInformation");
 		checkNoNullsInCollection(distances, "distances");
@@ -47,7 +47,7 @@ public class SequenceMatches {
 		this.namespaces = Collections.unmodifiableSet(new HashSet<>(namespaces));
 		this.implementationInformation = implementationInformation;
 		this.distances = Collections.unmodifiableList(new LinkedList<>(distances));
-		this.warnings = Collections.unmodifiableList(new LinkedList<>(warnings));
+		this.warnings = Collections.unmodifiableSet(new HashSet<>(warnings));
 	}
 
 	/** Get the namespaces containing sequences that were matched against.
@@ -74,7 +74,7 @@ public class SequenceMatches {
 	/** Get any warnings that were generated during matches.
 	 * @return the warnings, if any.
 	 */
-	public List<String> getWarnings() {
+	public Set<String> getWarnings() {
 		return warnings;
 	}
 	
