@@ -120,7 +120,7 @@ public class AssemblyHomology {
 		
 		final Set<Namespace> namespaces = getNamespaces(namespaceIDs);
 		final Map<String, Namespace> idToNS = namespaces.stream()
-				.collect(Collectors.toMap(n -> n.getId().getName(), n -> n));
+				.collect(Collectors.toMap(n -> n.getID().getName(), n -> n));
 		final MinHashImplementation impl = getImplementation(namespaces);
 		final DistReturn distret = getDistances(
 				namespaces, sketchDB, impl, returnCount, strict);
@@ -130,7 +130,7 @@ public class AssemblyHomology {
 		for (final MinHashDistance d: distret.dists.getDistances()) {
 			final Namespace ns = idToNS.get(d.getReferenceDBName().getName());
 			final SequenceMetadata seq = idToSeq.get(ns).get(d.getSequenceID());
-			distNMeta.add(new SequenceDistanceAndMetadata(ns.getId(), d, seq));
+			distNMeta.add(new SequenceDistanceAndMetadata(ns.getID(), d, seq));
 		}
 		
 		// return query id?
@@ -155,11 +155,11 @@ public class AssemblyHomology {
 			final List<SequenceMetadata> meta;
 			try {
 				meta = storage.getSequenceMetadata(
-						e.getKey().getId(), e.getKey().getLoadID(), e.getValue());
+						e.getKey().getID(), e.getKey().getLoadID(), e.getValue());
 			} catch (NoSuchSequenceException err) {
 				throw new IllegalStateException(String.format(
 						"Database is corrupt. Unable to find sequences from sketch file for " +
-						"namespace %s: %s", e.getKey().getId().getName(), err.getMessage()), err);
+						"namespace %s: %s", e.getKey().getID().getName(), err.getMessage()), err);
 			}
 			ret.put(e.getKey(), meta.stream().collect(Collectors.toMap(s -> s.getID(), s -> s)));
 		}
@@ -210,12 +210,12 @@ public class AssemblyHomology {
 		for (final Namespace ns: namespaces) {
 			try {
 				warnings.addAll(ns.getSketchDatabase().checkIsQueriableBy(query, strict).stream()
-						.map(s -> "Namespace " + ns.getId().getName() + ": " + s)
+						.map(s -> "Namespace " + ns.getID().getName() + ": " + s)
 						.collect(Collectors.toList()));
 			} catch (IncompatibleSketchesException e) {
 				throw new IllegalParameterException(String.format(
 						"Unable to query namespace %s with input sketch: %s",
-						ns.getId().getName(), e.getMessage()), e);
+						ns.getID().getName(), e.getMessage()), e);
 			}
 		}
 		final List<MinHashSketchDatabase> dbs = namespaces.stream()

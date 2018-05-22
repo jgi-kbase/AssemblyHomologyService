@@ -80,7 +80,7 @@ public class Namespaces {
 		final MinHashParameters params = db.getParameterSet();
 		final Map<String, Object> ret = new HashMap<>();
 		ret.put(Fields.NAMESPACE_DESCRIPTION, ns.getDescription().orNull());
-		ret.put(Fields.NAMESPACE_ID, ns.getId().getName());
+		ret.put(Fields.NAMESPACE_ID, ns.getID().getName());
 		ret.put(Fields.NAMESPACE_IMPLEMENTATION, db.getImplementationName().getName());
 		ret.put(Fields.NAMESPACE_SEQ_COUNT, db.getSequenceCount());
 		ret.put(Fields.NAMESPACE_KMER_SIZE, Arrays.asList(params.getKmerSize()));
@@ -125,7 +125,7 @@ public class Namespaces {
 			tempFile = Files.createTempFile(tempDir, "assyhomol_input", ext);
 			Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
 			res = ah.measureDistance(
-					nsids.stream().map(n -> n.getId()).collect(Collectors.toSet()),
+					nsids.stream().map(n -> n.getID()).collect(Collectors.toSet()),
 					tempFile, maxReturn, strict);
 		} finally {
 			if (tempFile != null) {
