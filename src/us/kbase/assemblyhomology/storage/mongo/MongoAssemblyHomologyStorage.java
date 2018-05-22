@@ -272,7 +272,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 						sketchDB.getLocation().getPathToFile().get().toString())
 				.append(Fields.NAMESPACE_SEQUENCE_COUNT, sketchDB.getSequenceCount());
 		
-		final Document query = new Document(Fields.NAMESPACE_ID, namespace.getId().getName());
+		final Document query = new Document(Fields.NAMESPACE_ID, namespace.getID().getName());
 		upsert(COL_NAMESPACES, query, ns);
 	}
 

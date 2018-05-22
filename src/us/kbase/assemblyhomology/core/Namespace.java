@@ -11,10 +11,15 @@ import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
+/** A namespace containing a MinHash sketch database. A namespace contains the sketch database
+ * and information about the source of the database. A namespace also contains a load ID that
+ * separates subsequent data loads into the same namespace from one another and allows for
+ * instantaneous switching from one load to another.
+ * 
+ * @author gaprice@lbl.gov
+ *
+ */
 public class Namespace {
-	
-	//TODO JAVADOC
-	//TODO TEST
 	
 	private final NamespaceID id;
 	private final MinHashSketchDatabase sketchDatabase;
@@ -41,30 +46,53 @@ public class Namespace {
 		this.description = Optional.fromNullable(description);
 	}
 
-	public NamespaceID getId() {
+	/** Get the namespace ID.
+	 * @return the ID.
+	 */
+	public NamespaceID getID() {
 		return id;
 	}
 
+	/** Get the sketch database associated with the namespace.
+	 * @return the sketch database.
+	 */
 	public MinHashSketchDatabase getSketchDatabase() {
 		return sketchDatabase;
 	}
 
+	/** Get the current load ID for the namespace. Note that this value is often persisted in
+	 * a database and therefore is stale as soon as it is retrieved.
+	 * @return the load ID.
+	 */
 	public LoadID getLoadID() {
 		return loadID;
 	}
 
+	/** Get the ID of the data's source - often an institution like JGI, EMBL, etc.
+	 * @return the data source ID.
+	 */
 	public DataSourceID getSourceID() {
 		return dataSourceID;
 	}
 
+	/** Get the time this namespace was created.
+	 * @return the creation time.
+	 */
 	public Instant getCreation() {
 		return creation;
 	}
 
+	/** Get the ID of the database within the data source where the data from which the
+	 * sketch database was created originates.
+	 * @return the source database ID.
+	 */
 	public String getSourceDatabaseID() {
 		return sourceDatabaseID;
 	}
 
+	/** Get a description of the namespace and the data contained within it, if any.
+	 * @return the description or absent.
+	 */
 	public Optional<String> getDescription() {
 		return description;
 	}
@@ -147,27 +175,13 @@ public class Namespace {
 		return true;
 	}
 
-	@Override
-	public String toString() {
-		StringBuilder builder2 = new StringBuilder();
-		builder2.append("Namespace [id=");
-		builder2.append(id);
-		builder2.append(", sketchDatabase=");
-		builder2.append(sketchDatabase);
-		builder2.append(", loadID=");
-		builder2.append(loadID);
-		builder2.append(", dataSourceID=");
-		builder2.append(dataSourceID);
-		builder2.append(", creation=");
-		builder2.append(creation);
-		builder2.append(", sourceDatabaseID=");
-		builder2.append(sourceDatabaseID);
-		builder2.append(", description=");
-		builder2.append(description);
-		builder2.append("]");
-		return builder2.toString();
-	}
-
+	/** Get a {@link Namespace} builder.
+	 * @param id the ID of the namespace.
+	 * @param sketchDatabase the sketch database associated with the namespace.
+	 * @param loadID the load ID for the sketch database and associated data.
+	 * @param creation the creation time of the namespace.
+	 * @return a {@link Namespace} builder.
+	 */
 	public static Builder getBuilder(
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
@@ -176,14 +190,26 @@ public class Namespace {
 		return new Builder(id, sketchDatabase, loadID, creation);
 	}
 	
+	/** A {@link Namespace} builder.
+	 * @author gaprice@lbl.gov
+	 *
+	 */
 	public static class Builder {
 		
-		private final String DEFAULT = "default";
+		private static final String DEFAULT = "default";
+		private static final DataSourceID DEFAULT_DS_ID;
+		static {
+			try {
+				DEFAULT_DS_ID = new DataSourceID("KBase");
+			} catch (IllegalParameterException | MissingParameterException e) {
+				throw new RuntimeException("Well this is unexpected.", e);
+			}
+		}
 		
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
-		private DataSourceID dataSourceID;
+		private DataSourceID dataSourceID = DEFAULT_DS_ID;
 		private Instant creation;
 		private String sourceDatabaseID = DEFAULT;
 		private String description = null;
@@ -205,21 +231,27 @@ public class Namespace {
 			this.sketchDatabase = sketchDatabase;
 			this.loadID = loadID;
 			this.creation = creation;
-			try {
-				this.dataSourceID = new DataSourceID("KBase");
-			} catch (IllegalParameterException | MissingParameterException e) {
-				throw new RuntimeException("Well this is unexpected.", e);
-			}
 		}
 		
+		/** Add a data source ID. If the data source is null, the data source is reset to the
+		 * default, "KBase".
+		 * @param dataSourceID the ID of the source of the data.
+		 * @return this builder.
+		 */
 		public Builder withNullableDataSourceID(final DataSourceID dataSourceID) {
-			if (dataSourceID != null) {
+			if (dataSourceID == null) {
+				this.dataSourceID = DEFAULT_DS_ID;
+			} else {
 				this.dataSourceID = dataSourceID;
 			}
 			return this;
 		}
 		
-		// default = "default"
+		/** Add an ID for the database within the data source where the data originated. If null
+		 * or whitespace, the ID is reset to the default, "default".
+		 * @param sourceDatabaseID the ID of the source database.
+		 * @return this builder.
+		 */
 		public Builder withNullableSourceDatabaseID(final String sourceDatabaseID) {
 			if (isNullOrEmpty(sourceDatabaseID)) {
 				this.sourceDatabaseID = DEFAULT;
@@ -229,6 +261,11 @@ public class Namespace {
 			return this;
 		}
 		
+		/** Add a description of the namespace. If null or whitespace, the description is set to
+		 * null.
+		 * @param description the namespace description.
+		 * @return this builder.
+		 */
 		public Builder withNullableDescription(final String description) {
 			if (isNullOrEmpty(description)) {
 				this.description = null;
@@ -238,6 +275,9 @@ public class Namespace {
 			return this;
 		}
 		
+		/** Build the {@link Namespace}.
+		 * @return the new {@link Namespace}.
+		 */
 		public Namespace build() {
 			return new Namespace(id, sketchDatabase, loadID, dataSourceID, creation,
 					sourceDatabaseID, description);
