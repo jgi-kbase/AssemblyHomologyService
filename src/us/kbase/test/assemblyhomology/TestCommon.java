@@ -16,6 +16,9 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,9 +26,14 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.bson.Document;
 import org.ini4j.Ini;
+import org.slf4j.LoggerFactory;
 
 import com.mongodb.client.MongoDatabase;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
 import us.kbase.common.test.TestException;
 
 public class TestCommon {
@@ -253,6 +261,51 @@ public class TestCommon {
 		assertThat(String.format("number (%s) not within %s of target: %s",
 				num, range, expected),
 				Math.abs(expected - num) < range, is(true));
+	}
+	
+	public static class LogEvent {
+		
+		public final Level level;
+		public final String message;
+		public final Class<?> clazz;
+		
+		public LogEvent(Level level, String message, Class<?> clazz) {
+			this.level = level;
+			this.message = message;
+			this.clazz = clazz;
+		}
+	}
+	
+	public static List<ILoggingEvent> setUpSLF4JTestLoggerAppender(final String package_) {
+		final Logger authRootLogger = (Logger) LoggerFactory.getLogger(package_);
+		authRootLogger.setAdditive(false);
+		authRootLogger.setLevel(Level.ALL);
+		final List<ILoggingEvent> logEvents = new LinkedList<>();
+		final AppenderBase<ILoggingEvent> appender =
+				new AppenderBase<ILoggingEvent>() {
+			@Override
+			protected void append(final ILoggingEvent event) {
+				logEvents.add(event);
+			}
+		};
+		appender.start();
+		authRootLogger.addAppender(appender);
+		return logEvents;
+	}
+	
+	public static void assertLogEventsCorrect(
+			final List<ILoggingEvent> logEvents,
+			final LogEvent... expectedlogEvents) {
+		
+		assertThat("incorrect log event count for list: " + logEvents, logEvents.size(),
+				is(expectedlogEvents.length));
+		final Iterator<ILoggingEvent> iter = logEvents.iterator();
+		for (final LogEvent le: expectedlogEvents) {
+			final ILoggingEvent e = iter.next();
+			assertThat("incorrect log level", e.getLevel(), is(le.level));
+			assertThat("incorrect originating class", e.getLoggerName(), is(le.clazz.getName()));
+			assertThat("incorrect message", e.getFormattedMessage(), is(le.message));
+		}
 	}
 	
 }

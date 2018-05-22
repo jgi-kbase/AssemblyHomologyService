@@ -32,6 +32,8 @@ import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
@@ -39,7 +41,6 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
-import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.service.Fields;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
 
@@ -99,10 +100,10 @@ public class Namespaces {
 			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespaces,
 			@QueryParam("notstrict") final String notStrict,
 			@QueryParam("max") final String max)
-			throws IOException, NoSuchNamespaceException, IllegalParameterException,
-			//TODO NOW CODE remove MinhashException when AssyHomol doesn't throw it
+			throws IOException, NoSuchNamespaceException, IncompatibleSketchesException,
 				MissingParameterException, AssemblyHomologyStorageException,
-				MinHashException, InvalidSketchException { 
+				InvalidSketchException, IncompatibleNamespacesException,
+				IllegalParameterException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
 		final Set<Namespace> nsids = ah.getNamespaces(getNamespaceIDs(namespaces));

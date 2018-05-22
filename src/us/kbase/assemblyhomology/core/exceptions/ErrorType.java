@@ -23,6 +23,11 @@ public enum ErrorType {
 	ILLEGAL_PARAMETER		(30001, "Illegal input parameter"),
 	/** The input sketch was not a valid sketch. */
 	INVALID_SKETCH			(30010, "Invalid sketch"),
+	/** An operation was requested on multiple namespaces that are not compatible for that
+	 * operation. */
+	INCOMPATIBLE_NAMESPACES	(30020, "Incompatible namespaces"),
+	/** Sketches have incompatible parameters for measuring distances. */
+	INCOMPATIBLE_SKETCHES	(30030, "Incompatible sketches"),
 	/** There is no namespace with the specified name. */
 	NO_SUCH_NAMESPACE		(50000, "No such namespace"),
 	/** There is no sequence with the specified name. */
