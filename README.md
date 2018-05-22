@@ -242,6 +242,8 @@ Anything else is mapped to 500.
 ## TODO
 
 * Tests
+  * unit
+  * integration
 * Javadoc
 * Reaper thread that finds sequence metadata with a namespace or load id that does not exist,
   is older than some time period, and deletes it. E.g. cleans up unfinished loads and reloads
