@@ -43,10 +43,15 @@ import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
 import us.kbase.assemblyhomology.storage.mongo.MongoAssemblyHomologyStorage;
 
+/** The core class in the AssemblyHomology software. Handles integrating the data from the
+ * storage system with the data returned when matching a query sequence against a sketch database
+ * from a namespace.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class AssemblyHomology {
 	
 	//TODO TEST
-	//TODO JAVADOC
 	
 	private static final int DEFAULT_RETURN = 10;
 	private static final int MAX_RETURN = 100;
@@ -55,6 +60,12 @@ public class AssemblyHomology {
 	private final Map<String, MinHashImplementationFactory> impls = new HashMap<>();
 	private final Path tempFileDirectory;
 	
+	/** Create a new AssemblyHomology class.
+	 * @param storage the storage system to be used by the class.
+	 * @param implementationFactories the factories for the various MinHash implementations to
+	 * be used by the class.
+	 * @param tempFileDirectory a directory for storing temporary files.
+	 */
 	public AssemblyHomology(
 			final AssemblyHomologyStorage storage,
 			final Collection<MinHashImplementationFactory> implementationFactories,
@@ -74,10 +85,23 @@ public class AssemblyHomology {
 	}
 	
 	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
+	/** Get all the namespaces available.
+	 * @return the namespaces.
+	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
+	 * system.
+	 */
 	public Set<Namespace> getNamespaces() throws AssemblyHomologyStorageException {
 		return storage.getNamespaces();
 	}
 	
+	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
+	/** Get a set of namespaces.
+	 * @param ids the IDs of the namespaces to get.
+	 * @return the namespaces.
+	 * @throws NoSuchNamespaceException if one of the IDs does not exist in the system.
+	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
+	 * system.
+	 */
 	public Set<Namespace> getNamespaces(final Set<NamespaceID> ids)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
 		checkNoNullsInCollection(ids, "ids");
@@ -90,12 +114,23 @@ public class AssemblyHomology {
 	}
 	
 	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
+	/** Get a namespace.
+	 * @param namespaceID the ID of the namespace to get.
+	 * @return the namespace.
+	 * @throws NoSuchNamespaceException if the ID does not exist in the system.
+	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
+	 * system.
+	 */
 	public Namespace getNamespace(final NamespaceID namespaceID)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
 		checkNotNull(namespaceID, "namespaceID");
 		return storage.getNamespace(namespaceID);
 	}
 	
+	/** Get the file extension expected by a particular implementation.
+	 * @param impl the name of the implementation of interest.
+	 * @return the expected file extension or absent if there is none.
+	 */
 	public Optional<Path> getExpectedFileExtension(final MinHashImplementationName impl) {
 		checkNotNull(impl, "impl");
 		final String implLower = impl.getName().toLowerCase();
@@ -105,6 +140,23 @@ public class AssemblyHomology {
 		return impls.get(implLower).getExpectedFileExtension();
 	}
 	
+	/** Measure the MinHash distance from a single query sequence to the sequences in one or
+	 * more namespaces.
+	 * @param namespaceIDs the namespace IDs for the namespaces of interest.
+	 * @param sketchDB the input query sketch that will be measured against the sketch databases
+	 * associated with the given sequences.
+	 * @param returnCount the number of measurements to return. If < 1 or > 100, 10 measurements
+	 * will be returned.
+	 * @param strict true to enforce an exact match between sketch parameters. If false, 
+	 * differences in the parameters will be ignored if the MinHash implementation allows it.
+	 * @return
+	 * @throws NoSuchNamespaceException if one of the namespace IDs doesn't exist in the system.
+	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
+	 * system.
+	 * @throws IllegalParameterException TODO better exception
+	 * @throws MinHashException TODO better exception
+	 * @throws InvalidSketchException if the input sketch is invalid.
+	 */
 	public SequenceMatches measureDistance(
 			final Set<NamespaceID> namespaceIDs,
 			final Path sketchDB,
@@ -114,7 +166,7 @@ public class AssemblyHomology {
 				IllegalParameterException, MinHashException, InvalidSketchException {
 		checkNoNullsInCollection(namespaceIDs, "namespaceIDs");
 		checkNotNull(sketchDB, "sketchDB");
-		if (returnCount > MAX_RETURN || returnCount < 0) {
+		if (returnCount > MAX_RETURN || returnCount < 1) {
 			returnCount = DEFAULT_RETURN;
 		}
 		
@@ -197,13 +249,13 @@ public class AssemblyHomology {
 			throw new InvalidSketchException("The input sketch is not a valid sketch.", e);
 		} catch (MinHashException e) {
 			// there may be other error types that are not the user's fault here, but hard to
-			// know without lots of experiments. Deal with them as they come up.
-			throw new IllegalParameterException(
+			// know without lots of experiments. Deal with them as they come up. For now we
+			// assume something broke badly.
+			throw new IllegalStateException(
 					"Error loading query sketch database: " + e.getMessage(), e);
 		}
 		if (query.getSequenceCount() != 1) {
-			//TODO NOW CODE more specific exception
-			throw new IllegalParameterException(
+			throw new InvalidSketchException(
 					"Query sketch database must have exactly one query");
 		}
 		final List<String> warnings = new LinkedList<>();
@@ -213,6 +265,7 @@ public class AssemblyHomology {
 						.map(s -> "Namespace " + ns.getID().getName() + ": " + s)
 						.collect(Collectors.toList()));
 			} catch (IncompatibleSketchesException e) {
+				//TODO NOW CODE more specific exception
 				throw new IllegalParameterException(String.format(
 						"Unable to query namespace %s with input sketch: %s",
 						ns.getID().getName(), e.getMessage()), e);
@@ -237,7 +290,7 @@ public class AssemblyHomology {
 				.map(n -> n.getSketchDatabase().getImplementationName())
 				.collect(Collectors.toSet());
 		if (implnames.size() != 1) {
-			throw new IllegalParameterException(
+			throw new IllegalParameterException( //TODO NOW better exception
 					"The selected namespaces must share the same implementation");
 		}
 		final String impl = implnames.iterator().next().getName().toLowerCase();
