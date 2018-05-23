@@ -277,6 +277,7 @@
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashSketchDBNameTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.mash.MashFactoryTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.mash.MashTest"/>
+      	<test name="us.kbase.test.assemblyhomology.service.api.RootTest"/>
         <test name="us.kbase.test.assemblyhomology.util.CappedTreeSetTest"/>
         <test name="us.kbase.test.assemblyhomology.util.PathRestreamableTest"/>
         <test name="us.kbase.test.assemblyhomology.util.UtilTest"/>
