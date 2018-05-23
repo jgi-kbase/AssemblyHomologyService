@@ -1,6 +1,6 @@
 package us.kbase.assemblyhomology.core.exceptions;
 
-/** Thrown when an sketches do not have compatible parameters for distance calculation.
+/** Thrown when sketches do not have compatible parameters for distance calculation.
  * @author gaprice@lbl.gov
  *
  */
