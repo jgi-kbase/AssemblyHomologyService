@@ -8,6 +8,8 @@ public class Fields {
 
 	/* root */
 	
+	/** The server name. */
+	public static final String SERVER_NAME = "servname";
 	/** The version of the service. */
 	public static final String VERSION = "version";
 	/** The time, in milliseconds since the epoch, at the service. */

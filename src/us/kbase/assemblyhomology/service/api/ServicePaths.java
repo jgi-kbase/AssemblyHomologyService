@@ -1,9 +1,11 @@
 package us.kbase.assemblyhomology.service.api;
 
+/** Paths to service endpoints.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class ServicePaths {
 
-	//TODO JAVADOC
-	
 	/* general strings */
 
 	/** The URL path separator. */
