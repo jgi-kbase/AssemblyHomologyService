@@ -66,6 +66,7 @@ public class ExceptionHandlerTest {
 	public void before() {
 		logEvents.clear();
 	}
+	
 	@Test
 	public void handle() throws Exception {
 		final TestSet ts = getTestClasses();
