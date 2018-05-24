@@ -5,8 +5,8 @@ assembly matching based on implementations of the
 [MinHash algorithm](https://ieeexplore.ieee.org/abstract/document/666900/?reload=tru).
 
 Build status (master):
-[![Build Status](https://travis-ci.org/kbaseIncubator/AssemblyHomologyService.svg?branch=master)](https://travis-ci.org/kbaseIncubator/AssemblyHomologyService)
-[![codecov](https://codecov.io/gh/kbaseIncubator/AssemblyHomologyService/branch/master/graph/badge.svg)](https://codecov.io/gh/kbaseIncubator/AssemblyHomologyService)
+[![Build Status](https://travis-ci.org/jgi-kbase/AssemblyHomologyService.svg?branch=master)](https://travis-ci.org/jgi-kbase/AssemblyHomologyService)
+[![codecov](https://codecov.io/gh/jgi-kbase/AssemblyHomologyService/branch/master/graph/badge.svg)](https://codecov.io/gh/jgi-kbase/AssemblyHomologyService)
 
 ## Usage
 

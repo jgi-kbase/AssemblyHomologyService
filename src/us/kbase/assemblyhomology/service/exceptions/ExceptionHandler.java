@@ -1,5 +1,7 @@
 package us.kbase.assemblyhomology.service.exceptions;
 
+import java.time.Instant;
+
 import javax.inject.Inject;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
@@ -24,12 +26,12 @@ public class ExceptionHandler implements ExceptionMapper<Throwable> {
 	}
 
 	@Override
-	public Response toResponse(Throwable ex) {
+	public Response toResponse(final Throwable ex) {
 		
 		LoggerFactory.getLogger(getClass()).error("Logging exception:", ex);
 
 		//TODO CODE get rid of the logger.getCallID() method and instead make own call ID handler to decouple logger and exception handler.
-		final ErrorMessage em = new ErrorMessage(ex, logger.getCallID());
+		final ErrorMessage em = new ErrorMessage(ex, logger.getCallID(), Instant.now());
 		return Response
 				.status(em.getHttpcode())
 				.entity(ImmutableMap.of(Fields.ERROR, em))
