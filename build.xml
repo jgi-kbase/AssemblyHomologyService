@@ -280,6 +280,7 @@
         <test name="us.kbase.test.assemblyhomology.service.api.NamespacesTest"/>
         <test name="us.kbase.test.assemblyhomology.service.api.RootTest"/>
         <test name="us.kbase.test.assemblyhomology.service.exceptions.ErrorMessageTest"/>
+        <test name="us.kbase.test.assemblyhomology.service.exceptions.ExceptionHandlerTest"/>
         <test name="us.kbase.test.assemblyhomology.util.CappedTreeSetTest"/>
         <test name="us.kbase.test.assemblyhomology.util.PathRestreamableTest"/>
         <test name="us.kbase.test.assemblyhomology.util.UtilTest"/>

@@ -59,7 +59,7 @@ import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
 import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.test.assemblyhomology.TestCommon;
-import us.kbase.test.assemblyhomology.TestCommon.LogEvent;;
+import us.kbase.test.assemblyhomology.TestCommon.LogEvent;
 
 public class AssemblyHomologyTest {
 	
