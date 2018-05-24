@@ -33,6 +33,7 @@ import com.mongodb.client.MongoDatabase;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.AppenderBase;
 import us.kbase.common.test.TestException;
 
@@ -268,11 +269,39 @@ public class TestCommon {
 		public final Level level;
 		public final String message;
 		public final Class<?> clazz;
+		public final Throwable ex;
 		
-		public LogEvent(Level level, String message, Class<?> clazz) {
+		public LogEvent(final Level level, final String message, final Class<?> clazz) {
 			this.level = level;
 			this.message = message;
 			this.clazz = clazz;
+			ex = null;
+		}
+		
+		public LogEvent(
+				final Level level,
+				final String message,
+				final Class<?> clazz,
+				final Throwable ex) {
+			this.level = level;
+			this.message = message;
+			this.clazz = clazz;
+			this.ex = ex;
+		}
+
+		@Override
+		public String toString() {
+			StringBuilder builder = new StringBuilder();
+			builder.append("LogEvent [level=");
+			builder.append(level);
+			builder.append(", message=");
+			builder.append(message);
+			builder.append(", clazz=");
+			builder.append(clazz);
+			builder.append(", ex=");
+			builder.append(ex);
+			builder.append("]");
+			return builder.toString();
 		}
 	}
 	
@@ -305,6 +334,20 @@ public class TestCommon {
 			assertThat("incorrect log level", e.getLevel(), is(le.level));
 			assertThat("incorrect originating class", e.getLoggerName(), is(le.clazz.getName()));
 			assertThat("incorrect message", e.getFormattedMessage(), is(le.message));
+			final IThrowableProxy err = e.getThrowableProxy();
+			if (err != null) {
+				if (le.ex == null) {
+					fail(String.format("Logged exception where none was expected: %s %s %s",
+							err.getClassName(), err.getMessage(), le));
+				} else {
+					assertThat("incorrect error class for event " + le, err.getClassName(),
+							is(le.ex.getClass().getName()));
+					assertThat("incorrect error message for event " + le, err.getMessage(),
+							is(le.ex.getMessage()));
+				}
+			} else if (le.ex != null) { 
+				fail("Expected exception but none was logged: " + le);
+			}
 		}
 	}
 	
