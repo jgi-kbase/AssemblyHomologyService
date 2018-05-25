@@ -1,15 +1,10 @@
 package us.kbase.assemblyhomology.core.exceptions;
 
-import java.util.HashMap;
-import java.util.Map;
-
 /** An enum representing the type of a particular error.
  * @author gaprice@lbl.gov
  *
  */
 public enum ErrorType {
-	
-	//TODO TEST
 	
 	/** The authentication service returned an error. */
 	AUTHENTICATION_FAILED	(10000, "Authentication failed"),
@@ -34,24 +29,6 @@ public enum ErrorType {
 	NO_SUCH_SEQUENCE		(50010, "No such sequence"),
 	/** The requested operation is not supported. */
 	UNSUPPORTED_OP			(70000, "Unsupported operation");
-	
-	private static final Map<Integer, ErrorType> ERROR_MAP = new HashMap<>();
-	static {
-		for (final ErrorType t: ErrorType.values()) {
-			ERROR_MAP.put(t.getErrorCode(), t);
-		}
-	}
-	
-	/** Get an ErrorType given the error code.
-	 * @param code the error code.
-	 * @return the ErrorType corresponding to the error code.
-	 */
-	public static ErrorType fromErrorCode(final int code) {
-		if (!ERROR_MAP.containsKey(code)) {
-			throw new IllegalArgumentException("Invalid error code: " + code);
-		}
-		return ERROR_MAP.get(code);
-	}
 	
 	private final int errcode;
 	private final String error;
