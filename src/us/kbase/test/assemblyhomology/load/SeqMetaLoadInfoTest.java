@@ -64,6 +64,20 @@ public class SeqMetaLoadInfoTest {
 	}
 	
 	@Test
+	public void immutable() throws Exception {
+		final Map<String, String> input = ImmutableMap.of("id", "foo", "sourceid", "bar");
+		
+		final SeqMetaLoadInfo i = new SeqMetaLoadInfo(toStr(input), "source");
+		
+		try {
+			i.getRelatedIDs().put("foo", "bar");
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, new UnsupportedOperationException());
+		}
+	}
+	
+	@Test
 	public void constructFail() throws Exception {
 		failConstruct(null, "s", new IllegalArgumentException(
 				"input cannot be null or whitespace only"));
@@ -81,6 +95,16 @@ public class SeqMetaLoadInfoTest {
 				new LoadInputParseException("Missing value at id. Source: mysource"));
 		failConstruct(toStr(ImmutableMap.of("id", "foo")), "mysource",
 				new LoadInputParseException("Missing value at sourceid. Source: mysource"));
+		
+		failConstruct(toStr(
+				ImmutableMap.of("sourceid", "foo", "id", Collections.emptyMap())),
+				"mysource",
+				new LoadInputParseException("Expected string, got {} at id. Source: mysource"));
+		failConstruct(toStr(
+				ImmutableMap.of("id", "foo", "sourceid", Collections.emptyList())),
+				"mysource",
+				new LoadInputParseException(
+						"Expected string, got [] at sourceid. Source: mysource"));
 		
 		failConstruct(
 				toStr(ImmutableMap.of("id", "foo", "sourceid", "bar", "sciname", 1)),
