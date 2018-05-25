@@ -23,20 +23,21 @@ import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
  * @author gaprice@lbl.gov
  *
  */
-public class LoggingFilter implements ContainerRequestFilter,
-		ContainerResponseFilter {
-	
-	//TODO TEST
-	//TODO JAVADOC
+public class LoggingFilter implements ContainerRequestFilter, ContainerResponseFilter {
 	
 	private static final String X_FORWARDED_FOR = "X-Forwarded-For";
 	private static final String X_REAL_IP = "X-Real-IP";
 	private static final String USER_AGENT = "User-Agent";
 	
-	private HttpServletRequest servletRequest;
-	private SLF4JAutoLogger logger;
-	private AssemblyHomologyConfig cfg;
+	private final HttpServletRequest servletRequest;
+	private final SLF4JAutoLogger logger;
+	private final boolean ignoreIPheaders;
 	
+	/** Create the logging filter. This is normally done by the Jersey framework.
+	 * @param servletRequest the request to be logged.
+	 * @param logger the logger to receive the call information.
+	 * @param cfg the service configuration.
+	 */
 	@Inject
 	public LoggingFilter(
 			final HttpServletRequest servletRequest,
@@ -44,13 +45,11 @@ public class LoggingFilter implements ContainerRequestFilter,
 			final AssemblyHomologyConfig cfg) {
 		this.servletRequest = servletRequest;
 		this.logger = logger;
-		this.cfg = cfg;
+		ignoreIPheaders = cfg.isIgnoreIPHeaders();
 	}
 	
 	@Override
-	public void filter(final ContainerRequestContext reqcon)
-			throws IOException {
-		boolean ignoreIPheaders = cfg.isIgnoreIPHeaders();
+	public void filter(final ContainerRequestContext reqcon) throws IOException {
 		logger.setCallInfo(
 				reqcon.getMethod(),
 				(String.format("%.16f", Math.random())).substring(2),
