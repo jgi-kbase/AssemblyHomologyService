@@ -34,7 +34,13 @@ public class SeqMetaLoadInfo {
 	
 	public SeqMetaLoadInfo(final String input, final String sourceInfo)
 			throws LoadInputParseException {
-		final Map<String, Object> data = fromYAML(input, sourceInfo);
+		final Object predata = fromYAML(input, sourceInfo);
+		if (!(predata instanceof Map)) {
+			throw new LoadInputParseException(
+					"Expected mapping in top level YAML in " + sourceInfo);
+		}
+		@SuppressWarnings("unchecked")
+		final Map<String, Object> data = (Map<String, Object>) predata;
 		id = getString(data, "id", sourceInfo, false);
 		sourceID = getString(data, "sourceid", sourceInfo, false);
 		scientificName = Optional.fromNullable(getString(data, "sciname", sourceInfo, true));
