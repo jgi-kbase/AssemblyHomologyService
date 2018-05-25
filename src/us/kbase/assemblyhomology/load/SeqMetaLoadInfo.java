@@ -10,34 +10,40 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
-
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableMap;
 
 import us.kbase.assemblyhomology.core.SequenceMetadata;
 import us.kbase.assemblyhomology.core.SequenceMetadata.Builder;
 import us.kbase.assemblyhomology.load.exceptions.LoadInputParseException;
 
+/** Represents load information for a single sequence instantiated from a JSON or YAML string.
+ * 
+ * A typical example:
+ * {"sourceid": "15792/4/3", "id": "15792_4_3", "sciname": "E. coli", "relatedids": {"NCBI": "GCF_001735525.1"}}
+ * @author gaprice@lbl.gov
+ *
+ */
 public class SeqMetaLoadInfo {
-	
-	//TODO TEST
-	//TODO JAVADOC
 	
 	private static final String RELATED_IDS = "relatedids";
 
-	public final String id;
-	public final String sourceID;
-	public final Optional<String> scientificName;
-	public final Map<String, String> relatedIDs;
+	private final String id;
+	private final String sourceID;
+	private final Optional<String> scientificName;
+	private final Map<String, String> relatedIDs;
 	
+	/** Create the load information for a sequence.
+	 * @param input a JSON or YAML string containing the load information.
+	 * @param sourceInfo information about the source of the data, often a file name, possibly
+	 * with a line number.
+	 * @throws LoadInputParseException if the input couldn't be parsed.
+	 */
 	public SeqMetaLoadInfo(final String input, final String sourceInfo)
 			throws LoadInputParseException {
-		final Object predata = fromYAML(input, sourceInfo);
+		final Object predata = fromYAML(input, sourceInfo); // checks sourceInfo not null / ws
 		if (!(predata instanceof Map)) {
 			throw new LoadInputParseException(
-					"Expected mapping in top level YAML in " + sourceInfo);
+					"Expected mapping at / in " + sourceInfo);
 		}
 		@SuppressWarnings("unchecked")
 		final Map<String, Object> data = (Map<String, Object>) predata;
@@ -61,10 +67,8 @@ public class SeqMetaLoadInfo {
 			@SuppressWarnings("unchecked")
 			final Map<String, Object> relIDs2 = (Map<String, Object>) relIDs;
 			for (final Entry<String, Object> e: relIDs2.entrySet()) {
-				if (e.getKey() == null) {
-					throw new  LoadInputParseException(String.format(
-							"Null key in mapping at %s in %s", RELATED_IDS, sourceInfo));
-				}
+				// key can't be null, yaml parser won't allow it
+				// and gives you a huge exception, so we don't bother testing that
 				if (!(e.getValue() instanceof String)) {
 					throw new  LoadInputParseException(String.format(
 							"Expected string, got %s at %s/%s in %s",
@@ -76,26 +80,38 @@ public class SeqMetaLoadInfo {
 		return goodIDs;
 	}
 
-	public static String getRelatedIds() {
-		return RELATED_IDS;
-	}
-
+	/** Get the ID of the sequence.
+	 * @return the ID.
+	 */
 	public String getId() {
 		return id;
 	}
 
+	/** Get the ID of the sequence at the data source.
+	 * @return the source ID.
+	 */
 	public String getSourceID() {
 		return sourceID;
 	}
 
+	/** Get the scientific name of the organism associated with the sequence.
+	 * @return the scientific name.
+	 */
 	public Optional<String> getScientificName() {
 		return scientificName;
 	}
 
+	/** Get any related IDs associated with the sequence, e.g. an NCBI ID.
+	 * @return the related IDs.
+	 */
 	public Map<String, String> getRelatedIDs() {
 		return relatedIDs;
 	}
 	
+	/** Get a sequence metadata object from the load info.
+	 * @param creation the time the sequence metadata object was created.
+	 * @return the sequence metadata.
+	 */
 	public SequenceMetadata toSequenceMetadata(final Instant creation) {
 		checkNotNull(creation, "creation");
 		final Builder b = SequenceMetadata.getBuilder(id, sourceID, creation)
@@ -105,42 +121,59 @@ public class SeqMetaLoadInfo {
 		}
 		return b.build();
 	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((id == null) ? 0 : id.hashCode());
+		result = prime * result + ((relatedIDs == null) ? 0 : relatedIDs.hashCode());
+		result = prime * result + ((scientificName == null) ? 0 : scientificName.hashCode());
+		result = prime * result + ((sourceID == null) ? 0 : sourceID.hashCode());
+		return result;
+	}
 
 	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("SeqMetaLoadInfo [id=");
-		builder.append(id);
-		builder.append(", sourceID=");
-		builder.append(sourceID);
-		builder.append(", scientificName=");
-		builder.append(scientificName);
-		builder.append(", relatedIDs=");
-		builder.append(relatedIDs);
-		builder.append("]");
-		return builder.toString();
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		SeqMetaLoadInfo other = (SeqMetaLoadInfo) obj;
+		if (id == null) {
+			if (other.id != null) {
+				return false;
+			}
+		} else if (!id.equals(other.id)) {
+			return false;
+		}
+		if (relatedIDs == null) {
+			if (other.relatedIDs != null) {
+				return false;
+			}
+		} else if (!relatedIDs.equals(other.relatedIDs)) {
+			return false;
+		}
+		if (scientificName == null) {
+			if (other.scientificName != null) {
+				return false;
+			}
+		} else if (!scientificName.equals(other.scientificName)) {
+			return false;
+		}
+		if (sourceID == null) {
+			if (other.sourceID != null) {
+				return false;
+			}
+		} else if (!sourceID.equals(other.sourceID)) {
+			return false;
+		}
+		return true;
 	}
-	
-	public static void main(final String[] args) throws Exception {
-		final Map<String, Object> data = ImmutableMap.of(
-				"id", "foo",
-				"sourceid", "1/2/3",
-				"sciname", "E. gallumbits",
-				"relatedids", ImmutableMap.of(
-						"Genome", "4/5/6",
-						"NCBI", "GCF_somestuff"));
-		
-		final DumperOptions dos = new DumperOptions();
-		dos.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-		
-		final String yaml = new Yaml(dos).dump(data);
-		System.out.println(yaml);
-		
-		final SeqMetaLoadInfo sm = new SeqMetaLoadInfo(yaml, "some yaml or other line 6");
-		
-		System.out.println(sm);
-		
-		System.out.println(sm.toSequenceMetadata(Instant.ofEpochMilli(10000)));
-	}
-	
+
 }
