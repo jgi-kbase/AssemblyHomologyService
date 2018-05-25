@@ -41,7 +41,13 @@ public class NamespaceLoadInfo {
 
 	public NamespaceLoadInfo(final InputStream input, final String sourceInfo)
 			throws LoadInputParseException {
-		final Map<String, Object> data = fromYAML(input, sourceInfo);
+		final Object predata = fromYAML(input, sourceInfo);
+		if (!(predata instanceof Map)) {
+			throw new LoadInputParseException(
+					"Expected mapping in top level YAML in " + sourceInfo);
+		}
+		@SuppressWarnings("unchecked")
+		final Map<String, Object> data = (Map<String, Object>) predata;
 		id = getID(data, "id", sourceInfo);
 		dataSourceID = getDataSourceID(data, "datasource", sourceInfo);
 		sourceDatabaseID = Optional.fromNullable(
