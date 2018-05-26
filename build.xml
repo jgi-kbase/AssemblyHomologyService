@@ -267,8 +267,9 @@
         <test name="us.kbase.test.assemblyhomology.core.NamespaceIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.SequenceMatchesTest"/>
         <test name="us.kbase.test.assemblyhomology.core.SequenceMetadataTest"/>
+        <test name="us.kbase.test.assemblyhomology.load.NamespaceLoadInfoTest"/>
         <test name="us.kbase.test.assemblyhomology.load.ParseHelpersTest"/>
-      	<test name="us.kbase.test.assemblyhomology.load.SeqMetaLoadInfoTest"/>
+        <test name="us.kbase.test.assemblyhomology.load.SeqMetaLoadInfoTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDBLocationTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDistanceTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDistanceSetTest"/>
@@ -291,7 +292,7 @@
     </jacoco:coverage>
     <fail message="Test failure detected, check test results." if="test.failed" />
   </target>
-	
+
   <target name="test_mongo_storage"
           depends="compile"
           description="run only the MongoStorage* tests">

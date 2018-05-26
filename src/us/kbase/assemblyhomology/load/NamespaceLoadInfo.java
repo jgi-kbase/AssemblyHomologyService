@@ -4,17 +4,11 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import static us.kbase.assemblyhomology.load.ParseHelpers.getString;
 import static us.kbase.assemblyhomology.load.ParseHelpers.fromYAML;
 
-import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Map;
 
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
-
 import com.google.common.base.Optional;
-import com.google.common.collect.ImmutableMap;
 
 import us.kbase.assemblyhomology.core.DataSourceID;
 import us.kbase.assemblyhomology.core.LoadID;
@@ -23,28 +17,40 @@ import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.load.exceptions.LoadInputParseException;
-import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
-import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
-import us.kbase.assemblyhomology.minhash.MinHashParameters;
-import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
+/** Represents load information for a namespace instantiated from an YAML or JSON input.
+ * 
+ * Example input:
+ * 
+ * <pre>
+ * id: mynamespace
+ * datasource: KBase
+ * sourcedatabase: CI Refdata
+ * description: some reference data
+ * <pre>
+ * 
+ * @author gaprice@lbl.gov
+ *
+ */
 public class NamespaceLoadInfo {
-	
-	//TODO TEST
-	//TODO JAVADOC
 	
 	private final NamespaceID id;
 	private final DataSourceID dataSourceID;
 	private final Optional<String> sourceDatabaseID;
 	private final Optional<String> description;
 
+	/** Generate load information for a namespace.
+	 * @param input the input to parse.
+	 * @param sourceInfo information about the source, often a file name.
+	 * @throws LoadInputParseException if the input could not be parsed.
+	 */
 	public NamespaceLoadInfo(final InputStream input, final String sourceInfo)
 			throws LoadInputParseException {
 		final Object predata = fromYAML(input, sourceInfo);
 		if (!(predata instanceof Map)) {
 			throw new LoadInputParseException(
-					"Expected mapping in top level YAML in " + sourceInfo);
+					"Expected mapping at / in " + sourceInfo);
 		}
 		@SuppressWarnings("unchecked")
 		final Map<String, Object> data = (Map<String, Object>) predata;
@@ -55,18 +61,30 @@ public class NamespaceLoadInfo {
 		description = Optional.fromNullable(getString(data, "description", sourceInfo, true));
 	}
 
+	/** Get the namespace ID.
+	 * @return the namespace ID.
+	 */
 	public NamespaceID getId() {
 		return id;
 	}
 
+	/** Get the ID of the data source from whence the data associated with this namespace came.
+	 * @return the data source ID.
+	 */
 	public DataSourceID getDataSourceID() {
 		return dataSourceID;
 	}
 
+	/** Get the ID of the database within the data source from whence the data came.
+	 * @return the source database ID, or absent if absent.
+	 */
 	public Optional<String> getSourceDatabaseID() {
 		return sourceDatabaseID;
 	}
 
+	/** Get the description of the namespace.
+	 * @return the description, or absent if absent.
+	 */
 	public Optional<String> getDescription() {
 		return description;
 	}
@@ -79,7 +97,7 @@ public class NamespaceLoadInfo {
 		try {
 			return new NamespaceID(nsid);
 		} catch (IllegalParameterException e) {
-			throw new LoadInputParseException(e.getMessage(), e);
+			throw new LoadInputParseException("Illegal namespace ID: " + nsid, e);
 		} catch (MissingParameterException e) {
 			throw new RuntimeException("this should be impossible", e);
 		}
@@ -89,16 +107,22 @@ public class NamespaceLoadInfo {
 			final Map<String, Object> data,
 			final String key,
 			final String sourceInfo) throws LoadInputParseException {
-		final String nsid = getString(data, key, sourceInfo, false);
+		final String dsid = getString(data, key, sourceInfo, false);
 		try {
-			return new DataSourceID(nsid);
+			return new DataSourceID(dsid);
 		} catch (IllegalParameterException e) {
-			throw new LoadInputParseException("Illegal data source ID: " + nsid, e);
+			throw new LoadInputParseException("Illegal data source ID: " + dsid, e);
 		} catch (MissingParameterException e) {
 			throw new RuntimeException("this should be impossible", e);
 		}
 	}
 	
+	/** Create a namespace from the load info.
+	 * @param sketchDB the sketch database associated with the namespace.
+	 * @param loadID the load ID for the load associated with the namespace.
+	 * @param creation the time the namespace was created.
+	 * @return the new namespace.
+	 */
 	public Namespace toNamespace(
 			final MinHashSketchDatabase sketchDB,
 			final LoadID loadID,
@@ -112,49 +136,58 @@ public class NamespaceLoadInfo {
 				.withNullableDescription(description.orNull())
 				.build();
 	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((dataSourceID == null) ? 0 : dataSourceID.hashCode());
+		result = prime * result + ((description == null) ? 0 : description.hashCode());
+		result = prime * result + ((id == null) ? 0 : id.hashCode());
+		result = prime * result + ((sourceDatabaseID == null) ? 0 : sourceDatabaseID.hashCode());
+		return result;
+	}
 
 	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("NamespaceLoadInfo [id=");
-		builder.append(id);
-		builder.append(", dataSourceID=");
-		builder.append(dataSourceID);
-		builder.append(", sourceDatabaseID=");
-		builder.append(sourceDatabaseID);
-		builder.append(", description=");
-		builder.append(description);
-		builder.append("]");
-		return builder.toString();
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null) {
+			return false;
+		}
+		if (getClass() != obj.getClass()) {
+			return false;
+		}
+		NamespaceLoadInfo other = (NamespaceLoadInfo) obj;
+		if (dataSourceID == null) {
+			if (other.dataSourceID != null) {
+				return false;
+			}
+		} else if (!dataSourceID.equals(other.dataSourceID)) {
+			return false;
+		}
+		if (description == null) {
+			if (other.description != null) {
+				return false;
+			}
+		} else if (!description.equals(other.description)) {
+			return false;
+		}
+		if (id == null) {
+			if (other.id != null) {
+				return false;
+			}
+		} else if (!id.equals(other.id)) {
+			return false;
+		}
+		if (sourceDatabaseID == null) {
+			if (other.sourceDatabaseID != null) {
+				return false;
+			}
+		} else if (!sourceDatabaseID.equals(other.sourceDatabaseID)) {
+			return false;
+		}
+		return true;
 	}
-
-	public static void main(final String[] args) throws Exception {
-		final Map<String, String> data = ImmutableMap.of(
-				"id", "foo",
-				"datasource", "KBase",
-				"sourcedatabase", "Ci Refdata",
-				"description", "some ref data");
-		
-		final DumperOptions dos = new DumperOptions();
-		dos.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-		
-		final String yaml = new Yaml(dos).dump(data);
-		System.out.println(yaml);
-		
-		final NamespaceLoadInfo nsload = new NamespaceLoadInfo(
-				new ByteArrayInputStream(yaml.getBytes()), "whoo");
-		
-		System.out.println(nsload);
-		
-		System.out.println(nsload.toNamespace(
-				new MinHashSketchDatabase(
-						new MinHashSketchDBName("db name"),
-						new MinHashImplementationName("foo"),
-						MinHashParameters.getBuilder(31).withSketchSize(10).build(),
-						new MinHashDBLocation(Paths.get("/tmp/fake")),
-						3),
-				new LoadID("some load id"),
-				Instant.ofEpochMilli(600000)));
-	}
-	
 }
