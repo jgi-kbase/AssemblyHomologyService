@@ -267,6 +267,7 @@
         <test name="us.kbase.test.assemblyhomology.core.NamespaceIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.SequenceMatchesTest"/>
         <test name="us.kbase.test.assemblyhomology.core.SequenceMetadataTest"/>
+        <test name="us.kbase.test.assemblyhomology.load.LoaderTest"/>
         <test name="us.kbase.test.assemblyhomology.load.NamespaceLoadInfoTest"/>
         <test name="us.kbase.test.assemblyhomology.load.ParseHelpersTest"/>
         <test name="us.kbase.test.assemblyhomology.load.SeqMetaLoadInfoTest"/>

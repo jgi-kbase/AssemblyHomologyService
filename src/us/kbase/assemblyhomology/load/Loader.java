@@ -4,26 +4,22 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
-import org.yaml.snakeyaml.DumperOptions;
-import org.yaml.snakeyaml.Yaml;
-
-import com.google.common.collect.ImmutableMap;
-import com.mongodb.MongoClient;
+import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.NamespaceID;
@@ -34,20 +30,22 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
-import us.kbase.assemblyhomology.minhash.mash.Mash;
 import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
-import us.kbase.assemblyhomology.storage.mongo.MongoAssemblyHomologyStorage;
 import us.kbase.assemblyhomology.util.Restreamable;
 
+/** A data loader for the Assembly Homology software package.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class Loader {
-	
-	//TODO TEST
-	//TODO JAVADOC
 	
 	private final AssemblyHomologyStorage storage;
 	private final Clock clock;
 	
+	/** Create a new loader.
+	 * @param storage the storage system where the data will be loaded.
+	 */
 	public Loader(final AssemblyHomologyStorage storage) {
 		this(storage, Clock.systemUTC());
 	}
@@ -60,46 +58,64 @@ public class Loader {
 	}
 	
 	// LoadParams builder?
+	/** Load a data set into the Assembly Homology storage system.
+	 * @param loadID the ID of the load.
+	 * @param minhashImpl the MinHash implementation to use to read the sketch database to be
+	 * loaded.
+	 * @param sketchDBlocation the location of the MinHash sketch database.
+	 * @param namespaceYAML the YAML input for the namespace as described in
+	 * {@link NamespaceLoadInfo}.
+	 * @param sequenceMetaJSONLines the sequence metadata information. Each line is a JSON string
+	 * as described in {@link SeqMetaLoadInfo}.
+	 * @throws MinHashException if the sketch database cannot be read.
+	 * @throws IOException if an IO error occurs reading the input data.
+	 * @throws LoadInputParseException if the load input data could not be parsed.
+	 * @throws AssemblyHomologyStorageException if an error occurs communicating with the storage
+	 * system.
+	 */
 	public void load(
 			final LoadID loadID,
 			final MinHashImplementation minhashImpl,
 			final MinHashDBLocation sketchDBlocation,
 			final Restreamable namespaceYAML,
-			final Restreamable sequenceMetaYAML)
+			final Restreamable sequenceMetaJSONLines)
 			throws MinHashException, IOException, LoadInputParseException,
 				AssemblyHomologyStorageException {
 		checkNotNull(loadID, "loadID");
 		checkNotNull(minhashImpl, "minhashImpl");
 		checkNotNull(sketchDBlocation, "sketchDBlocation");
 		checkNotNull(namespaceYAML, "namespaceYAML");
-		checkNotNull(sequenceMetaYAML, "sequenceMetaYAML");
+		checkNotNull(sequenceMetaJSONLines, "sequenceMetaJSONLines");
 		final NamespaceLoadInfo nsinfo = loadNameSpaceInfo(namespaceYAML);
 		final MinHashSketchDatabase sketchDB = minhashImpl.getDatabase(
 				new MinHashSketchDBName(nsinfo.getId().getName()), sketchDBlocation);
-		final Set<String> seqmetaIDs = loadSequenceMetaIDs(sequenceMetaYAML);
+		final Set<String> seqmetaIDs = loadSequenceMetaIDs(sequenceMetaJSONLines);
 		final Set<String> skdbIDs = new HashSet<>(minhashImpl.getSketchIDs(sketchDB));
-		checkEqual(seqmetaIDs, sequenceMetaYAML, skdbIDs, sketchDBlocation);
-		loadSeqs(nsinfo.getId(), loadID, sequenceMetaYAML);
+		checkEqual(seqmetaIDs, sequenceMetaJSONLines, skdbIDs, sketchDBlocation);
+		loadSeqs(nsinfo.getId(), loadID, sequenceMetaJSONLines);
+		//TODO CODE set same load time for all seqs as option
 		storage.createOrReplaceNamespace(nsinfo.toNamespace(sketchDB, loadID, clock.instant()));
 	}
 
 	private void loadSeqs(
 			final NamespaceID namespaceID,
 			final LoadID loadID,
-			final Restreamable sequenceMetaYAML)
+			final Restreamable sequenceMetaJSONLines)
 			throws IOException, LoadInputParseException, AssemblyHomologyStorageException {
-		final List<SequenceMetadata> metas = new ArrayList<>(100);
-		try (final InputStream is = sequenceMetaYAML.getInputStream()) {
+		try (final InputStream is = sequenceMetaJSONLines.getInputStream()) {
 			final BufferedReader br = new BufferedReader(
 					new InputStreamReader(is, StandardCharsets.UTF_8));
+			List<SequenceMetadata> metas = new ArrayList<>(100);
 			int count = 1;
+			Instant time = clock.instant();
 			for (String line = br.readLine(); line != null; line = br.readLine()) {
 				metas.add(new SeqMetaLoadInfo(
-						line, sequenceMetaYAML.getSourceInfo() + " line " + count)
-						.toSequenceMetadata(clock.instant()));
+						line, sequenceMetaJSONLines.getSourceInfo() + " line " + count)
+						.toSequenceMetadata(time));
 				if (metas.size() >= 100) {
 					storage.saveSequenceMetadata(namespaceID, loadID, metas);
-					metas.clear();
+					metas = new ArrayList<>(100);
+					time = clock.instant();
 				}
 				count++;
 			}
@@ -120,7 +136,8 @@ public class Loader {
 			List<String> extra = get3(subtract(seqmetaIDs, skdbIDs));
 			if (extra.isEmpty()) {
 				extra = get3(subtract(skdbIDs, seqmetaIDs));
-				idspace = sdkDBLoc.getPathToFile().toString();
+				final Optional<Path> p = sdkDBLoc.getPathToFile();
+				idspace = p.isPresent() ? p.get().toString() : "the sketch database";
 			} else {
 				idspace = seqmetaStream.getSourceInfo();
 			}
@@ -136,15 +153,8 @@ public class Loader {
 		return metaExtra;
 	}
 
-	private List<String> get3(final Set<String> strings) {
-		final List<String> ret = new LinkedList<>();
-		for (final String s: strings) {
-			if (ret.size() > 3) {
-				break;
-			}
-			ret.add(s);
-		}
-		return ret;
+	private <T> List<T> get3(final Collection<T> strings) {
+		return new TreeSet<>(strings).stream().limit(3).collect(Collectors.toList());
 	}
 
 	private Set<String> loadSequenceMetaIDs(final Restreamable sequenceMetaYAML)
@@ -171,58 +181,4 @@ public class Loader {
 		}
 	}
 
-	public static void main(final String[] args) throws Exception {
-		final Map<String, String> nsdata = ImmutableMap.of(
-				"id", "foo",
-				"datasource", "KBase",
-				"sourcedatabase", "Ci Refdata",
-				"description", "some ref data");
-		
-		final DumperOptions dos = new DumperOptions();
-		dos.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-		
-		final String nsyaml = new Yaml(dos).dump(nsdata);
-		
-		@SuppressWarnings("resource")
-		final MongoClient mc = new MongoClient("localhost");
-		final AssemblyHomologyStorage storage = new MongoAssemblyHomologyStorage(
-				mc.getDatabase("assemblyhomology"));
-		
-		final Restreamable namespaceYAML = new Restreamable() {
-			
-			@Override
-			public String getSourceInfo() {
-				return "Namespace yaml file";
-			}
-			
-			@Override
-			public InputStream getInputStream() {
-				return new ByteArrayInputStream(nsyaml.getBytes());
-			}
-		};
-		
-		final Restreamable sequenceMetaYAML = new Restreamable() {
-			
-			@Override
-			public String getSourceInfo() {
-				return "Seq meta yaml file";
-			}
-			
-			@Override
-			public InputStream getInputStream() throws IOException {
-				return Files.newInputStream(Paths.get(
-						"/home/crusherofheads/kb_refseq_sourmash/ref_assemblies_ci_1000_loadtest.jsonline"));
-			}
-		};
-		
-		new Loader(storage).load(
-				new LoadID("my load id"),
-				new Mash(Paths.get("./temp_delete")),
-				new MinHashDBLocation(Paths.get(
-						"/home/crusherofheads/kb_refseq_sourmash/kb_refseq_ci_1000.msh")),
-				namespaceYAML,
-				sequenceMetaYAML);
-		
-	}
-	
 }
