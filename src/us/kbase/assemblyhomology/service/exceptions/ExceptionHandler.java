@@ -3,6 +3,7 @@ package us.kbase.assemblyhomology.service.exceptions;
 import java.time.Clock;
 
 import javax.inject.Inject;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.ExceptionMapper;
 
@@ -46,6 +47,7 @@ public class ExceptionHandler implements ExceptionMapper<Throwable> {
 		return Response
 				.status(em.getHttpcode())
 				.entity(ImmutableMap.of(Fields.ERROR, em))
+				.type(MediaType.APPLICATION_JSON)
 				.build();
 	}
 }

@@ -11,6 +11,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.junit.Before;
@@ -85,6 +86,7 @@ public class ExceptionHandlerTest {
 						new NoSuchSequenceException("seq1"),
 						"call id",
 						Instant.ofEpochMilli(10000)))));
+		assertThat("incorrect media type", r.getMediaType(), is(MediaType.APPLICATION_JSON_TYPE));
 		
 		assertLogEventsCorrect(logEvents, new LogEvent(
 				Level.ERROR,
