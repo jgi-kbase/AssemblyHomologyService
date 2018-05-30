@@ -17,7 +17,7 @@ import us.kbase.test.assemblyhomology.TestCommon;
 
 public class RootTest {
 	
-	private static final String SERVER_VER = "0.1.0";
+	public static final String SERVER_VER = "0.1.0";
 	private static final String GIT_ERR = 
 			"Missing git commit file gitcommit, should be in us.kbase.assemblyhomology";
 	
@@ -40,7 +40,7 @@ public class RootTest {
 		assertThat("root json incorrect", r, is(expected));
 	}
 	
-	private void assertGitCommitFromRootAcceptable(final String gitcommit) {
+	public static void assertGitCommitFromRootAcceptable(final String gitcommit) {
 		final boolean giterr = GIT_ERR.equals(gitcommit);
 		final Pattern githash = Pattern.compile("[a-f\\d]{40}");
 		final Matcher gitmatch = githash.matcher(gitcommit);
