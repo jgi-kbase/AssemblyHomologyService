@@ -34,11 +34,24 @@ import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageExcep
 import us.kbase.assemblyhomology.util.FileOpener;
 import us.kbase.assemblyhomology.util.PathRestreamable;
 
+/** A CLI for the assembly homology software package.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class AssemblyHomologyCLI {
+	
+	/* Note that testing the default location of the deploy.cfg file is difficult since
+	 * three's no reliable way to change the JVM's working directory, and the standard
+	 * deploy.cfg file lives there. Hence testing with the default location needs to be
+	 * done manually.
+	 */
 
+	/** The main method.
+	 * @param args the arguments to the program. Use -h to get help.
+	 */
 	public static void main(final String[] args) {
-		System.exit(new AssemblyHomologyCLI(args, System.out, System.err, new FileOpener())
-				.execute());
+		// this line is only tested manually.
+		System.exit(new AssemblyHomologyCLI(args, System.out, System.err).execute());
 	}
 	
 	private static final String PROG_NAME = "assembly_homology";
@@ -48,25 +61,29 @@ public class AssemblyHomologyCLI {
 	private final String[] args;
 	private final PrintStream out;
 	private final PrintStream err;
-	private final FileOpener fileOpener;
 	
+	/** Create a new CLI.
+	 * @param args the arguments to the program. Use -h to get help.
+	 * @param out the output stream.
+	 * @param err the error stream.
+	 */
 	public AssemblyHomologyCLI(
 			final String[] args,
 			final PrintStream out,
-			final PrintStream err,
-			final FileOpener fileOpener) {
+			final PrintStream err) {
 		checkNotNull(args, "args");
 		checkNotNull(out, "out");
 		checkNotNull(err, "err");
-		checkNotNull(fileOpener, "fileOpener");
 		this.args = args;
 		this.out = out;
 		this.err = err;
-		this.fileOpener = fileOpener;
 		quietLogger();
 	}
 	
-	private int execute() {
+	/** Execute the command.
+	 * @return
+	 */
+	public int execute() {
 		final GlobalArgs globalArgs = new GlobalArgs();
 		JCommander jc = new JCommander(globalArgs);
 		jc.setProgramName(PROG_NAME);
@@ -121,8 +138,9 @@ public class AssemblyHomologyCLI {
 					getLoadID(loadArgs),
 					new Mash(cfg.getPathToTemporaryFileDirectory()),
 					new MinHashDBLocation(Paths.get(loadArgs.sketchDBPath)),
-					new PathRestreamable(Paths.get(loadArgs.namespaceYAML), fileOpener),
-					new PathRestreamable(Paths.get(loadArgs.sequeneceMetadataPath), fileOpener));
+					new PathRestreamable(Paths.get(loadArgs.namespaceYAML), new FileOpener()),
+					new PathRestreamable(Paths.get(loadArgs.sequeneceMetadataPath),
+							new FileOpener()));
 		}
 	}
 

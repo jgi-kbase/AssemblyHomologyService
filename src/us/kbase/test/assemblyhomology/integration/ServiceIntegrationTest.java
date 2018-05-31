@@ -55,7 +55,7 @@ import us.kbase.test.assemblyhomology.MapBuilder;
 import us.kbase.test.assemblyhomology.MongoStorageTestManager;
 import us.kbase.test.assemblyhomology.StandaloneAssemblyHomologyServer;
 import us.kbase.test.assemblyhomology.StandaloneAssemblyHomologyServer.ServerThread;
-import us.kbase.test.assemblyhomology.data.TestDataInstaller;
+import us.kbase.test.assemblyhomology.data.TestDataManager;
 import us.kbase.test.assemblyhomology.service.api.RootTest;
 import us.kbase.test.assemblyhomology.TestCommon;
 
@@ -124,7 +124,7 @@ public class ServiceIntegrationTest {
 		final Path serviceTempDir = TEMP_DIR.resolve("temp_files");
 		Files.createDirectories(serviceTempDir);
 		for (final Path f: Arrays.asList(QUERY_K31_S1500, TARGET_4SEQS, TARGET_4SEQS_2)) {
-			TestDataInstaller.install(f, TEMP_DIR.resolve(f));
+			TestDataManager.install(f, TEMP_DIR.resolve(f));
 		}
 		
 		MANAGER = new MongoStorageTestManager(DB_NAME);

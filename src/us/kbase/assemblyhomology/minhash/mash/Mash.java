@@ -193,7 +193,7 @@ public class Mash implements MinHashImplementation {
 	private void checkFileExtension(final MinHashDBLocation location) throws NotASketchException {
 		final String locStr = location.getPathToFile().get().toString();
 		if (!locStr.endsWith("." + MASH_FILE_EXT.toString())) {
-			throw new NotASketchException(locStr);
+			throw new NotASketchException(locStr + " is not a mash sketch");
 		}
 	}
 	
