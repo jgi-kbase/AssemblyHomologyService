@@ -36,7 +36,7 @@ import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
 import us.kbase.assemblyhomology.minhash.mash.Mash;
 import us.kbase.test.assemblyhomology.TestCommon;
-import us.kbase.test.assemblyhomology.data.TestDataInstaller;
+import us.kbase.test.assemblyhomology.data.TestDataManager;
 
 public class MashTest {
 	
@@ -58,7 +58,7 @@ public class MashTest {
 		Files.createDirectories(MASH_TEMP_DIR);
 		for (final Path f: Arrays.asList(QUERY_K21_S1000, QUERY_K31_S1000, QUERY_K31_S500,
 				QUERY_K31_S1500, TARGET_4SEQS, TARGET_4SEQS_2)) {
-			TestDataInstaller.install(f, TEMP_DIR.resolve(f));
+			TestDataManager.install(f, TEMP_DIR.resolve(f));
 		}
 		EMPTY_FILE = TEMP_DIR.resolve(UUID.randomUUID().toString());
 		Files.createFile(EMPTY_FILE);
@@ -160,7 +160,7 @@ public class MashTest {
 		failGetDatabase(name, null, new NullPointerException("location"));
 		
 		Exception got = failGetDatabase(name, new MinHashDBLocation(EMPTY_FILE),
-				new NotASketchException(EMPTY_FILE.toString()));
+				new NotASketchException(EMPTY_FILE.toString() + " is not a mash sketch"));
 		
 		assertThat("incorrect mash output",
 				((NotASketchException) got).getMinHashErrorOutput().isPresent(), is(false));
@@ -224,7 +224,7 @@ public class MashTest {
 				1);
 		
 		Exception got = failGetSketchIDs(
-				mtdb, new NotASketchException(EMPTY_FILE.toString()));
+				mtdb, new NotASketchException(EMPTY_FILE.toString() + " is not a mash sketch"));
 		
 		assertThat("incorrect mash output",
 				((NotASketchException) got).getMinHashErrorOutput().isPresent(), is(false));
@@ -512,14 +512,14 @@ public class MashTest {
 		
 		NotASketchException got = (NotASketchException) failComputeDistance(
 				extension, targets, 1, false, new NotASketchException(
-						EMPTY_FILE.toString()));
+						EMPTY_FILE.toString() + " is not a mash sketch"));
 		
 		assertThat("incorrect mash output",
 				((NotASketchException) got).getMinHashErrorOutput().isPresent(), is(false));
 		
 		got = (NotASketchException) failComputeDistance(
 				query, Arrays.asList(target, extension), 1, false, new NotASketchException(
-						EMPTY_FILE.toString()));
+						EMPTY_FILE.toString() + " is not a mash sketch"));
 		
 		assertThat("incorrect mash output",
 				((NotASketchException) got).getMinHashErrorOutput().isPresent(), is(false));

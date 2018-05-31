@@ -1,0 +1,36 @@
+Usage: assembly_homology [options] [command] [command options]
+  Options:
+    -c, --config
+      Path to the assembly homology configuration file.
+      Default: ./deploy.cfg
+    -h, --help
+      Display help and usage information.
+    -v, --verbose
+      Print full stack trace on error.
+      Default: false
+  Commands:
+    load      Load data into the database
+      Usage: load [options]
+        Options:
+          -i, --implementation
+            The MinHash implementation to use.
+            Default: mash
+          -l, --load-id
+            The id for the load. If one is not supplied, a random ID will be 
+            generated. Reusing a load ID will cause sequence data for matching 
+            IDs to be overwritten. Any data associated with IDs exclusive to 
+            the previous load will remain.
+        * -n, --namespace-yaml
+            The path to the YAML file containing information about the 
+            namespace to be created or updated. See the documentation for the 
+            syntax. 
+        * -s, --sequence-metadata
+            the path to the file containing information about each sequence in 
+            the sketch DB. See the documentation for the syntax.
+        * -k, --sketch-db
+            The path to the sketch database. This path will be recorded in the 
+            assembly homology service database as the path to the sketch 
+            database, so ensure the sketch database is in its permanent 
+            location. 
+
+
