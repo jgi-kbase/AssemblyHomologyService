@@ -693,8 +693,8 @@ public class MongoAssemblyHomologyStorageOpsTest {
 				"noNS_300", "sid3", Instant.ofEpochMilli(300000)).build();
 		
 		final NamespaceID nons = new NamespaceID("noNS");
-		final LoadID nold = new LoadID("noload");
-		s.saveSequenceMetadata(nons, nold, set(noNS_100, noNS_200, noNS_300));
+		// use the same load id as extant namespace in case it's just checking load ids
+		s.saveSequenceMetadata(nons, ld1, set(noNS_100, noNS_200, noNS_300));
 		
 		final SequenceMetadata id1_safe = SequenceMetadata.getBuilder(
 				"id1", "sid1", Instant.ofEpochMilli(10000)).build();
@@ -713,7 +713,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 		final SequenceMetadata id1_300 = SequenceMetadata.getBuilder(
 				"id1_300", "sid3", Instant.ofEpochMilli(300000)).build();
 		
-		final LoadID nold1 = new LoadID("noload1");
+		final LoadID nold1 = new LoadID("noload1"); // extant ns, old load id
 		s.saveSequenceMetadata(ns1, nold1, set(id1_100, id1_200, id1_300));
 		
 		final SequenceMetadata id2_200 = SequenceMetadata.getBuilder(
@@ -723,7 +723,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 		final SequenceMetadata id2_400 = SequenceMetadata.getBuilder(
 				"id2_400", "sid3", Instant.ofEpochMilli(400000)).build();
 		
-		final LoadID nold2 = new LoadID("noload2");
+		final LoadID nold2 = new LoadID("noload2"); // extant ns, old load id
 		s.saveSequenceMetadata(ns2, nold2, set(id2_200, id2_300, id2_400));
 		
 		assertThat("incorrect seqmeta", s.getSequenceMetadata(), is(set(
