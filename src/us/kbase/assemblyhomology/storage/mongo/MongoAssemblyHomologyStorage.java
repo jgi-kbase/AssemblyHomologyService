@@ -5,11 +5,14 @@ import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 import static us.kbase.assemblyhomology.util.Util.checkNoNullsOrEmpties;
 
 import java.nio.file.Paths;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -104,13 +107,21 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	}
 	
 	private final MongoDatabase db;
+	private final Clock clock;
 	
 	/** Create MongoDB based storage for the Assembly Homology application.
 	 * @param db the Mongo database the storage system will use.
 	 * @throws StorageInitException if the storage system could not be initialized.
 	 */
 	public MongoAssemblyHomologyStorage(final MongoDatabase db) throws StorageInitException {
+		this(db, Clock.systemDefaultZone());
+	}
+	
+	// for testing
+	private MongoAssemblyHomologyStorage(final MongoDatabase db, final Clock clock) 
+			throws StorageInitException {
 		checkNotNull(db, "db");
+		this.clock = clock;
 		this.db = db;
 		ensureIndexes(); // MUST come before check config;
 		checkConfig();
@@ -383,6 +394,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	@Override
 	public void deleteNamespace(final NamespaceID namespace) {
 		// TODO FEATURE delete namespace and sequence data
+		throw new UnsupportedOperationException();
 		
 	}
 	
@@ -473,5 +485,58 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 			b.withRelatedID(e.getKey(), e.getValue());
 		}
 		return b.build();
+	}
+	
+	/** Removes sequence metadata from the system that a) is not associated with an extant
+	 * namespace and the namespace's current load id and b) is older than the given duration.
+	 * 
+	 * This allows for cleaning up data for which the load never completed or which has been
+	 * made inactive by the namespace being updated with a new load ID.
+	 * 
+	 * The duration should be long enough such that loads in progress will not be affected.
+	 * 
+	 * @param olderThan the minimum age of the data to remove.
+	 * @throws AssemblyHomologyStorageException if an error occurs communicating with MongoDB.
+	 */
+	public void removeInactiveData(final Duration olderThan)
+			throws AssemblyHomologyStorageException {
+		checkNotNull(olderThan, "olderThan");
+		final Date deleteAfter = Date.from(clock.instant().minus(olderThan));
+		try {
+			final List<String> nsids = new LinkedList<>();
+			for (final Namespace ns: getNamespaces()) {
+				db.getCollection(COL_SEQUENCE_METADATA).deleteMany(new Document()
+						.append(Fields.SEQMETA_NAMESPACE_ID, ns.getID().getName())
+						.append(Fields.SEQMETA_LOAD_ID,
+								new Document("$ne", ns.getLoadID().getName()))
+						.append(Fields.SEQMETA_CREATION_DATE, new Document("$lt", deleteAfter)));
+				nsids.add(ns.getID().getName());
+			}
+			db.getCollection(COL_SEQUENCE_METADATA).deleteMany(new Document()
+					.append(Fields.SEQMETA_NAMESPACE_ID, new Document("$nin", nsids))
+					.append(Fields.SEQMETA_CREATION_DATE, new Document("$lt", deleteAfter)));
+		} catch (MongoException e) {
+			throw new AssemblyHomologyStorageException(
+					"Connection to database failed: " + e.getMessage(), e);
+		}
+	}
+	
+	/** Get all the sequence metadata in the system. This is primarily useful for testing
+	 * and exploratory work, not production use.
+	 * @return the sequence metadata.
+	 * @throws AssemblyHomologyStorageException if an error occurs communicating with MongoDB.
+	 */
+	public Set<SequenceMetadata> getSequenceMetadata() throws AssemblyHomologyStorageException {
+		try {
+			final FindIterable<Document> docs = db.getCollection(COL_SEQUENCE_METADATA).find();
+			final Set<SequenceMetadata> seqs = new HashSet<>();
+			for (final Document d: docs) {
+				seqs.add(toSequenceMeta(d));
+			}
+			return seqs;
+		} catch (MongoException e) {
+			throw new AssemblyHomologyStorageException(
+					"Connection to database failed: " + e.getMessage(), e);
+		}
 	}
 }
