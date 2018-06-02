@@ -1,7 +1,10 @@
 package us.kbase.test.assemblyhomology;
 
+import static org.mockito.Mockito.mock;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.time.Clock;
 
 import org.bson.Document;
 
@@ -18,6 +21,7 @@ public class MongoStorageTestManager {
 	public MongoClient mc;
 	public MongoDatabase db;
 	public MongoAssemblyHomologyStorage storage;
+	public Clock clockMock;
 	public Version mongoDBVer;
 	public int indexVer;
 	public boolean wiredTiger;
@@ -58,10 +62,14 @@ public class MongoStorageTestManager {
 	}
 	
 	public void reset() throws Exception {
-		TestCommon.destroyDB(db);
 		// only drop the data, not the indexes, since creating indexes is slow and will be done
 		// anyway when the new storage instance is created
 		// db.drop();
-		storage = new MongoAssemblyHomologyStorage(db);
+		TestCommon.destroyDB(db);
+		clockMock = mock(Clock.class);
+		final Constructor<MongoAssemblyHomologyStorage> con = MongoAssemblyHomologyStorage.class.
+				getDeclaredConstructor(MongoDatabase.class, Clock.class);
+		con.setAccessible(true);
+		storage = con.newInstance(db, clockMock);
 	}
 }
