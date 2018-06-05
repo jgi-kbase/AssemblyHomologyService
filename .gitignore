@@ -1,0 +1,9 @@
+/test.cfg
+/deploy.cfg
+/assembly_homology
+/classes/
+/dist/
+/jettybase
+/test-reports
+/docs
+/junit*.properties
