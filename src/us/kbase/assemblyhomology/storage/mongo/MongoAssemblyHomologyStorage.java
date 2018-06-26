@@ -16,11 +16,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.bson.Document;
+import org.slf4j.LoggerFactory;
 
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoException;
@@ -106,6 +110,11 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		INDEXES.put(COL_CONFIG, cfg);
 	}
 	
+	private static final Duration REAPER_DATA_AGE = Duration.ofDays(7);
+	private static final long REAPER_FREQUENCY_SEC = 24 * 60 * 60;
+	
+	private ScheduledExecutorService executor;
+	private boolean reaperRunning = false;
 	private final MongoDatabase db;
 	private final Clock clock;
 	
@@ -125,6 +134,65 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		this.db = db;
 		ensureIndexes(); // MUST come before check config;
 		checkConfig();
+		// note that the default reaper settings are too high to test automatically and so are
+		// tested manually by altering the frequency constant and checking for logging.
+		startReaper(REAPER_FREQUENCY_SEC);
+	}
+	
+	/** Schedule the data reaper with the given period between reapings, starting after a delay of
+	 * the given period. The reaper calls {@link #removeInactiveData(Duration)}
+	 * every periodInSeconds with a Duration of 7 days (e.g. any data older than a week which
+	 * meets conditions for deletion will be removed).
+	 * 
+	 * @param periodInSeconds how often the reaper runs.
+	 * @throws IllegalArgumentException if the reaper is already running or the period is less
+	 * than or equal to zero.
+	 */
+	public synchronized void startReaper(long periodInSeconds) {
+		if (reaperRunning) {
+			throw new IllegalArgumentException("The reaper is already running");
+		}
+		if (periodInSeconds <= 0) {
+			throw new IllegalArgumentException("periodInSeconds must be > 0");
+		}
+		reaperRunning = true;
+		executor = Executors.newSingleThreadScheduledExecutor();
+		executor.scheduleAtFixedRate(
+				new Reaper(), periodInSeconds, periodInSeconds, TimeUnit.SECONDS);
+	}
+	
+	/** Returns true if the reaper is running, false otherwise.
+	 * @return true if the reaper is running.
+	 */
+	public synchronized boolean isReaperRunning() {
+		return reaperRunning;
+	}
+	
+	/** Stops the reaper from running again. Call {@link #startReaper(long)} to restart the reaper.
+	 * Calling this method multiple times in succession has no effect.
+	 */
+	public synchronized void stopReaper() {
+		executor.shutdown();
+		reaperRunning = false;
+	}
+	
+	private class Reaper implements Runnable {
+
+		@Override
+		public void run() {
+			try {
+				LoggerFactory.getLogger(getClass()).info("Running data reaper");
+				removeInactiveData(REAPER_DATA_AGE);
+			} catch (Throwable e) {
+				// the only error that can really occur here is losing the connection to mongo,
+				// so we just punt, log, and retry next time.
+				// unfortunately this is really difficult to test in an automated way, so test
+				// manually by shutting down mongo.
+				LoggerFactory.getLogger(getClass())
+						.error("Error removing inactive data: " + e.getMessage(), e);
+			}
+		}
+		
 	}
 	
 	private void checkConfig() throws StorageInitException  {
@@ -501,7 +569,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	public void removeInactiveData(final Duration olderThan)
 			throws AssemblyHomologyStorageException {
 		checkNotNull(olderThan, "olderThan");
-		final Date deleteAfter = Date.from(clock.instant().minus(olderThan));
+		final Date deleteOlderThan = Date.from(clock.instant().minus(olderThan));
 		try {
 			final List<String> nsids = new LinkedList<>();
 			for (final Namespace ns: getNamespaces()) {
@@ -509,12 +577,13 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 						.append(Fields.SEQMETA_NAMESPACE_ID, ns.getID().getName())
 						.append(Fields.SEQMETA_LOAD_ID,
 								new Document("$ne", ns.getLoadID().getName()))
-						.append(Fields.SEQMETA_CREATION_DATE, new Document("$lt", deleteAfter)));
+						.append(Fields.SEQMETA_CREATION_DATE,
+								new Document("$lt", deleteOlderThan)));
 				nsids.add(ns.getID().getName());
 			}
 			db.getCollection(COL_SEQUENCE_METADATA).deleteMany(new Document()
 					.append(Fields.SEQMETA_NAMESPACE_ID, new Document("$nin", nsids))
-					.append(Fields.SEQMETA_CREATION_DATE, new Document("$lt", deleteAfter)));
+					.append(Fields.SEQMETA_CREATION_DATE, new Document("$lt", deleteOlderThan)));
 		} catch (MongoException e) {
 			throw new AssemblyHomologyStorageException(
 					"Connection to database failed: " + e.getMessage(), e);

@@ -268,13 +268,20 @@ public class TestCommon {
 		
 		public final Level level;
 		public final String message;
-		public final Class<?> clazz;
+		public final String className;
 		public final Throwable ex;
 		
 		public LogEvent(final Level level, final String message, final Class<?> clazz) {
 			this.level = level;
 			this.message = message;
-			this.clazz = clazz;
+			this.className = clazz.getName();
+			ex = null;
+		}
+
+		public LogEvent(final Level level, final String message, final String className) {
+			this.level = level;
+			this.message = message;
+			this.className = className;
 			ex = null;
 		}
 		
@@ -285,7 +292,18 @@ public class TestCommon {
 				final Throwable ex) {
 			this.level = level;
 			this.message = message;
-			this.clazz = clazz;
+			this.className = clazz.getName();
+			this.ex = ex;
+		}
+		
+		public LogEvent(
+				final Level level,
+				final String message,
+				final String className,
+				final Throwable ex) {
+			this.level = level;
+			this.message = message;
+			this.className = className;
 			this.ex = ex;
 		}
 
@@ -296,8 +314,8 @@ public class TestCommon {
 			builder.append(level);
 			builder.append(", message=");
 			builder.append(message);
-			builder.append(", clazz=");
-			builder.append(clazz);
+			builder.append(", className=");
+			builder.append(className);
 			builder.append(", ex=");
 			builder.append(ex);
 			builder.append("]");
@@ -332,7 +350,7 @@ public class TestCommon {
 		for (final LogEvent le: expectedlogEvents) {
 			final ILoggingEvent e = iter.next();
 			assertThat("incorrect log level", e.getLevel(), is(le.level));
-			assertThat("incorrect originating class", e.getLoggerName(), is(le.clazz.getName()));
+			assertThat("incorrect originating class", e.getLoggerName(), is(le.className));
 			assertThat("incorrect message", e.getFormattedMessage(), is(le.message));
 			final IThrowableProxy err = e.getThrowableProxy();
 			if (err != null) {
