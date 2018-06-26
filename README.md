@@ -241,9 +241,6 @@ Anything else is mapped to 500.
 
 ## TODO
 
-* Reaper thread that finds sequence metadata with a namespace or load id that does not exist,
-  is older than some time period, and deletes it. E.g. cleans up unfinished loads and reloads
-  that overwrite some, but not all, of the prior load's data.
 * Search namespaces (no free text search)
 * HTTP2 support
 * Private data (KBase, JGI)

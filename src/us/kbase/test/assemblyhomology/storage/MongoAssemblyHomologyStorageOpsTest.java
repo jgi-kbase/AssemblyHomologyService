@@ -4,10 +4,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.when;
+import static us.kbase.test.assemblyhomology.TestCommon.assertLogEventsCorrect;
 import static us.kbase.test.assemblyhomology.TestCommon.set;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -25,6 +27,8 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import us.kbase.assemblyhomology.core.DataSourceID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
@@ -41,15 +45,18 @@ import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageExcep
 import us.kbase.assemblyhomology.storage.mongo.MongoAssemblyHomologyStorage;
 import us.kbase.test.assemblyhomology.MongoStorageTestManager;
 import us.kbase.test.assemblyhomology.TestCommon;
+import us.kbase.test.assemblyhomology.TestCommon.LogEvent;
 
 public class MongoAssemblyHomologyStorageOpsTest {
 
 	private static MongoStorageTestManager manager;
+	private static List<ILoggingEvent> logEvents;
 	private static Path TEMP_DIR;
 	private static Path EMPTY_FILE_MSH;
 	
 	@BeforeClass
 	public static void setUp() throws Exception {
+		logEvents = TestCommon.setUpSLF4JTestLoggerAppender("us.kbase.assemblyhomology");
 		manager = new MongoStorageTestManager("test_mongoahstorage");
 		TEMP_DIR = TestCommon.getTempDir().resolve("StorageTest_" + UUID.randomUUID().toString());
 		Files.createDirectories(TEMP_DIR);
@@ -69,8 +76,9 @@ public class MongoAssemblyHomologyStorageOpsTest {
 	}
 	
 	@Before
-	public void clearDB() throws Exception {
+	public void before() throws Exception {
 		manager.reset();
+		logEvents.clear();
 	}
 	
 	@Test
@@ -776,6 +784,62 @@ public class MongoAssemblyHomologyStorageOpsTest {
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, new NullPointerException("olderThan"));
+		}
+	}
+	
+	@Test
+	public void reapOrphanData() throws Exception {
+		// also tests that stopping the reaper multiple times in succession has no effect.
+		final MongoAssemblyHomologyStorage s = manager.storage;
+		final Clock clock = manager.clockMock;
+		final Instant now = Instant.ofEpochMilli(700000000);
+		when(clock.instant()).thenReturn(now);
+		assertThat("incorrect reaper running", s.isReaperRunning(), is(true));
+		s.stopReaper(); // stop the default reaper
+		assertThat("incorrect reaper running", s.isReaperRunning(), is(false));
+		s.stopReaper();
+		assertThat("incorrect reaper running", s.isReaperRunning(), is(false));
+		// data to be deleted
+		final SequenceMetadata sm1 = SequenceMetadata.getBuilder(
+				"id1", "sid1", now.minus(Duration.ofDays(7)).minus(Duration.ofSeconds(1))).build();
+		// safe data
+		final SequenceMetadata sm2 = SequenceMetadata.getBuilder(
+				"id2", "sid2", now.minus(Duration.ofDays(7))).build();
+		s.saveSequenceMetadata(new NamespaceID("ns"), new LoadID("lid"), set(sm1, sm2));
+		
+		s.startReaper(1);
+		assertThat("incorrect reaper running", s.isReaperRunning(), is(true));
+		assertThat("incorrect meta", s.getSequenceMetadata(), is(set(sm1, sm2)));
+		Thread.sleep(500);
+		assertThat("incorrect meta", s.getSequenceMetadata(), is(set(sm1, sm2)));
+		Thread.sleep(600);
+		assertThat("incorrect meta", s.getSequenceMetadata(), is(set(sm2)));
+		
+		assertLogEventsCorrect(logEvents, new LogEvent(Level.INFO,
+				"Running data reaper", MongoAssemblyHomologyStorage.class.getName() + "$Reaper"));
+	}
+	
+	@Test
+	public void startReaperFail() {
+		final MongoAssemblyHomologyStorage s = manager.storage;
+		failStartReaper(s, 1, new IllegalArgumentException("The reaper is already running"));
+		
+		s.stopReaper();
+		failStartReaper(s, 0, new IllegalArgumentException("periodInSeconds must be > 0"));
+		
+		s.startReaper(1000);
+		failStartReaper(s, 1, new IllegalArgumentException("The reaper is already running"));
+	}
+	
+	private void failStartReaper(
+			final MongoAssemblyHomologyStorage storage,
+			final long period, 
+			final Exception expected) {
+		try {
+			storage.startReaper(period);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, expected);
 		}
 	}
 }
