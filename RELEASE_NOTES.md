@@ -5,7 +5,7 @@
 * Adds a data reaper that, once per day, deletes data that is at least a week old and either has
   no existing namespace record in the Mongo database (e.g. a load didn't complete) or has no
   existing namespace / load ID combination (e.g. a load was superseded by a new load within the
-  same namespace.
+  same namespace).
 
 ## 0.1.0
 
