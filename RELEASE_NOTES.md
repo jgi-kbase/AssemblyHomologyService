@@ -6,6 +6,8 @@
   no existing namespace record in the Mongo database (e.g. a load didn't complete) or has no
   existing namespace / load ID combination (e.g. a load was superseded by a new load within the
   same namespace).
+* Added a `lastmod` field to the namespace data structure in the API that provides the date
+  the namespace was last modified.
 
 ## 0.1.0
 

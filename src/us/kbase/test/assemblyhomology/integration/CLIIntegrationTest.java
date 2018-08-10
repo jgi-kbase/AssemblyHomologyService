@@ -311,7 +311,7 @@ public class CLIIntegrationTest {
 						new MinHashDBLocation(sketchDB),
 						4),
 				loadID,
-				ns.getCreation())
+				ns.getModification())
 				.withNullableDataSourceID(new DataSourceID("JGI"))
 				.withNullableDescription("desc")
 				.withNullableSourceDatabaseID("IMG")

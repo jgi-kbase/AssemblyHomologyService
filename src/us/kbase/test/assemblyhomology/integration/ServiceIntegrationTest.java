@@ -102,6 +102,7 @@ public class ServiceIntegrationTest {
 			.with("kmersize", Arrays.asList(31))
 			.with("scaling", null)
 			.with("desc", "desc1")
+			.with("lastmod", 100000)
 			.build();
 	
 	private static final Map<String, Object> EXPECTED_NS2 = MapBuilder.<String, Object>newHashMap()
@@ -114,6 +115,7 @@ public class ServiceIntegrationTest {
 			.with("kmersize", Arrays.asList(31))
 			.with("sketchsize", 1000)
 			.with("desc", "desc2")
+			.with("lastmod", 300000)
 			.build();
 	
 	@BeforeClass
@@ -188,7 +190,7 @@ public class ServiceIntegrationTest {
 						new MinHashDBLocation(TEMP_DIR.resolve(TARGET_4SEQS)),
 						4),
 				new LoadID("load1"),
-				Instant.ofEpochMilli(10000))
+				Instant.ofEpochMilli(100000))
 				.withNullableDescription("desc1")
 				.build());
 		
@@ -201,7 +203,7 @@ public class ServiceIntegrationTest {
 						new MinHashDBLocation(TEMP_DIR.resolve(TARGET_4SEQS_2)),
 						4),
 				new LoadID("foo"),
-				Instant.ofEpochMilli(10000))
+				Instant.ofEpochMilli(300000))
 				.withNullableDescription("desc2")
 				.build());
 	}

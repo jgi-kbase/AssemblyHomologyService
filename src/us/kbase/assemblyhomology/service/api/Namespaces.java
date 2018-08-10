@@ -98,6 +98,7 @@ public class Namespaces {
 		final Map<String, Object> ret = new HashMap<>();
 		ret.put(Fields.NAMESPACE_DESCRIPTION, ns.getDescription().orNull());
 		ret.put(Fields.NAMESPACE_ID, ns.getID().getName());
+		ret.put(Fields.NAMESPACE_LASTMOD, ns.getModification().toEpochMilli());
 		ret.put(Fields.NAMESPACE_IMPLEMENTATION, db.getImplementationName().getName());
 		ret.put(Fields.NAMESPACE_SEQ_COUNT, db.getSequenceCount());
 		ret.put(Fields.NAMESPACE_KMER_SIZE, Arrays.asList(params.getKmerSize()));
