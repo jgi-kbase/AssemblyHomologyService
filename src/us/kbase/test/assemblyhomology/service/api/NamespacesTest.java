@@ -74,7 +74,7 @@ public class NamespacesTest {
 						mock(MinHashDBLocation.class),
 						42),
 				new LoadID("bat"),
-				Instant.ofEpochMilli(10000))
+				Instant.ofEpochMilli(100000))
 				.build();
 			
 			NS2 = Namespace.getBuilder(
@@ -86,7 +86,7 @@ public class NamespacesTest {
 							mock(MinHashDBLocation.class),
 							21),
 					new LoadID("boo"),
-					Instant.ofEpochMilli(20000))
+					Instant.ofEpochMilli(300000))
 					.withNullableDescription("some desc")
 					.build();
 		} catch (IllegalParameterException | MissingParameterException e) {
@@ -103,6 +103,7 @@ public class NamespacesTest {
 			.with("kmersize", Arrays.asList(3))
 			.with("scaling", 4)
 			.with("desc", null)
+			.with("lastmod", 100000L)
 			.build();
 	
 	private static final Map<String, Object> EXPECTED_NS2 = MapBuilder.<String, Object>newHashMap()
@@ -115,6 +116,7 @@ public class NamespacesTest {
 			.with("kmersize", Arrays.asList(5))
 			.with("sketchsize", 10000)
 			.with("desc", "some desc")
+			.with("lastmod", 300000L)
 			.build();
 	
 	private static Path TEMP_DIR;

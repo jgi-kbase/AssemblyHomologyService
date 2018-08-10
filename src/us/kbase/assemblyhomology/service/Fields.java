@@ -23,6 +23,8 @@ public class Fields {
 	public static final String NAMESPACE_ID = "id";
 	/** A description for a namespace. */
 	public static final String NAMESPACE_DESCRIPTION = "desc";
+	/** The last modification date of the namespace. */
+	public static final String NAMESPACE_LASTMOD = "lastmod";
 	/** The MinHash implementation used to create the sketch database associated with a namespace.
 	 */
 	public static final String NAMESPACE_IMPLEMENTATION = "impl";

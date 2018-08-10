@@ -27,7 +27,7 @@ public class Fields {
 	/**
 	 * The date of last modification of the namespace record in mongo.
 	 * For backwards compatibility reasons the database key is create rather than modified.
-	 *  */
+	 */
 	public static final String NAMESPACE_MODIFICATION_DATE = "create";
 	/** The ID of the database at the data source from which the data in the namespace came. */
 	public static final String NAMESPACE_DATABASE_ID = "dbid";
