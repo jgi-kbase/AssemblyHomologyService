@@ -336,7 +336,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		final Document ns = new Document()
 				.append(Fields.NAMESPACE_LOAD_ID, namespace.getLoadID().getName())
 				.append(Fields.NAMESPACE_DATASOURCE_ID, namespace.getSourceID().getName())
-				.append(Fields.NAMESPACE_CREATION_DATE, Date.from(namespace.getCreation()))
+				.append(Fields.NAMESPACE_MODIFICATION_DATE, Date.from(namespace.getModification()))
 				.append(Fields.NAMESPACE_DATABASE_ID, namespace.getSourceDatabaseID())
 				.append(Fields.NAMESPACE_DESCRIPTION, namespace.getDescription().orNull())
 				.append(Fields.NAMESPACE_IMPLEMENTATION,
@@ -407,7 +407,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 									Paths.get(ns.getString(Fields.NAMESPACE_SKETCH_DB_PATH))),
 							ns.getInteger(Fields.NAMESPACE_SEQUENCE_COUNT)),
 					new LoadID(ns.getString(Fields.NAMESPACE_LOAD_ID)),
-					ns.getDate(Fields.NAMESPACE_CREATION_DATE).toInstant())
+					ns.getDate(Fields.NAMESPACE_MODIFICATION_DATE).toInstant())
 					.withNullableSourceDatabaseID(ns.getString(Fields.NAMESPACE_DATABASE_ID))
 					.withNullableDescription(ns.getString(Fields.NAMESPACE_DESCRIPTION))
 					.withNullableDataSourceID(new DataSourceID(

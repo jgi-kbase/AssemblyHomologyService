@@ -47,7 +47,7 @@ public class NamespaceTest {
 				Instant.ofEpochMilli(10000))
 				.build();
 		
-		assertThat("incorrect", ns.getCreation(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
 		assertThat("incorrect", ns.getDescription(), is(Optional.absent()));
 		assertThat("incorrect", ns.getID(), is(new NamespaceID("foo")));
 		assertThat("incorrect", ns.getLoadID(), is(new LoadID("bat")));
@@ -80,7 +80,7 @@ public class NamespaceTest {
 				.withNullableSourceDatabaseID("IMG")
 				.build();
 		
-		assertThat("incorrect", ns.getCreation(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
 		assertThat("incorrect", ns.getDescription(), is(Optional.of("desc")));
 		assertThat("incorrect", ns.getID(), is(new NamespaceID("foo")));
 		assertThat("incorrect", ns.getLoadID(), is(new LoadID("bat")));
@@ -116,7 +116,7 @@ public class NamespaceTest {
 				.withNullableSourceDatabaseID(null)
 				.build();
 		
-		assertThat("incorrect", ns.getCreation(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
 		assertThat("incorrect", ns.getDescription(), is(Optional.absent()));
 		assertThat("incorrect", ns.getID(), is(new NamespaceID("foo")));
 		assertThat("incorrect", ns.getLoadID(), is(new LoadID("bat")));
@@ -151,7 +151,7 @@ public class NamespaceTest {
 				.withNullableSourceDatabaseID("   \t   \n  ")
 				.build();
 		
-		assertThat("incorrect", ns.getCreation(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
 		assertThat("incorrect", ns.getDescription(), is(Optional.absent()));
 		assertThat("incorrect", ns.getID(), is(new NamespaceID("foo")));
 		assertThat("incorrect", ns.getLoadID(), is(new LoadID("bat")));
@@ -181,7 +181,7 @@ public class NamespaceTest {
 		failGetBuilder(null, db, l, i, new NullPointerException("id"));
 		failGetBuilder(id, null, l, i, new NullPointerException("sketchDatabase"));
 		failGetBuilder(id, db, null, i, new NullPointerException("loadID"));
-		failGetBuilder(id, db, l, null, new NullPointerException("creation"));
+		failGetBuilder(id, db, l, null, new NullPointerException("modification"));
 		failGetBuilder(new NamespaceID("foo1"), db, l, i, new IllegalArgumentException(
 				"Namespace ID must equal sketch DB ID"));
 		

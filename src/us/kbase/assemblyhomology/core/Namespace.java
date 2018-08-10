@@ -25,7 +25,7 @@ public class Namespace {
 	private final MinHashSketchDatabase sketchDatabase;
 	private final LoadID loadID;
 	private final DataSourceID dataSourceID;
-	private final Instant creation;
+	private final Instant modification;
 	private final String sourceDatabaseID;
 	private final Optional<String> description;
 
@@ -34,14 +34,14 @@ public class Namespace {
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
 			final DataSourceID dataSourceID,
-			final Instant creation,
+			final Instant modification,
 			final String sourceDatabaseID,
 			final String description) {
 		this.id = id;
 		this.sketchDatabase = sketchDatabase;
 		this.loadID = loadID;
 		this.dataSourceID = dataSourceID;
-		this.creation = creation;
+		this.modification = modification;
 		this.sourceDatabaseID = sourceDatabaseID;
 		this.description = Optional.fromNullable(description);
 	}
@@ -75,11 +75,11 @@ public class Namespace {
 		return dataSourceID;
 	}
 
-	/** Get the time this namespace was created.
-	 * @return the creation time.
+	/** Get the time this namespace was last modified.
+	 * @return the modification time.
 	 */
-	public Instant getCreation() {
-		return creation;
+	public Instant getModification() {
+		return modification;
 	}
 
 	/** Get the ID of the database within the data source where the data from which the
@@ -101,7 +101,7 @@ public class Namespace {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((creation == null) ? 0 : creation.hashCode());
+		result = prime * result + ((modification == null) ? 0 : modification.hashCode());
 		result = prime * result + ((dataSourceID == null) ? 0 : dataSourceID.hashCode());
 		result = prime * result + ((description == null) ? 0 : description.hashCode());
 		result = prime * result + ((id == null) ? 0 : id.hashCode());
@@ -123,11 +123,11 @@ public class Namespace {
 			return false;
 		}
 		Namespace other = (Namespace) obj;
-		if (creation == null) {
-			if (other.creation != null) {
+		if (modification == null) {
+			if (other.modification != null) {
 				return false;
 			}
-		} else if (!creation.equals(other.creation)) {
+		} else if (!modification.equals(other.modification)) {
 			return false;
 		}
 		if (dataSourceID == null) {
@@ -179,15 +179,15 @@ public class Namespace {
 	 * @param id the ID of the namespace.
 	 * @param sketchDatabase the sketch database associated with the namespace.
 	 * @param loadID the load ID for the sketch database and associated data.
-	 * @param creation the creation time of the namespace.
+	 * @param modification the last modification time of the namespace.
 	 * @return a {@link Namespace} builder.
 	 */
 	public static Builder getBuilder(
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
-			final Instant creation) {
-		return new Builder(id, sketchDatabase, loadID, creation);
+			final Instant modification) {
+		return new Builder(id, sketchDatabase, loadID, modification);
 	}
 	
 	/** A {@link Namespace} builder.
@@ -210,7 +210,7 @@ public class Namespace {
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
 		private DataSourceID dataSourceID = DEFAULT_DS_ID;
-		private Instant creation;
+		private Instant modification;
 		private String sourceDatabaseID = DEFAULT;
 		private String description = null;
 
@@ -218,11 +218,11 @@ public class Namespace {
 				final NamespaceID id,
 				final MinHashSketchDatabase sketchDatabase,
 				final LoadID loadID,
-				final Instant creation) {
+				final Instant modification) {
 			checkNotNull(id, "id");
 			checkNotNull(sketchDatabase, "sketchDatabase");
 			checkNotNull(loadID, "loadID");
-			checkNotNull(creation, "creation");
+			checkNotNull(modification, "modification");
 			if (!id.getName().equals(sketchDatabase.getName().getName())) {
 				// code smell here. Think about this later.
 				throw new IllegalArgumentException("Namespace ID must equal sketch DB ID");
@@ -230,7 +230,7 @@ public class Namespace {
 			this.id = id;
 			this.sketchDatabase = sketchDatabase;
 			this.loadID = loadID;
-			this.creation = creation;
+			this.modification = modification;
 		}
 		
 		/** Add a data source ID. If the data source is null, the data source is reset to the
@@ -279,7 +279,7 @@ public class Namespace {
 		 * @return the new {@link Namespace}.
 		 */
 		public Namespace build() {
-			return new Namespace(id, sketchDatabase, loadID, dataSourceID, creation,
+			return new Namespace(id, sketchDatabase, loadID, dataSourceID, modification,
 					sourceDatabaseID, description);
 		}
 	}

@@ -124,7 +124,7 @@ public class NamespaceLoadInfoTest {
 				new LoadID("load 1"),
 				Instant.ofEpochMilli(10000));
 		
-		assertThat("incorrect", ns.getCreation(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
 		assertThat("incorrect", ns.getDescription(), is(Optional.absent()));
 		assertThat("incorrect", ns.getID(), is(new NamespaceID("mynamespace")));
 		assertThat("incorrect", ns.getLoadID(), is(new LoadID("load 1")));
@@ -154,7 +154,7 @@ public class NamespaceLoadInfoTest {
 				new LoadID("load 1"),
 				Instant.ofEpochMilli(10000));
 		
-		assertThat("incorrect", ns.getCreation(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
 		assertThat("incorrect", ns.getDescription(), is(Optional.of("some reference data")));
 		assertThat("incorrect", ns.getID(), is(new NamespaceID("mynamespace")));
 		assertThat("incorrect", ns.getLoadID(), is(new LoadID("load 1")));
