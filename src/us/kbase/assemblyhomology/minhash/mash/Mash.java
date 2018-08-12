@@ -126,6 +126,7 @@ public class Mash implements MinHashImplementation {
 				pb.redirectOutput(outputPath.toFile());
 			}
 			final Process mash = pb.start();
+			//TODO CONFIG make timeout configurable (same for Jetty timeout)
 			if (!mash.waitFor(30L, TimeUnit.SECONDS)) {
 				// not sure how to test this
 				throw new MinHashException(String.format(
