@@ -55,6 +55,7 @@ public class AssemblyHomologyConfig {
 	private static final String KEY_MINHASH_TIMEOUT = "minhash-timeout";
 	private static final String KEY_IGNORE_IP_HEADERS = "dont-trust-x-ip-headers";
 	
+	// in seconds
 	private static final int DEFAULT_MINHASH_TIMEOUT = 30;
 	private static final int MINIMUM_MINHASH_TIMEOUT = 1;
 	
@@ -65,7 +66,7 @@ public class AssemblyHomologyConfig {
 	private final Optional<String> mongoUser;
 	private final Optional<char[]> mongoPwd;
 	private final Path tempDir;
-	private final int minhashTimeout;
+	private final int minhashTimeoutSec;
 	private final SLF4JAutoLogger logger;
 	private final boolean ignoreIPHeaders;
 
@@ -116,7 +117,7 @@ public class AssemblyHomologyConfig {
 		}
 		final Map<String, String> cfg = getConfig(filepath, fileOpener);
 		ignoreIPHeaders = TRUE.equals(getString(KEY_IGNORE_IP_HEADERS, cfg));
-		minhashTimeout = getInt(KEY_MINHASH_TIMEOUT, cfg, DEFAULT_MINHASH_TIMEOUT,
+		minhashTimeoutSec = getInt(KEY_MINHASH_TIMEOUT, cfg, DEFAULT_MINHASH_TIMEOUT,
 				MINIMUM_MINHASH_TIMEOUT);
 		tempDir = Paths.get(getString(KEY_TEMP_DIR, cfg, true));
 		mongoHost = getString(KEY_MONGO_HOST, cfg, true);
@@ -304,10 +305,10 @@ public class AssemblyHomologyConfig {
 	}
 	
 	/** Get the timeout to use for any minhash processes.
-	 * @return the timeout.
+	 * @return the timeout in seconds.
 	 */
-	public int getMinhashTimout() {
-		return minhashTimeout;
+	public int getMinhashTimoutSec() {
+		return minhashTimeoutSec;
 	}
 	
 	/** Get a path to directory in which to store temporary files. The directory may not exist.

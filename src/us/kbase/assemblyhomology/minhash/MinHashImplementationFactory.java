@@ -14,11 +14,11 @@ public interface MinHashImplementationFactory {
 	
 	/** Get the implementation from this factory.
 	 * @param tempFileDirectory a directory the implementation can use to create temporary files.
-	 * @param minhashTimeout the timeout to use for the minhash process.
+	 * @param minhashTimeoutSec the timeout to use for the minhash process in seconds.
 	 * @return the implementation.
 	 * @throws MinHashInitException if the implementation could not be created.
 	 */
-	MinHashImplementation getImplementation(Path tempFileDirectory, int minhashTimeout)
+	MinHashImplementation getImplementation(Path tempFileDirectory, int minhashTimeoutSec)
 			throws MinHashInitException;
 	
 	/** Get the name of the implementation.

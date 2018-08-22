@@ -81,7 +81,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
-		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(30));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimoutSec(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(false));
@@ -115,7 +115,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
-		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(30));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimoutSec(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(false));
@@ -152,7 +152,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
-		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(600));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimoutSec(), is(600));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(true));
@@ -185,7 +185,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
-		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(15));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimoutSec(), is(15));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(true));
@@ -207,7 +207,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
-		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(30));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimoutSec(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(false));
@@ -233,7 +233,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
-		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(30));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimoutSec(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(true));

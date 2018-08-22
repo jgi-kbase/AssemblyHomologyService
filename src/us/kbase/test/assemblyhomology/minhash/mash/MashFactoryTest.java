@@ -37,7 +37,7 @@ public class MashFactoryTest {
 		final Mash impl = (Mash) new MashFactory().getImplementation(temp, 30);
 		
 		assertThat("incorrect temp dir", impl.getTemporaryFileDirectory(), is(temp));
-		assertThat("incorrect timeout", impl.getMashTimeout(), is(30));
+		assertThat("incorrect timeout", impl.getMashTimeoutSec(), is(30));
 		assertThat("incorrect info", impl.getImplementationInformation(),
 				is(new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"),

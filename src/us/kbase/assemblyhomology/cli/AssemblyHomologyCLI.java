@@ -136,7 +136,7 @@ public class AssemblyHomologyCLI {
 		try (final MongoClient mc = builder.getMongoClient()) {
 			new Loader(builder.getStorage()).load(
 					getLoadID(loadArgs),
-					new Mash(cfg.getPathToTemporaryFileDirectory(), cfg.getMinhashTimout()),
+					new Mash(cfg.getPathToTemporaryFileDirectory(), cfg.getMinhashTimoutSec()),
 					new MinHashDBLocation(Paths.get(loadArgs.sketchDBPath)),
 					new PathRestreamable(Paths.get(loadArgs.namespaceYAML), new FileOpener()),
 					new PathRestreamable(Paths.get(loadArgs.sequeneceMetadataPath),

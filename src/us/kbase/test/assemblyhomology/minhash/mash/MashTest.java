@@ -92,7 +92,7 @@ public class MashTest {
 	public void construct() throws Exception {
 		final Mash m = new Mash(MASH_TEMP_DIR, 1);
 		assertThat("incorrect tempDir", m.getTemporaryFileDirectory(), is(MASH_TEMP_DIR));
-		assertThat("incorrect timeout", m.getMashTimeout(), is(1));
+		assertThat("incorrect timeout", m.getMashTimeoutSec(), is(1));
 		assertThat("incorrect impl info", m.getImplementationInformation(),
 				is(new MinHashImplementationInformation(
 						// might need to be smarter about the version
