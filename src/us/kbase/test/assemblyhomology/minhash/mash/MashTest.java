@@ -90,8 +90,9 @@ public class MashTest {
 	
 	@Test
 	public void construct() throws Exception {
-		final Mash m = new Mash(MASH_TEMP_DIR);
+		final Mash m = new Mash(MASH_TEMP_DIR, 1);
 		assertThat("incorrect tempDir", m.getTemporaryFileDirectory(), is(MASH_TEMP_DIR));
+		assertThat("incorrect timeout", m.getMashTimeout(), is(1));
 		assertThat("incorrect impl info", m.getImplementationInformation(),
 				is(new MinHashImplementationInformation(
 						// might need to be smarter about the version
@@ -100,7 +101,9 @@ public class MashTest {
 	
 	@Test
 	public void constructFail() throws Exception {
-		failConstruct(null, new NullPointerException("tempFileDirectory"));
+		failConstruct(null, 1, new NullPointerException("tempFileDirectory"));
+		failConstruct(TEMP_DIR.resolve("temp_test"), 0, new IllegalArgumentException(
+				"mashTimeout must be > 0"));
 		final Path tempFile = TEMP_DIR.resolve("temp_file");
 		try {
 			Files.createFile(tempFile);
@@ -108,16 +111,16 @@ public class MashTest {
 			// ignore
 		}
 		try {
-			failConstruct(tempFile, new MinHashException("Couldn't create temporary directory: " +
-					tempFile.toString()));
+			failConstruct(tempFile, 1, new MinHashException(
+					"Couldn't create temporary directory: " + tempFile.toString()));
 		} finally {
 			Files.delete(tempFile);
 		}
 	}
 	
-	private void failConstruct(final Path tempDir, final Exception expected) {
+	private void failConstruct(final Path tempDir, final int timeout, final Exception expected) {
 		try {
-			new Mash(tempDir);
+			new Mash(tempDir, timeout);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);
@@ -126,7 +129,7 @@ public class MashTest {
 	
 	@Test
 	public void getDatabase() throws Exception {
-		final Mash m = new Mash(MASH_TEMP_DIR);
+		final Mash m = new Mash(MASH_TEMP_DIR, 600);
 		
 		final MinHashSketchDatabase db = m.getDatabase(
 				new MinHashSketchDBName("myname"),
@@ -179,7 +182,7 @@ public class MashTest {
 			final MinHashDBLocation db,
 			final Exception expected) {
 		try {
-			new Mash(MASH_TEMP_DIR).getDatabase(name, db);
+			new Mash(MASH_TEMP_DIR, 1).getDatabase(name, db);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);
@@ -190,7 +193,7 @@ public class MashTest {
 	
 	@Test
 	public void getSketchIDs() throws Exception {
-		final Mash m = new Mash(MASH_TEMP_DIR);
+		final Mash m = new Mash(MASH_TEMP_DIR, 5);
 		
 		final MinHashSketchDatabase db = new MinHashSketchDatabase(
 				new MinHashSketchDBName("myname"),
@@ -244,7 +247,7 @@ public class MashTest {
 
 	private Exception failGetSketchIDs(final MinHashSketchDatabase db, final Exception expected) {
 		try {
-			new Mash(MASH_TEMP_DIR).getSketchIDs(db);
+			new Mash(MASH_TEMP_DIR, 2000).getSketchIDs(db);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);
@@ -308,7 +311,7 @@ public class MashTest {
 			final boolean strict,
 			final MinHashDistanceSet expected)
 			throws Exception {
-		final Mash m = new Mash(MASH_TEMP_DIR);
+		final Mash m = new Mash(MASH_TEMP_DIR, 7);
 		
 		final MinHashSketchDatabase target1 = new MinHashSketchDatabase(
 				targName,
@@ -389,7 +392,7 @@ public class MashTest {
 			final boolean strict,
 			final MinHashDistanceSet expected)
 			throws Exception {
-		final Mash m = new Mash(MASH_TEMP_DIR);
+		final Mash m = new Mash(MASH_TEMP_DIR, 30);
 		
 		final MinHashSketchDatabase target1 = new MinHashSketchDatabase(
 				targName1,
@@ -553,7 +556,7 @@ public class MashTest {
 			final boolean strict,
 			final Exception expected) {
 		try {
-			new Mash(MASH_TEMP_DIR).computeDistance(query, references, maxReturnCount, strict);
+			new Mash(MASH_TEMP_DIR, 60).computeDistance(query, references, maxReturnCount, strict);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);

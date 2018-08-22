@@ -52,6 +52,7 @@ public class AssemblyHomology {
 	private final AssemblyHomologyStorage storage;
 	private final Map<String, MinHashImplementationFactory> impls = new HashMap<>();
 	private final Path tempFileDirectory;
+	private final int minhashTimeout;
 	
 	/** Create a new AssemblyHomology class.
 	 * @param storage the storage system to be used by the class.
@@ -62,12 +63,17 @@ public class AssemblyHomology {
 	public AssemblyHomology(
 			final AssemblyHomologyStorage storage,
 			final Collection<MinHashImplementationFactory> implementationFactories,
-			final Path tempFileDirectory) {
+			final Path tempFileDirectory,
+			final int minhashTimeout) {
 		checkNotNull(storage, "storage");
 		checkNoNullsInCollection(implementationFactories, "implementationFactories");
 		checkNotNull(tempFileDirectory, "tempFileDirectory");
+		if (minhashTimeout < 1) {
+			throw new IllegalArgumentException("minhashTimeout must be > 0");
+		}
 		this.storage = storage;
 		this.tempFileDirectory = tempFileDirectory;
+		this.minhashTimeout = minhashTimeout;
 		for (final MinHashImplementationFactory fac: implementationFactories) {
 			final String impl = fac.getImplementationName().getName().toLowerCase();
 			if (impls.containsKey(impl)) {
@@ -310,7 +316,7 @@ public class AssemblyHomology {
 					"not available.", impl));
 		}
 		try {
-			return impls.get(impl).getImplementation(tempFileDirectory);
+			return impls.get(impl).getImplementation(tempFileDirectory, minhashTimeout);
 		} catch (MinHashInitException e) {
 			throw new IllegalStateException(String.format("Application is misconfigured. " +
 					"Error attempting to build the %s MinHash implementation.", impl), e);
