@@ -460,7 +460,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	
 	@Override
-	public void deleteNamespace(final NamespaceID namespace) {
+	public void deleteNamespace(final NamespaceID namespaceID) {
 		// TODO FEATURE delete namespace and sequence data
 		throw new UnsupportedOperationException();
 		

@@ -11,6 +11,9 @@ mongo-pwd=
 # A directory to use for temporary files:
 temp-dir=./assemblyhomology_temp
 
+# The timeout, in seconds, of the minhash process. The default is 30 seconds.
+#minhash-timeout=60
+
 # If "true", make the server ignore the X-Forwarded-For and X-Real-IP headers. Otherwise
 # (the default behavior), the logged IP address for a request, in order of precedence, is
 # 1) the first address in X-Forwarded-For, 2) X-Real-IP, and 3) the address of the client.

@@ -81,7 +81,7 @@ public class AssemblyHomologyCLI {
 	}
 	
 	/** Execute the command.
-	 * @return
+	 * @return the return code.
 	 */
 	public int execute() {
 		final GlobalArgs globalArgs = new GlobalArgs();
@@ -136,7 +136,7 @@ public class AssemblyHomologyCLI {
 		try (final MongoClient mc = builder.getMongoClient()) {
 			new Loader(builder.getStorage()).load(
 					getLoadID(loadArgs),
-					new Mash(cfg.getPathToTemporaryFileDirectory()),
+					new Mash(cfg.getPathToTemporaryFileDirectory(), cfg.getMinhashTimeoutSec()),
 					new MinHashDBLocation(Paths.get(loadArgs.sketchDBPath)),
 					new PathRestreamable(Paths.get(loadArgs.namespaceYAML), new FileOpener()),
 					new PathRestreamable(Paths.get(loadArgs.sequeneceMetadataPath),

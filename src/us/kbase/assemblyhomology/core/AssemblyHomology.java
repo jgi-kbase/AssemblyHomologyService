@@ -52,22 +52,29 @@ public class AssemblyHomology {
 	private final AssemblyHomologyStorage storage;
 	private final Map<String, MinHashImplementationFactory> impls = new HashMap<>();
 	private final Path tempFileDirectory;
+	private final int minhashTimeoutSec;
 	
 	/** Create a new AssemblyHomology class.
 	 * @param storage the storage system to be used by the class.
 	 * @param implementationFactories the factories for the various MinHash implementations to
 	 * be used by the class.
 	 * @param tempFileDirectory a directory for storing temporary files.
+	 * @param minhashTimeoutSec the timeout for any minhash processes in seconds.
 	 */
 	public AssemblyHomology(
 			final AssemblyHomologyStorage storage,
 			final Collection<MinHashImplementationFactory> implementationFactories,
-			final Path tempFileDirectory) {
+			final Path tempFileDirectory,
+			final int minhashTimeoutSec) {
 		checkNotNull(storage, "storage");
 		checkNoNullsInCollection(implementationFactories, "implementationFactories");
 		checkNotNull(tempFileDirectory, "tempFileDirectory");
+		if (minhashTimeoutSec < 1) {
+			throw new IllegalArgumentException("minhashTimeout must be > 0");
+		}
 		this.storage = storage;
 		this.tempFileDirectory = tempFileDirectory;
+		this.minhashTimeoutSec = minhashTimeoutSec;
 		for (final MinHashImplementationFactory fac: implementationFactories) {
 			final String impl = fac.getImplementationName().getName().toLowerCase();
 			if (impls.containsKey(impl)) {
@@ -142,7 +149,7 @@ public class AssemblyHomology {
 	 * will be returned.
 	 * @param strict true to enforce an exact match between sketch parameters. If false, 
 	 * differences in the parameters will be ignored if the MinHash implementation allows it.
-	 * @return
+	 * @return the sequence matches.
 	 * @throws NoSuchNamespaceException if one of the namespace IDs doesn't exist in the system.
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
@@ -310,7 +317,7 @@ public class AssemblyHomology {
 					"not available.", impl));
 		}
 		try {
-			return impls.get(impl).getImplementation(tempFileDirectory);
+			return impls.get(impl).getImplementation(tempFileDirectory, minhashTimeoutSec);
 		} catch (MinHashInitException e) {
 			throw new IllegalStateException(String.format("Application is misconfigured. " +
 					"Error attempting to build the %s MinHash implementation.", impl), e);

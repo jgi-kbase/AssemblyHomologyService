@@ -8,6 +8,7 @@
   same namespace).
 * Added a `lastmod` field to the namespace data structure in the API that provides the date
   the namespace was last modified.
+* Made the timeout for MinHash processes configurable.
 
 ## 0.1.0
 

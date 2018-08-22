@@ -13,7 +13,7 @@ public class FileOpener {
 	/** Create a file opener. */
 	public FileOpener() {}
 	
-	/** Open a file. Delegates to {@link Files#newInputStream(Path, java.nio.file.OpenOption...)
+	/** Open a file. Delegates to {@link Files#newInputStream(Path, java.nio.file.OpenOption...)}
 	 * with default options.
 	 * @param file the file to open.
 	 * @return a new input stream.

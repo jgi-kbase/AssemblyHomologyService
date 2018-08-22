@@ -52,7 +52,12 @@ public class AssemblyHomologyConfig {
 	private static final String KEY_MONGO_USER = "mongo-user";
 	private static final String KEY_MONGO_PWD = "mongo-pwd";
 	private static final String KEY_TEMP_DIR = "temp-dir";
+	private static final String KEY_MINHASH_TIMEOUT = "minhash-timeout";
 	private static final String KEY_IGNORE_IP_HEADERS = "dont-trust-x-ip-headers";
+	
+	// in seconds
+	private static final int DEFAULT_MINHASH_TIMEOUT = 30;
+	private static final int MINIMUM_MINHASH_TIMEOUT = 1;
 	
 	public static final String TRUE = "true";
 	
@@ -61,6 +66,7 @@ public class AssemblyHomologyConfig {
 	private final Optional<String> mongoUser;
 	private final Optional<char[]> mongoPwd;
 	private final Path tempDir;
+	private final int minhashTimeoutSec;
 	private final SLF4JAutoLogger logger;
 	private final boolean ignoreIPHeaders;
 
@@ -111,6 +117,8 @@ public class AssemblyHomologyConfig {
 		}
 		final Map<String, String> cfg = getConfig(filepath, fileOpener);
 		ignoreIPHeaders = TRUE.equals(getString(KEY_IGNORE_IP_HEADERS, cfg));
+		minhashTimeoutSec = getInt(KEY_MINHASH_TIMEOUT, cfg, DEFAULT_MINHASH_TIMEOUT,
+				MINIMUM_MINHASH_TIMEOUT);
 		tempDir = Paths.get(getString(KEY_TEMP_DIR, cfg, true));
 		mongoHost = getString(KEY_MONGO_HOST, cfg, true);
 		mongoDB = getString(KEY_MONGO_DB, cfg, true);
@@ -128,6 +136,33 @@ public class AssemblyHomologyConfig {
 		mongop = null; //GC
 	}
 	
+	private int getInt(
+			final String paramName,
+			final Map<String, String> cfg,
+			final int default_,
+			int minimum)
+			throws AssemblyHomologyConfigurationException {
+		final String putative = getString(paramName, cfg);
+		if (putative == null) {
+			return default_;
+		}
+		try {
+			int val = Integer.parseInt(putative);
+			if (val < minimum) {
+				throw new AssemblyHomologyConfigurationException(String.format(
+						"Parameter %s in configuration file %s, section %s, " +
+						"must have a minimum value of %s, was %s",
+						paramName, cfg.get(TEMP_KEY_CFG_FILE), CFG_LOC, minimum, putative));
+			}
+			return val;
+		} catch (NumberFormatException e) {
+			throw new AssemblyHomologyConfigurationException(String.format(
+					"Parameter %s in configuration file %s, section %s, " +
+					"must be an integer, was %s",
+					paramName, cfg.get(TEMP_KEY_CFG_FILE), CFG_LOC, putative));
+		}
+	}
+
 	// returns null if no string
 	private String getString(
 			final String paramName,
@@ -267,6 +302,13 @@ public class AssemblyHomologyConfig {
 	 */
 	public Optional<char[]> getMongoPwd() {
 		return mongoPwd;
+	}
+	
+	/** Get the timeout to use for any minhash processes.
+	 * @return the timeout in seconds.
+	 */
+	public int getMinhashTimeoutSec() {
+		return minhashTimeoutSec;
 	}
 	
 	/** Get a path to directory in which to store temporary files. The directory may not exist.

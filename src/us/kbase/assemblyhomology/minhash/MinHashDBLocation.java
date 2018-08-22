@@ -31,7 +31,7 @@ public class MinHashDBLocation {
 
 	/** Get the sketch database location. Currently will always return the path, but returns
 	 * an {@link Optional} to allow for expansion in the future.
-	 * @return
+	 * @return the path.
 	 */
 	public Optional<Path> getPathToFile() {
 		return Optional.of(pathToFile);

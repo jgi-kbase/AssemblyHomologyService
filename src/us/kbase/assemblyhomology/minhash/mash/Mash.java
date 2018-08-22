@@ -72,13 +72,20 @@ public class Mash implements MinHashImplementation {
 	
 	private final MinHashImplementationInformation info;
 	private final Path tempFileDirectory;
+	private final int mashTimeoutSec;
 	
 	/** Create a new mash wrapper.
 	 * @param tempFileDirectory a directory in which temporary files may be stored.
+	 * @param mashTimeoutSec the timeout for the mash process in seconds.
 	 * @throws MinHashInitException if the wrapper could not be initialized.
 	 */
-	public Mash(final Path tempFileDirectory) throws MinHashInitException {
+	public Mash(final Path tempFileDirectory, final int mashTimeoutSec)
+			throws MinHashInitException {
 		checkNotNull(tempFileDirectory, "tempFileDirectory");
+		if (mashTimeoutSec < 1) {
+			throw new IllegalArgumentException("mashTimeout must be > 0");
+		}
+		this.mashTimeoutSec = mashTimeoutSec;
 		this.tempFileDirectory = tempFileDirectory;
 		try {
 			Files.createDirectories(tempFileDirectory);
@@ -96,6 +103,13 @@ public class Mash implements MinHashImplementation {
 		return tempFileDirectory;
 	}
 
+	/** Get the timeout for the mash process.
+	 * @return the timeout in seconds.
+	 */
+	public int getMashTimeoutSec() {
+		return mashTimeoutSec;
+	}
+	
 	private MinHashImplementationInformation getInfo() throws MinHashInitException {
 		try {
 			final String version = getVersion(getMashOutput("-h"));
@@ -126,7 +140,7 @@ public class Mash implements MinHashImplementation {
 				pb.redirectOutput(outputPath.toFile());
 			}
 			final Process mash = pb.start();
-			if (!mash.waitFor(30L, TimeUnit.SECONDS)) {
+			if (!mash.waitFor(mashTimeoutSec, TimeUnit.SECONDS)) {
 				// not sure how to test this
 				throw new MinHashException(String.format(
 						"Timed out waiting for %s to run", MASH.getName()));

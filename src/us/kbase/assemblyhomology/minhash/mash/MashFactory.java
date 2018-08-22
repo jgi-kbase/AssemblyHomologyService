@@ -16,9 +16,11 @@ import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 public class MashFactory implements MinHashImplementationFactory {
 
 	@Override
-	public MinHashImplementation getImplementation(final Path tempFileDirectory)
+	public MinHashImplementation getImplementation(
+			final Path tempFileDirectory,
+			final int minhashTimeout)
 			throws MinHashInitException {
-		return new Mash(tempFileDirectory);
+		return new Mash(tempFileDirectory, minhashTimeout);
 	}
 
 	@Override
