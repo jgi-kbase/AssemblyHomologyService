@@ -22,7 +22,7 @@ public class MinHashParameters {
 	}
 
 	/** Get the kmer size used to create the sketch.
-	 * @return
+	 * @return the kmer size.
 	 */
 	public int getKmerSize() {
 		return kmerSize;

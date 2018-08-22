@@ -47,7 +47,7 @@ public class MinHashDistance implements Comparable<MinHashDistance> {
 	}
 
 	/** Get the MinHash distance between the query sequence and the reference sequence.
-	 * @return
+	 * @return the distance.
 	 */
 	public double getDistance() {
 		return distance;

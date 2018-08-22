@@ -148,7 +148,7 @@ public class AssemblyHomology {
 	 * will be returned.
 	 * @param strict true to enforce an exact match between sketch parameters. If false, 
 	 * differences in the parameters will be ignored if the MinHash implementation allows it.
-	 * @return
+	 * @return the sequence matches.
 	 * @throws NoSuchNamespaceException if one of the namespace IDs doesn't exist in the system.
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.

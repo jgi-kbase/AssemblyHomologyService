@@ -81,7 +81,7 @@ public class AssemblyHomologyCLI {
 	}
 	
 	/** Execute the command.
-	 * @return
+	 * @return the return code.
 	 */
 	public int execute() {
 		final GlobalArgs globalArgs = new GlobalArgs();

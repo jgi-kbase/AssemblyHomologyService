@@ -58,7 +58,7 @@ public class SequenceMatches {
 	}
 
 	/** Get information about the MinHash implementation that generated the matches.
-	 * @return implemetation information.
+	 * @return implementation information.
 	 */
 	public MinHashImplementationInformation getImplementationInformation() {
 		return implementationInformation;
@@ -157,14 +157,14 @@ public class SequenceMatches {
 		}
 
 		/** Get the namespace ID for the reference sequence.
-		 * @return
+		 * @return the namespace ID.
 		 */
 		public NamespaceID getNamespaceID() {
 			return namespaceID;
 		}
 
 		/** Get the distance information for the reference sequence.
-		 * @return
+		 * @return the distance.
 		 */
 		public MinHashDistance getDistance() {
 			return distance;
