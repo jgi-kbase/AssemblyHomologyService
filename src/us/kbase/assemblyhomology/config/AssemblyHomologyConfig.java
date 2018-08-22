@@ -307,7 +307,7 @@ public class AssemblyHomologyConfig {
 	/** Get the timeout to use for any minhash processes.
 	 * @return the timeout in seconds.
 	 */
-	public int getMinhashTimoutSec() {
+	public int getMinhashTimeoutSec() {
 		return minhashTimeoutSec;
 	}
 	

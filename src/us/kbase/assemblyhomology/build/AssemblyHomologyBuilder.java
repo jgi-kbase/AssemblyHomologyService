@@ -75,7 +75,7 @@ public class AssemblyHomologyBuilder {
 				storage,
 				new HashSet<>(Arrays.asList(new MashFactory())),
 				c.getPathToTemporaryFileDirectory(),
-				c.getMinhashTimoutSec());
+				c.getMinhashTimeoutSec());
 	}
 
 	private AssemblyHomologyStorage buildStorage(
