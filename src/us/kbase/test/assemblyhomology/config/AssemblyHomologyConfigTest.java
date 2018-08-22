@@ -55,7 +55,7 @@ public class AssemblyHomologyConfigTest {
 	}
 	
 	@Test
-	public void sysPropAssemHomolNoUserNoIgnoreIP() throws Throwable {
+	public void sysPropAssemHomolNoUserNoIgnoreIPNoTimeout() throws Throwable {
 		final FileOpener fo = mock(FileOpener.class);
 		final AssemblyHomologyConfig cfg;
 		try {
@@ -81,6 +81,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(false));
@@ -88,7 +89,7 @@ public class AssemblyHomologyConfigTest {
 	}
 	
 	@Test
-	public void sysPropKBNoUserNoIgnoreIP() throws Throwable {
+	public void sysPropKBNoUserNoIgnoreIPNoTimout() throws Throwable {
 		final FileOpener fo = mock(FileOpener.class);
 		final AssemblyHomologyConfig cfg;
 		try {
@@ -100,6 +101,7 @@ public class AssemblyHomologyConfigTest {
 					 "mongo-db=database\n" +
 					 "mongo-user=\n" +
 					 "mongo-pwd=\n" +
+					 "minhash-timeout=\n" +
 					 "dont-trust-x-ip-headers=true1\n" +
 					 "temp-dir=/foo/bar/baz")
 					.getBytes()));
@@ -113,6 +115,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(false));
@@ -120,7 +123,7 @@ public class AssemblyHomologyConfigTest {
 	}
 	
 	@Test
-	public void envVarAssemHomolWithUserWithIgnoreIP() throws Throwable {
+	public void envVarAssemHomolWithUserWithIgnoreIPWithTimeout() throws Throwable {
 		final FileOpener fo = mock(FileOpener.class);
 		final AssemblyHomologyConfig cfg;
 		try {
@@ -133,6 +136,7 @@ public class AssemblyHomologyConfigTest {
 					 "mongo-db=database\n" +
 					 "mongo-user=userfoo\n" +
 					 "mongo-pwd=somepwd\n" +
+					 "minhash-timeout=600\n" +
 					 "dont-trust-x-ip-headers=true\n" +
 					 "temp-dir=/foo/bar/baz")
 					.getBytes()));
@@ -148,6 +152,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(600));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(true));
@@ -155,7 +160,7 @@ public class AssemblyHomologyConfigTest {
 	}
 	
 	@Test
-	public void envVarKBWithUserWithIgnoreIP() throws Throwable {
+	public void envVarKBWithUserWithIgnoreIPWithTimeout() throws Throwable {
 		final FileOpener fo = mock(FileOpener.class);
 		final AssemblyHomologyConfig cfg;
 		try {
@@ -166,6 +171,7 @@ public class AssemblyHomologyConfigTest {
 					 "mongo-db=database\n" +
 					 "mongo-user=userfoo\n" +
 					 "mongo-pwd=somepwd\n" +
+					 "minhash-timeout=15\n" +
 					 "dont-trust-x-ip-headers=true\n" +
 					 "temp-dir=/foo/bar/baz")
 					.getBytes()));
@@ -179,6 +185,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(15));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(true));
@@ -200,6 +207,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(false));
@@ -225,6 +233,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
+		assertThat("incorrect minhash timeout", cfg.getMinhashTimout(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
 		assertThat("incorrect ignore ip headers", cfg.isIgnoreIPHeaders(), is(true));
@@ -303,6 +312,30 @@ public class AssemblyHomologyConfigTest {
 				new AssemblyHomologyConfigurationException(
 						"Required parameter temp-dir not provided in configuration file " +
 						"some file, section assemblyhomology"));
+	}
+	
+	@Test
+	public void configFailMinhashTimeoutNotInt() throws Throwable {
+		failConfigBoth(
+				"[assemblyhomology]\n" +
+				"minhash-timeout=baz\n" +
+				"mongo-host=foo\n" +
+				"mongo-db=bar",
+				new AssemblyHomologyConfigurationException(
+						"Parameter minhash-timeout in configuration file " +
+						"some file, section assemblyhomology, must be an integer, was baz"));
+	}
+	
+	@Test
+	public void configFailMinhashTimeoutBelowMinimum() throws Throwable {
+		failConfigBoth(
+				"[assemblyhomology]\n" +
+				"minhash-timeout=0\n" +
+				"mongo-host=foo\n" +
+				"mongo-db=bar",
+				new AssemblyHomologyConfigurationException(
+						"Parameter minhash-timeout in configuration file some file, section " +
+						"assemblyhomology, must have a minimum value of 1, was 0"));
 	}
 	
 	@Test

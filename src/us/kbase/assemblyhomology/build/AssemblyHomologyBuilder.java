@@ -27,7 +27,7 @@ public class AssemblyHomologyBuilder {
 	//TODO JAVADOC
 	
 	private final MongoClient mc;
-	private final AssemblyHomology auth;
+	private final AssemblyHomology assyhomol;
 	private final AssemblyHomologyStorage storage;
 	
 	public AssemblyHomologyBuilder(final AssemblyHomologyConfig cfg)
@@ -35,7 +35,7 @@ public class AssemblyHomologyBuilder {
 		checkNotNull(cfg, "cfg");
 		mc = buildMongo(cfg);
 		storage = buildStorage(cfg, mc);
-		auth = buildAssemblyHomology(cfg, storage);
+		assyhomol = buildAssemblyHomology(cfg, storage);
 	}
 	
 	public AssemblyHomologyBuilder(
@@ -46,7 +46,7 @@ public class AssemblyHomologyBuilder {
 		checkNotNull(mc, "mc");
 		this.mc = mc;
 		storage = buildStorage(cfg, mc);
-		auth = buildAssemblyHomology(cfg, storage);
+		assyhomol = buildAssemblyHomology(cfg, storage);
 	}
 	
 	private MongoClient buildMongo(final AssemblyHomologyConfig c) throws StorageInitException {
@@ -99,7 +99,7 @@ public class AssemblyHomologyBuilder {
 	}
 
 	public AssemblyHomology getAssemblyHomology() {
-		return auth;
+		return assyhomol;
 	}
 	
 	public AssemblyHomologyStorage getStorage() {
