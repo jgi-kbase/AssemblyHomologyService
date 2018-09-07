@@ -12,6 +12,7 @@ import org.junit.Test;
 import com.google.common.base.Optional;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
+import us.kbase.assemblyhomology.core.CollectorID;
 import us.kbase.assemblyhomology.core.DataSourceID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
@@ -47,19 +48,20 @@ public class NamespaceTest {
 				Instant.ofEpochMilli(10000))
 				.build();
 		
-		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
-		assertThat("incorrect", ns.getDescription(), is(Optional.absent()));
-		assertThat("incorrect", ns.getID(), is(new NamespaceID("foo")));
-		assertThat("incorrect", ns.getLoadID(), is(new LoadID("bat")));
-		assertThat("incorrect", ns.getSketchDatabase(),
+		assertThat("incorrect mod date", ns.getModification(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect desc", ns.getDescription(), is(Optional.absent()));
+		assertThat("incorrect id", ns.getID(), is(new NamespaceID("foo")));
+		assertThat("incorrect collector id", ns.getCollectorID(), is(CollectorID.DEFAULT));
+		assertThat("incorrect load ID", ns.getLoadID(), is(new LoadID("bat")));
+		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("foo"),
 					new MinHashImplementationName("mash"),
 					MinHashParameters.getBuilder(3).withScaling(4).build(),
 					loc,
 					42)));
-		assertThat("incorrect", ns.getSourceDatabaseID(), is("default"));
-		assertThat("incorrect", ns.getSourceID(), is(new DataSourceID("KBase")));
+		assertThat("incorrect source DB ID", ns.getSourceDatabaseID(), is("default"));
+		assertThat("incorrect source ID", ns.getSourceID(), is(new DataSourceID("KBase")));
 	}
 	
 	@Test
@@ -75,24 +77,26 @@ public class NamespaceTest {
 						42),
 				new LoadID("bat"),
 				Instant.ofEpochMilli(10000))
+				.withNullableCollectorID(new CollectorID("yay"))
 				.withNullableDataSourceID(new DataSourceID("JGI"))
 				.withNullableDescription("desc")
 				.withNullableSourceDatabaseID("IMG")
 				.build();
 		
-		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
-		assertThat("incorrect", ns.getDescription(), is(Optional.of("desc")));
-		assertThat("incorrect", ns.getID(), is(new NamespaceID("foo")));
-		assertThat("incorrect", ns.getLoadID(), is(new LoadID("bat")));
-		assertThat("incorrect", ns.getSketchDatabase(),
+		assertThat("incorrect mod date", ns.getModification(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect desc", ns.getDescription(), is(Optional.of("desc")));
+		assertThat("incorrect id", ns.getID(), is(new NamespaceID("foo")));
+		assertThat("incorrect load id", ns.getLoadID(), is(new LoadID("bat")));
+		assertThat("incorrect collector id", ns.getCollectorID(), is(new CollectorID("yay")));
+		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("foo"),
 					new MinHashImplementationName("mash"),
 					MinHashParameters.getBuilder(3).withScaling(4).build(),
 					loc,
 					42)));
-		assertThat("incorrect", ns.getSourceDatabaseID(), is("IMG"));
-		assertThat("incorrect", ns.getSourceID(), is(new DataSourceID("JGI")));
+		assertThat("incorrect source DB id", ns.getSourceDatabaseID(), is("IMG"));
+		assertThat("incorrect source id", ns.getSourceID(), is(new DataSourceID("JGI")));
 	}
 	
 	@Test
@@ -108,27 +112,30 @@ public class NamespaceTest {
 						42),
 				new LoadID("bat"),
 				Instant.ofEpochMilli(10000))
+				.withNullableCollectorID(new CollectorID("yay"))
 				.withNullableDataSourceID(new DataSourceID("JGI"))
 				.withNullableDescription("desc")
 				.withNullableSourceDatabaseID("IMG")
+				.withNullableCollectorID(null)
 				.withNullableDataSourceID(null)
 				.withNullableDescription(null)
 				.withNullableSourceDatabaseID(null)
 				.build();
 		
-		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
-		assertThat("incorrect", ns.getDescription(), is(Optional.absent()));
-		assertThat("incorrect", ns.getID(), is(new NamespaceID("foo")));
-		assertThat("incorrect", ns.getLoadID(), is(new LoadID("bat")));
-		assertThat("incorrect", ns.getSketchDatabase(),
+		assertThat("incorrect mod date", ns.getModification(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect desc", ns.getDescription(), is(Optional.absent()));
+		assertThat("incorrect id", ns.getID(), is(new NamespaceID("foo")));
+		assertThat("incorrect load id", ns.getLoadID(), is(new LoadID("bat")));
+		assertThat("incorrect collector id", ns.getCollectorID(), is(CollectorID.DEFAULT));
+		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("foo"),
 					new MinHashImplementationName("mash"),
 					MinHashParameters.getBuilder(3).withScaling(4).build(),
 					loc,
 					42)));
-		assertThat("incorrect", ns.getSourceDatabaseID(), is("default"));
-		assertThat("incorrect", ns.getSourceID(), is(new DataSourceID("KBase")));
+		assertThat("incorrect source DB id", ns.getSourceDatabaseID(), is("default"));
+		assertThat("incorrect source id", ns.getSourceID(), is(new DataSourceID("KBase")));
 	}
 	
 	@Test
@@ -144,6 +151,8 @@ public class NamespaceTest {
 						42),
 				new LoadID("bat"),
 				Instant.ofEpochMilli(10000))
+				.withNullableCollectorID(new CollectorID("yay"))
+				.withNullableCollectorID(new CollectorID("yo"))
 				.withNullableDataSourceID(new DataSourceID("JGI"))
 				.withNullableDescription("desc")
 				.withNullableSourceDatabaseID("IMG")
@@ -151,19 +160,20 @@ public class NamespaceTest {
 				.withNullableSourceDatabaseID("   \t   \n  ")
 				.build();
 		
-		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
-		assertThat("incorrect", ns.getDescription(), is(Optional.absent()));
-		assertThat("incorrect", ns.getID(), is(new NamespaceID("foo")));
-		assertThat("incorrect", ns.getLoadID(), is(new LoadID("bat")));
-		assertThat("incorrect", ns.getSketchDatabase(),
+		assertThat("incorrect mod date", ns.getModification(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect desc", ns.getDescription(), is(Optional.absent()));
+		assertThat("incorrect id", ns.getID(), is(new NamespaceID("foo")));
+		assertThat("incorrect load id", ns.getLoadID(), is(new LoadID("bat")));
+		assertThat("incorrect collector id", ns.getCollectorID(), is(new CollectorID("yo")));
+		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("foo"),
 					new MinHashImplementationName("mash"),
 					MinHashParameters.getBuilder(3).withScaling(4).build(),
 					loc,
 					42)));
-		assertThat("incorrect", ns.getSourceDatabaseID(), is("default"));
-		assertThat("incorrect", ns.getSourceID(), is(new DataSourceID("JGI")));
+		assertThat("incorrect source DB id", ns.getSourceDatabaseID(), is("default"));
+		assertThat("incorrect source id", ns.getSourceID(), is(new DataSourceID("JGI")));
 	}
 	
 	@Test

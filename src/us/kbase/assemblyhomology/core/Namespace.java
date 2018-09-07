@@ -9,6 +9,7 @@ import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
 /** A namespace containing a MinHash sketch database. A namespace contains the sketch database
@@ -24,6 +25,7 @@ public class Namespace {
 	private final NamespaceID id;
 	private final MinHashSketchDatabase sketchDatabase;
 	private final LoadID loadID;
+	private final CollectorID collectorID;
 	private final DataSourceID dataSourceID;
 	private final Instant modification;
 	private final String sourceDatabaseID;
@@ -33,6 +35,7 @@ public class Namespace {
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
+			final CollectorID collectorID,
 			final DataSourceID dataSourceID,
 			final Instant modification,
 			final String sourceDatabaseID,
@@ -40,6 +43,7 @@ public class Namespace {
 		this.id = id;
 		this.sketchDatabase = sketchDatabase;
 		this.loadID = loadID;
+		this.collectorID = collectorID;
 		this.dataSourceID = dataSourceID;
 		this.modification = modification;
 		this.sourceDatabaseID = sourceDatabaseID;
@@ -68,6 +72,13 @@ public class Namespace {
 		return loadID;
 	}
 
+	/** Get the id for the {@link MinHashDistanceCollector} associated with this namespace.
+	 * @return the collector ID.
+	 */
+	public CollectorID getCollectorID() {
+		return collectorID;
+	}
+	
 	/** Get the ID of the data's source - often an institution like JGI, EMBL, etc.
 	 * @return the data source ID.
 	 */
@@ -101,11 +112,12 @@ public class Namespace {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((modification == null) ? 0 : modification.hashCode());
+		result = prime * result + ((collectorID == null) ? 0 : collectorID.hashCode());
 		result = prime * result + ((dataSourceID == null) ? 0 : dataSourceID.hashCode());
 		result = prime * result + ((description == null) ? 0 : description.hashCode());
 		result = prime * result + ((id == null) ? 0 : id.hashCode());
 		result = prime * result + ((loadID == null) ? 0 : loadID.hashCode());
+		result = prime * result + ((modification == null) ? 0 : modification.hashCode());
 		result = prime * result + ((sketchDatabase == null) ? 0 : sketchDatabase.hashCode());
 		result = prime * result + ((sourceDatabaseID == null) ? 0 : sourceDatabaseID.hashCode());
 		return result;
@@ -123,11 +135,11 @@ public class Namespace {
 			return false;
 		}
 		Namespace other = (Namespace) obj;
-		if (modification == null) {
-			if (other.modification != null) {
+		if (collectorID == null) {
+			if (other.collectorID != null) {
 				return false;
 			}
-		} else if (!modification.equals(other.modification)) {
+		} else if (!collectorID.equals(other.collectorID)) {
 			return false;
 		}
 		if (dataSourceID == null) {
@@ -156,6 +168,13 @@ public class Namespace {
 				return false;
 			}
 		} else if (!loadID.equals(other.loadID)) {
+			return false;
+		}
+		if (modification == null) {
+			if (other.modification != null) {
+				return false;
+			}
+		} else if (!modification.equals(other.modification)) {
 			return false;
 		}
 		if (sketchDatabase == null) {
@@ -209,6 +228,7 @@ public class Namespace {
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
+		private CollectorID collectorID = CollectorID.DEFAULT;
 		private DataSourceID dataSourceID = DEFAULT_DS_ID;
 		private Instant modification;
 		private String sourceDatabaseID = DEFAULT;
@@ -231,6 +251,20 @@ public class Namespace {
 			this.sketchDatabase = sketchDatabase;
 			this.loadID = loadID;
 			this.modification = modification;
+		}
+		
+		/** Add a collector ID. If the collector ID is null, the collector ID is reset to the 
+		 * default, "default".
+		 * @param collectorID the ID of the collector associated with the namespace.
+		 * @return this builder.
+		 */
+		public Builder withNullableCollectorID(final CollectorID collectorID) {
+			if (collectorID != null) {
+				this.collectorID = collectorID;
+			} else {
+				this.collectorID = CollectorID.DEFAULT;
+			}
+			return this;
 		}
 		
 		/** Add a data source ID. If the data source is null, the data source is reset to the
@@ -279,8 +313,8 @@ public class Namespace {
 		 * @return the new {@link Namespace}.
 		 */
 		public Namespace build() {
-			return new Namespace(id, sketchDatabase, loadID, dataSourceID, modification,
-					sourceDatabaseID, description);
+			return new Namespace(id, sketchDatabase, loadID, collectorID, dataSourceID,
+					modification, sourceDatabaseID, description);
 		}
 	}
 }

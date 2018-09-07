@@ -261,6 +261,7 @@
         <sysproperty key="ASSEMHOMOL_TEST_CONFIG" value="${testcfg}"/>
         <test name="us.kbase.test.assemblyhomology.config.AssemblyHomologyConfigTest"/>
         <test name="us.kbase.test.assemblyhomology.core.AssemblyHomologyTest"/>
+        <test name="us.kbase.test.assemblyhomology.core.CollectorIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.DataSourceIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.LoadIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.NameTest"/>
@@ -268,6 +269,7 @@
         <test name="us.kbase.test.assemblyhomology.core.NamespaceIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.SequenceMatchesTest"/>
         <test name="us.kbase.test.assemblyhomology.core.SequenceMetadataTest"/>
+        <test name="us.kbase.test.assemblyhomology.core.TokenTest"/>
         <test name="us.kbase.test.assemblyhomology.integration.CLIIntegrationTest"/>
         <test name="us.kbase.test.assemblyhomology.integration.ServiceIntegrationTest"/>
         <test name="us.kbase.test.assemblyhomology.load.LoaderTest"/>

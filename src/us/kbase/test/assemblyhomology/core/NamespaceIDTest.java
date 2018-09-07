@@ -42,7 +42,7 @@ public class NamespaceIDTest {
 	private void failConstruct(final String name, final Exception exception) {
 		try {
 			new NamespaceID(name);
-			fail("created bad display name");
+			fail("created bad namespace ID");
 		} catch (Exception e) {
 			TestCommon.assertExceptionCorrect(e, exception);
 		}
