@@ -45,6 +45,7 @@ public class UtilTest {
 	
 	@Test
 	public void checkString() throws Exception {
+		Util.checkString("foo", "bar");
 		Util.checkString(TestCommon.LONG1001, "name", 0);
 		Util.checkString("ok", "name", 2);
 		Util.checkString(" \n  ok   \t", "name", 2);
@@ -52,6 +53,8 @@ public class UtilTest {
 	
 	@Test
 	public void checkStringFailMissingString() throws Exception {
+		failCheckString(null, "foo", new MissingParameterException("foo"));
+		failCheckString("    \n \t  ", "foo", new MissingParameterException("foo"));
 		failCheckString(null, "foo", 10, new MissingParameterException("foo"));
 		failCheckString("    \n \t  ", "foo", 10, new MissingParameterException("foo"));
 	}
@@ -69,6 +72,18 @@ public class UtilTest {
 		Util.checkString(s, "foo", 4);
 		failCheckString(s, "foo", 3,
 				new IllegalParameterException("foo size greater than limit 3"));
+	}
+	
+	private void failCheckString(
+			final String s,
+			final String name,
+			final Exception e) {
+		try {
+			Util.checkString(s, name);
+			fail("check string failed");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, e);
+		}
 	}
 	
 	private void failCheckString(
