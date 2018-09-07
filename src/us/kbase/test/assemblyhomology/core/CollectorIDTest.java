@@ -59,5 +59,10 @@ public class CollectorIDTest {
 			TestCommon.assertExceptionCorrect(e, exception);
 		}
 	}
+	
+	@Test
+	public void defaultID() throws Exception {
+		assertThat("incorrect default ID", CollectorID.DEFAULT, is(new CollectorID("default")));
+	}
 
 }

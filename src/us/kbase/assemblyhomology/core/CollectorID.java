@@ -16,6 +16,15 @@ public class CollectorID extends Name {
 
 	private static final String INVALID_CHARS_REGEX = "[^a-z]+";
 	private final static Pattern INVALID_CHARS = Pattern.compile(INVALID_CHARS_REGEX);
+
+	public static final CollectorID DEFAULT;
+	static {
+		try {
+			DEFAULT = new CollectorID("default");
+		} catch (MissingParameterException | IllegalParameterException e) {
+			throw new RuntimeException("Programming error: " + e, e);
+		}
+	}
 	
 	/** Create a new collector ID. 
 	 * @param collectorID the ID.
