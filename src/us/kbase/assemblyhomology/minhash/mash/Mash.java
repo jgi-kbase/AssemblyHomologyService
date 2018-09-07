@@ -24,7 +24,7 @@ import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
@@ -35,7 +35,6 @@ import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesExceptio
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
-import us.kbase.assemblyhomology.util.CappedTreeSet;
 
 /** A wrapper for the mash implementation of the MinHash algorithm. Expects the mash binary
  * to be available on the command line.
@@ -264,11 +263,11 @@ public class Mash implements MinHashImplementation {
 	
 	private static class DistanceCollector implements LineCollector {
 		
-		private final CappedTreeSet<MinHashDistance> dists;
+		private final MinHashDistanceCollector distCollector;
 		private MinHashSketchDBName dbname;
 		
-		public DistanceCollector(final int size) {
-			dists = new CappedTreeSet<>(size, true);
+		public DistanceCollector(final MinHashDistanceCollector distCollector) {
+			this.distCollector = distCollector;
 		}
 
 		@Override
@@ -277,35 +276,33 @@ public class Mash implements MinHashImplementation {
 			final String[] sl = line.trim().split("\\s+");
 			final String id = sl[0].trim();
 			final double distance = Double.parseDouble(sl[2].trim());
-			dists.add(new MinHashDistance(dbname, id, distance));
+			distCollector.accept(new MinHashDistance(dbname, id, distance));
 		}
 	}
 	
 	@Override
-	public MinHashDistanceSet computeDistance(
+	public List<String> computeDistance(
 			final MinHashSketchDatabase query,
 			final Collection<MinHashSketchDatabase> references,
-			final int maxReturnCount,
+			final MinHashDistanceCollector distCollector,
 			final boolean strict)
 			throws MinHashException, NotASketchException, IncompatibleSketchesException {
 		checkNotNull(query, "query");
 		checkNoNullsInCollection(references, "references");
+		checkNotNull(distCollector, "distCollector");
 		if (query.getSequenceCount() != 1) {
 			// may want to relax this, but that'll require changing a bunch of stuff
 			throw new IllegalArgumentException("Only 1 query sequence is allowed");
 		}
-		if (maxReturnCount < 1) {
-			throw new IllegalArgumentException("maxReturnCount must be > 0");
-		}
 		final List<String> warnings = checkQueryable(query, references, strict);
-		final DistanceCollector distanceProcessor = new DistanceCollector(maxReturnCount);
+		final DistanceCollector distanceProcessor = new DistanceCollector(distCollector);
 		for (final MinHashSketchDatabase ref: references) {
 			distanceProcessor.dbname = ref.getName();
 			processMashOutput(distanceProcessor, false, "dist", "-d", "0.5",
 						ref.getLocation().getPathToFile().get().toString(),
 						query.getLocation().getPathToFile().get().toString());
 		}
-		return new MinHashDistanceSet(distanceProcessor.dists.toTreeSet(), warnings);
+		return warnings;
 	}
 	
 	private List<String> checkQueryable(
