@@ -3,6 +3,9 @@ package us.kbase.test.assemblyhomology.core;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.argThat;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static us.kbase.test.assemblyhomology.TestCommon.set;
@@ -25,6 +28,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.ArgumentMatcher;
 
 import com.google.common.base.Optional;
 
@@ -46,7 +50,7 @@ import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
@@ -327,6 +331,25 @@ public class AssemblyHomologyTest {
 		}
 	}
 	
+	private class DistColArgMatch implements ArgumentMatcher<MinHashDistanceCollector> {
+
+		final Collection<MinHashDistance> toCollect;
+		
+		public DistColArgMatch(final Collection<MinHashDistance> toCollect) {
+			this.toCollect = toCollect;
+		}
+		
+		@Override
+		public boolean matches(final MinHashDistanceCollector col) {
+			for (final MinHashDistance d: toCollect) {
+				col.accept(d);
+			}
+			return true;
+		}
+		
+	}
+	
+	
 	@Test
 	public void measureDistance() throws Exception {
 		measureDistance(MinHashParameters.getBuilder(31).withSketchSize(1000).build(), true,
@@ -404,13 +427,12 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH)))
 				.thenReturn(query);
 		
-		when(mash.computeDistance(query, set(ref1, ref2), expectedReturnSize, strict))
-				.thenReturn(new MinHashDistanceSet(
-						set(
-								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
-								new MinHashDistance(new MinHashSketchDBName("ns2"), "seq2", 0.2),
-								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)),
-						Collections.emptyList())); // minhash warnings are ignored
+		final DistColArgMatch match = new DistColArgMatch(set(
+				new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
+				new MinHashDistance(new MinHashSketchDBName("ns2"), "seq2", 0.2),
+				new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)));
+		when(mash.computeDistance(eq(query), eq(set(ref1, ref2)), argThat(match), eq(strict)))
+				.thenReturn(Collections.emptyList()); // minhash warnings are ignored
 		
 		when(storage.getSequenceMetadata(
 				new NamespaceID("ns1"), new LoadID("load1"), Arrays.asList("seq1", "seq5")))
@@ -828,7 +850,8 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
 				.thenReturn(query);
 		
-		when(impl.computeDistance(query, set(ref1), 1, true))
+		when(impl.computeDistance(
+				eq(query), eq(set(ref1)), any(MinHashDistanceCollector.class), eq(true)))
 				.thenThrow(new MinHashException("he must have died while carving it"));
 		
 		when(impl.getImplementationInformation()).thenReturn(new MinHashImplementationInformation(
@@ -872,13 +895,12 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
 				.thenReturn(query);
 		
-		when(impl.computeDistance(query, set(ref1), 1, true))
-				.thenReturn(new MinHashDistanceSet(
-						set(
-								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
-								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)),
-						Collections.emptyList())); // minhash warnings are ignored
-
+		final DistColArgMatch match = new DistColArgMatch(set(
+				new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
+				new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)));
+		when(impl.computeDistance(eq(query), eq(set(ref1)), argThat(match), eq(true)))
+				.thenReturn(Collections.emptyList()); // minhash warnings are ignored
+		
 		when(storage.getSequenceMetadata(
 				new NamespaceID("ns1"), new LoadID("load1"), Arrays.asList("seq1", "seq5")))
 				.thenThrow(new NoSuchSequenceException("seq1 seq5"));
@@ -895,7 +917,7 @@ public class AssemblyHomologyTest {
 			final boolean strict,
 			final Exception expected) {
 		try {
-			ah.measureDistance(namespaceIDs, query, 1, strict);
+			ah.measureDistance(namespaceIDs, query, 10, strict);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);

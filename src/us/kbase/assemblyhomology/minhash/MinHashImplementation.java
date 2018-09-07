@@ -38,18 +38,18 @@ public interface MinHashImplementation {
 	 * @param query the query sequence. The database must contain exactly one sequence.
 	 * @param references the set of reference databases against which the query will be
 	 * measured.
-	 * @param maxReturnCount the maximum number of distances to return. Must be > 0.
+	 * @param distCollector the collector for the minhash distances.
 	 * @param strict if false, allow the query sequence sketch size to be larger than the
 	 * reference databases' sketch size. Otherwise throw an {@link IncompatibleSketchesException}.
-	 * @return the distances.
+	 * @return a list of warnings regarding the minhash query.
 	 * @throws MinHashException if the distances were unable to be calculated.
 	 * @throws IncompatibleSketchesException if the sketches have incompatible parameters.
 	 * @throws NotASketchException if one of the databases is invalid.
 	 */
-	MinHashDistanceSet computeDistance(
+	List<String> computeDistance(
 			MinHashSketchDatabase query,
 			Collection<MinHashSketchDatabase> references,
-			int maxReturnCount,
+			MinHashDistanceCollector distCollector,
 			boolean strict)
 			throws MinHashException, IncompatibleSketchesException, NotASketchException;
 	

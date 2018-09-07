@@ -12,8 +12,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -23,9 +23,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import us.kbase.assemblyhomology.minhash.DefaultDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
@@ -289,19 +290,18 @@ public class MashTest {
 		final MinHashDistance dist2 = new MinHashDistance(targName, "15792_431_1", 0.00236402);
 		final MinHashDistance dist3 = new MinHashDistance(targName, "15792_341_2", 0.00921302);
 		
-		MinHashDistanceSet expected = new MinHashDistanceSet(new HashSet<>(Arrays.asList(
-				dist1, dist2, dist3)), warnings);
+		TreeSet<MinHashDistance> expected = new TreeSet<>(Arrays.asList(dist1, dist2, dist3));
 
-		computeDistance(targName, query, 100, strict, expected);
-		computeDistance(targName, query, 3, strict, expected);
+		computeDistance(targName, query, 100, strict, expected, warnings);
+		computeDistance(targName, query, 3, strict, expected, warnings);
 		
-		expected = new MinHashDistanceSet(new HashSet<>(Arrays.asList( dist1, dist2)), warnings);
+		expected = new TreeSet<>(Arrays.asList( dist1, dist2));
 		
-		computeDistance(targName, query, 2, strict, expected);
+		computeDistance(targName, query, 2, strict, expected, warnings);
 		
-		expected = new MinHashDistanceSet(new HashSet<>(Arrays.asList(dist1)), warnings);
+		expected = new TreeSet<>(Arrays.asList(dist1));
 		
-		computeDistance(targName, query, 1, strict, expected);
+		computeDistance(targName, query, 1, strict, expected, warnings);
 	}
 	
 	private void computeDistance(
@@ -309,7 +309,8 @@ public class MashTest {
 			final MinHashSketchDatabase query,
 			final int maxReturnCount,
 			final boolean strict,
-			final MinHashDistanceSet expected)
+			final TreeSet<MinHashDistance> expected,
+			final List<String> expectedWarnings)
 			throws Exception {
 		final Mash m = new Mash(MASH_TEMP_DIR, 7);
 		
@@ -320,10 +321,11 @@ public class MashTest {
 				new MinHashDBLocation(TEMP_DIR.resolve(TARGET_4SEQS)),
 				4);
 		
-		final MinHashDistanceSet dist = m.computeDistance(
-				query, Arrays.asList(target1), maxReturnCount, strict);
+		final DefaultDistanceCollector col = new DefaultDistanceCollector(maxReturnCount);
+		final List<String> warn = m.computeDistance(query, Arrays.asList(target1), col, strict);
 		
-		assertThat("incorrect distances", dist, is(expected));
+		assertThat("incorrect distances", col.getDistances(), is(expected));
+		assertThat("incorrect warnings", warn, is(expectedWarnings));
 	}
 	
 	@Test
@@ -368,20 +370,19 @@ public class MashTest {
 		final MinHashDistance dist2_2 = new MinHashDistance(targName2, "15792_467_1", 0.00673197);
 		final MinHashDistance dist2_3 = new MinHashDistance(targName2, "15792_314_2", 0.00917961);
 		
-		MinHashDistanceSet expected = new MinHashDistanceSet(new HashSet<>(Arrays.asList(
-				dist1_1, dist1_2, dist2_1, dist2_2, dist2_3, dist1_3)), warnings);
+		TreeSet<MinHashDistance> expected = new TreeSet<>(Arrays.asList(
+				dist1_1, dist1_2, dist2_1, dist2_2, dist2_3, dist1_3));
 		
-		computeDistanceTwoTargets(targName1, targName2, query, 100, strict, expected);
-		computeDistanceTwoTargets(targName1, targName2, query, 6, strict, expected);
+		computeDistanceTwoTargets(targName1, targName2, query, 100, strict, expected, warnings);
+		computeDistanceTwoTargets(targName1, targName2, query, 6, strict, expected, warnings);
 		
-		expected = new MinHashDistanceSet(new HashSet<>(Arrays.asList(dist1_1, dist1_2, dist2_1)),
-				warnings);
+		expected = new TreeSet<>(Arrays.asList(dist1_1, dist1_2, dist2_1));
 		
-		computeDistanceTwoTargets(targName1, targName2, query, 3, strict, expected);
+		computeDistanceTwoTargets(targName1, targName2, query, 3, strict, expected, warnings);
 		
-		expected = new MinHashDistanceSet(new HashSet<>(Arrays.asList(dist1_1)), warnings);
+		expected = new TreeSet<>(Arrays.asList(dist1_1));
 		
-		computeDistanceTwoTargets(targName1, targName2, query, 1, strict, expected);
+		computeDistanceTwoTargets(targName1, targName2, query, 1, strict, expected, warnings);
 	}
 	
 	private void computeDistanceTwoTargets(
@@ -390,7 +391,8 @@ public class MashTest {
 			final MinHashSketchDatabase query,
 			final int maxReturnCount,
 			final boolean strict,
-			final MinHashDistanceSet expected)
+			final TreeSet<MinHashDistance> expected,
+			final List<String> expectedWarnings)
 			throws Exception {
 		final Mash m = new Mash(MASH_TEMP_DIR, 30);
 		
@@ -408,10 +410,12 @@ public class MashTest {
 				new MinHashDBLocation(TEMP_DIR.resolve(TARGET_4SEQS_2)),
 				4);
 		
-		final MinHashDistanceSet dist = m.computeDistance(
-				query, Arrays.asList(target1, target2), maxReturnCount, strict);
+		final DefaultDistanceCollector col = new DefaultDistanceCollector(maxReturnCount);
+		final List<String> dist = m.computeDistance(
+				query, Arrays.asList(target1, target2), col, strict);
 		
-		assertThat("incorrect distances", dist, is(expected));
+		assertThat("incorrect distances", col.getDistances(), is(expected));
+		assertThat("incorrect warnings", dist, is(expectedWarnings));
 	}
 	
 	@Test
@@ -431,13 +435,15 @@ public class MashTest {
 				4);
 		final List<MinHashSketchDatabase> targets = Arrays.asList(target);
 		
-		failComputeDistance(null, targets, 1, false, new NullPointerException("query"));
-		failComputeDistance(query, null, 1, false, new NullPointerException("references"));
-		failComputeDistance(query, Arrays.asList(target, null), 1, false,
+		final MinHashDistanceCollector c = new DefaultDistanceCollector(1);
+		
+		failComputeDistance(null, targets, c, false, new NullPointerException("query"));
+		failComputeDistance(query, null, c, false, new NullPointerException("references"));
+		failComputeDistance(query, Arrays.asList(target, null), c, false,
 				new NullPointerException("Null item in collection references"));
-		failComputeDistance(query, targets, 0, false,
-				new IllegalArgumentException("maxReturnCount must be > 0"));
-		failComputeDistance(target, targets, 1, false, new IllegalArgumentException(
+		failComputeDistance(query, targets, null, false,
+				new NullPointerException("distCollector"));
+		failComputeDistance(target, targets, c, false, new IllegalArgumentException(
 				"Only 1 query sequence is allowed"));
 	}
 	
@@ -459,7 +465,9 @@ public class MashTest {
 				new MinHashDBLocation(TEMP_DIR.resolve(QUERY_K31_S1500)),
 				1);
 		
-		failComputeDistance(strict, targets, 1, true,
+		final MinHashDistanceCollector c = new DefaultDistanceCollector(1);
+		
+		failComputeDistance(strict, targets, c, true,
 				new IncompatibleSketchesException(
 						"Query sketch size 1500 does not match target 1000"));
 		
@@ -470,7 +478,7 @@ public class MashTest {
 				new MinHashDBLocation(TEMP_DIR.resolve(QUERY_K21_S1000)),
 				1);
 		
-		failComputeDistance(kmer, targets, 1, false,
+		failComputeDistance(kmer, targets, c, false,
 				new IncompatibleSketchesException(
 						"Kmer size for sketches are not compatible: 31 21"));
 		
@@ -481,7 +489,7 @@ public class MashTest {
 				new MinHashDBLocation(TEMP_DIR.resolve(QUERY_K31_S500)),
 				1);
 		
-		failComputeDistance(small, Arrays.asList(target), 1, false,
+		failComputeDistance(small, Arrays.asList(target), c, false,
 				new IncompatibleSketchesException(
 						"Query sketch size 500 may not be smaller than the target sketch " +
 						"size 1000"));
@@ -513,15 +521,17 @@ public class MashTest {
 				new MinHashDBLocation(TEMP_DIR.resolve(EMPTY_FILE)),
 				1);
 		
+		final MinHashDistanceCollector c = new DefaultDistanceCollector(1);
+		
 		NotASketchException got = (NotASketchException) failComputeDistance(
-				extension, targets, 1, false, new NotASketchException(
+				extension, targets, c, false, new NotASketchException(
 						EMPTY_FILE.toString() + " is not a mash sketch"));
 		
 		assertThat("incorrect mash output",
 				((NotASketchException) got).getMinHashErrorOutput().isPresent(), is(false));
 		
 		got = (NotASketchException) failComputeDistance(
-				query, Arrays.asList(target, extension), 1, false, new NotASketchException(
+				query, Arrays.asList(target, extension), c, false, new NotASketchException(
 						EMPTY_FILE.toString() + " is not a mash sketch"));
 		
 		assertThat("incorrect mash output",
@@ -535,14 +545,14 @@ public class MashTest {
 				1);
 		
 		got = (NotASketchException) failComputeDistance(
-				emptyFile, targets, 1, false, new NotASketchException(
+				emptyFile, targets, c, false, new NotASketchException(
 						"mash could not read sketch"));
 		assertThat("incorrect mash output",
 				((NotASketchException) got).getMinHashErrorOutput().get(),
 				containsString("terminate called"));
 		
 		got = (NotASketchException) failComputeDistance(
-				query, Arrays.asList(target, emptyFile), 1, false, new NotASketchException(
+				query, Arrays.asList(target, emptyFile), c, false, new NotASketchException(
 						"mash could not read sketch"));
 		assertThat("incorrect mash output",
 				((NotASketchException) got).getMinHashErrorOutput().get(),
@@ -552,11 +562,11 @@ public class MashTest {
 	private Exception failComputeDistance(
 			final MinHashSketchDatabase query,
 			final Collection<MinHashSketchDatabase> references,
-			final int maxReturnCount,
+			final MinHashDistanceCollector distCol,
 			final boolean strict,
 			final Exception expected) {
 		try {
-			new Mash(MASH_TEMP_DIR, 60).computeDistance(query, references, maxReturnCount, strict);
+			new Mash(MASH_TEMP_DIR, 60).computeDistance(query, references, distCol, strict);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);

@@ -24,9 +24,9 @@ import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
+import us.kbase.assemblyhomology.minhash.DefaultDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
@@ -258,9 +258,10 @@ public class AssemblyHomology {
 		}
 		final Set<MinHashSketchDatabase> dbs = namespaces.stream()
 				.map(n -> n.getSketchDatabase()).collect(Collectors.toSet());
-		final MinHashDistanceSet dists;
+		final DefaultDistanceCollector distCol = new DefaultDistanceCollector(returnCount);
 		try {
-			dists = impl.computeDistance(query, dbs, returnCount, strict);
+			// ignore returned warnings since we gather them above
+			impl.computeDistance(query, dbs, distCol, strict);
 		} catch (MinHashException e) {
 			/* At this point minhash should work, and the user input should be ok.
 			 * Hard to know how to respond to exceptions. For now just bail.
@@ -270,8 +271,7 @@ public class AssemblyHomology {
 			throw new IllegalStateException("Unexpected error running MinHash implementation " +
 					impl.getImplementationInformation().getImplementationName().getName(), e);
 		}
-		// ignore warnings since we gather them above
-		return new DistReturn(dists.getDistances(), warnings);
+		return new DistReturn(distCol.getDistances(), warnings);
 	}
 
 	private MinHashSketchDatabase getQueryDB(final Path sketchDB, final MinHashImplementation impl)
