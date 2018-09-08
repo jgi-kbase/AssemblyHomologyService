@@ -3,7 +3,6 @@ package us.kbase.test.assemblyhomology.core;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -20,6 +19,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.mockito.ArgumentMatcher;
 
 import com.google.common.base.Optional;
+import com.google.common.collect.ImmutableMap;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -48,9 +49,10 @@ import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
+import us.kbase.assemblyhomology.minhash.DefaultDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
@@ -331,18 +333,49 @@ public class AssemblyHomologyTest {
 		}
 	}
 	
-	private class DistColArgMatch implements ArgumentMatcher<MinHashDistanceCollector> {
+	private class DistFilterArgMatch implements
+			ArgumentMatcher<Map<MinHashSketchDatabase, MinHashDistanceFilter>> {
 
-		final Collection<MinHashDistance> toCollect;
+		final String LOG = DistFilterArgMatch.class.getName();
 		
-		public DistColArgMatch(final Collection<MinHashDistance> toCollect) {
+		final Map<MinHashSketchDatabase, Collection<MinHashDistance>> toCollect;
+		final Map<MinHashSketchDatabase, Class<?>> expectedArg;
+		
+		public DistFilterArgMatch(
+				final Map<MinHashSketchDatabase, Class<?>> expectedArg,
+				final Map<MinHashSketchDatabase, Collection<MinHashDistance>> toCollect) {
 			this.toCollect = toCollect;
+			this.expectedArg = expectedArg;
 		}
 		
 		@Override
-		public boolean matches(final MinHashDistanceCollector col) {
-			for (final MinHashDistance d: toCollect) {
-				col.accept(d);
+		public boolean matches(final Map<MinHashSketchDatabase, MinHashDistanceFilter> arg) {
+			if (arg.size() != expectedArg.size()) {
+				System.out.println(LOG + String.format("Got size %s, expected size %s",
+						arg.size(), expectedArg.size()));
+				return false;
+			}
+			for (final MinHashSketchDatabase db: expectedArg.keySet()) {
+				if (!expectedArg.containsKey(db)) {
+					System.out.println(LOG + "Missing expected db " + db.getName().getName());
+					return false;
+				}
+				final Class<?> expectedFilterClass = expectedArg.get(db);
+				if (!(expectedFilterClass.isInstance(arg.get(db)))) {
+					System.out.println(String.format(
+							"%s: Wrong filter for db %s, expected %s, got %s",
+							LOG, db.getName().getName(),
+							expectedFilterClass.getName(),
+							arg.get(db).getClass().getName()));
+					return false;
+					
+				}
+			}
+			for (final MinHashSketchDatabase db: toCollect.keySet()) {
+				final MinHashDistanceFilter filter = arg.get(db);
+				for (final MinHashDistance d: toCollect.get(db)) {
+					filter.accept(d);
+				}
 			}
 			return true;
 		}
@@ -427,11 +460,22 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH)))
 				.thenReturn(query);
 		
-		final DistColArgMatch match = new DistColArgMatch(set(
-				new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
-				new MinHashDistance(new MinHashSketchDBName("ns2"), "seq2", 0.2),
-				new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)));
-		when(mash.computeDistance(eq(query), eq(set(ref1, ref2)), argThat(match), eq(strict)))
+		final DistFilterArgMatch match = new DistFilterArgMatch(
+				ImmutableMap.of(
+						ref1, DefaultDistanceFilter.class,
+						ref2, DefaultDistanceFilter.class
+				),
+				ImmutableMap.of(
+						ref1, Arrays.asList(
+								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
+								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)
+						),
+						ref2, Arrays.asList(
+								new MinHashDistance(new MinHashSketchDBName("ns2"), "seq2", 0.2)
+						)
+				));
+		
+		when(mash.computeDistance(eq(query), argThat(match), eq(strict)))
 				.thenReturn(Collections.emptyList()); // minhash warnings are ignored
 		
 		when(storage.getSequenceMetadata(
@@ -546,7 +590,7 @@ public class AssemblyHomologyTest {
 		
 		failMeasureDistance(ah, set(new NamespaceID("ns1"), new NamespaceID("ns2")),
 				Paths.get("foo"), true, new IncompatibleNamespacesException(
-						"The selected namespaces must share the same implementation"));
+						"The selected namespaces must share the same Minhash implementation"));
 	}
 
 	@Test
@@ -850,8 +894,11 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
 				.thenReturn(query);
 		
-		when(impl.computeDistance(
-				eq(query), eq(set(ref1)), any(MinHashDistanceCollector.class), eq(true)))
+		final DistFilterArgMatch matcher = new DistFilterArgMatch(
+				ImmutableMap.of(ref1, DefaultDistanceFilter.class),
+				ImmutableMap.of(ref1, Collections.emptyList()));
+		
+		when(impl.computeDistance(eq(query), argThat(matcher), eq(true)))
 				.thenThrow(new MinHashException("he must have died while carving it"));
 		
 		when(impl.getImplementationInformation()).thenReturn(new MinHashImplementationInformation(
@@ -895,10 +942,16 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
 				.thenReturn(query);
 		
-		final DistColArgMatch match = new DistColArgMatch(set(
-				new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
-				new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)));
-		when(impl.computeDistance(eq(query), eq(set(ref1)), argThat(match), eq(true)))
+		
+		final DistFilterArgMatch match = new DistFilterArgMatch(
+				ImmutableMap.of(ref1, DefaultDistanceFilter.class),
+				ImmutableMap.of(ref1, Arrays.asList(
+								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
+								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)
+								)
+				));
+		
+		when(impl.computeDistance(eq(query), argThat(match), eq(true)))
 				.thenReturn(Collections.emptyList()); // minhash warnings are ignored
 		
 		when(storage.getSequenceMetadata(

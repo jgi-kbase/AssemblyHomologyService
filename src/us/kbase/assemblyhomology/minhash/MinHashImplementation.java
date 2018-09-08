@@ -1,7 +1,7 @@
 package us.kbase.assemblyhomology.minhash;
 
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
@@ -37,8 +37,8 @@ public interface MinHashImplementation {
 	/** Compute distances between a query sequence and set of reference sequence sketch databases.
 	 * @param query the query sequence. The database must contain exactly one sequence.
 	 * @param references the set of reference databases against which the query will be
-	 * measured.
-	 * @param distCollector the collector for the minhash distances.
+	 * measured mapped to the filter to use to filter the results of the search against that
+	 * database.
 	 * @param strict if false, allow the query sequence sketch size to be larger than the
 	 * reference databases' sketch size. Otherwise throw an {@link IncompatibleSketchesException}.
 	 * @return a list of warnings regarding the minhash query.
@@ -48,8 +48,7 @@ public interface MinHashImplementation {
 	 */
 	List<String> computeDistance(
 			MinHashSketchDatabase query,
-			Collection<MinHashSketchDatabase> references,
-			MinHashDistanceCollector distCollector,
+			Map<MinHashSketchDatabase, MinHashDistanceFilter> references,
 			boolean strict)
 			throws MinHashException, IncompatibleSketchesException, NotASketchException;
 	

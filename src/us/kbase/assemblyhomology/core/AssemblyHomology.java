@@ -25,8 +25,11 @@ import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
 import us.kbase.assemblyhomology.minhash.DefaultDistanceCollector;
+import us.kbase.assemblyhomology.minhash.DefaultDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
@@ -256,12 +259,13 @@ public class AssemblyHomology {
 						ns.getID().getName(), e.getMessage()), e);
 			}
 		}
-		final Set<MinHashSketchDatabase> dbs = namespaces.stream()
-				.map(n -> n.getSketchDatabase()).collect(Collectors.toSet());
-		final DefaultDistanceCollector distCol = new DefaultDistanceCollector(returnCount);
+		final MinHashDistanceCollector distCol = new DefaultDistanceCollector(returnCount);
+		final MinHashDistanceFilter distFil = new DefaultDistanceFilter(distCol);
+		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs = namespaces.stream()
+				.collect(Collectors.toMap(n -> n.getSketchDatabase(), n -> distFil));
 		try {
 			// ignore returned warnings since we gather them above
-			impl.computeDistance(query, dbs, distCol, strict);
+			impl.computeDistance(query, dbs, strict);
 		} catch (MinHashException e) {
 			/* At this point minhash should work, and the user input should be ok.
 			 * Hard to know how to respond to exceptions. For now just bail.
@@ -308,7 +312,7 @@ public class AssemblyHomology {
 				.collect(Collectors.toSet());
 		if (implnames.size() != 1) {
 			throw new IncompatibleNamespacesException(
-					"The selected namespaces must share the same implementation");
+					"The selected namespaces must share the same Minhash implementation");
 		}
 		final String impl = implnames.iterator().next().getName().toLowerCase();
 		if (!impls.containsKey(impl)) {
