@@ -4,8 +4,8 @@ package us.kbase.assemblyhomology.minhash;
  * but often checks that a user has authorization to view the sequences or other functionality
  * that filters out sequences from the full set returned by the MinHash implementation.
  * 
- *  The filters typically feed into a {@link MinHashDistanceCollector}, and may buffer the
- *  distances so that filtering can be performed batch-wise.
+ * The filters typically feed into a {@link MinHashDistanceCollector}, and may buffer the
+ * distances so that filtering can be performed batch-wise.
  * @author gaprice@lbl.gov
  *
  */

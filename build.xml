@@ -277,7 +277,7 @@
         <test name="us.kbase.test.assemblyhomology.load.ParseHelpersTest"/>
         <test name="us.kbase.test.assemblyhomology.load.SeqMetaLoadInfoTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.DefaultDistanceCollectorTest"/>
-      	<test name="us.kbase.test.assemblyhomology.minhash.DefaultDistanceFilterTest"/>
+        <test name="us.kbase.test.assemblyhomology.minhash.DefaultDistanceFilterTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDBLocationTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDistanceTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashImplementationInformationTest"/>

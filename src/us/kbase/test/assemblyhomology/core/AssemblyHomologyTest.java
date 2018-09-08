@@ -946,9 +946,9 @@ public class AssemblyHomologyTest {
 		final DistFilterArgMatch match = new DistFilterArgMatch(
 				ImmutableMap.of(ref1, DefaultDistanceFilter.class),
 				ImmutableMap.of(ref1, Arrays.asList(
-								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
-								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)
-								)
+						new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
+						new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)
+						)
 				));
 		
 		when(impl.computeDistance(eq(query), argThat(match), eq(true)))
