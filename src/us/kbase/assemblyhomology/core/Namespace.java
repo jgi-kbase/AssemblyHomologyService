@@ -233,7 +233,7 @@ public class Namespace {
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
-		private FilterID filterID = FilterID.DEFAULT;
+		private FilterID filterID = FilterID.DEFAULT; //TODO NOW use absent() vs. default
 		private DataSourceID dataSourceID = DEFAULT_DS_ID;
 		private Instant modification;
 		private String sourceDatabaseID = DEFAULT;
