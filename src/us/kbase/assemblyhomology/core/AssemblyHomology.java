@@ -305,16 +305,14 @@ public class AssemblyHomology {
 		final MinHashDistanceFilter defaultFilter = new DefaultDistanceFilter(distCol);
 		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs = new HashMap<>();
 		for (final Namespace ns: namespaces) {
-			if (ns.getFilterID().equals(FilterID.DEFAULT)) {
-				dbs.put(ns.getSketchDatabase(), defaultFilter);
-			} else {
-				if (!filters.containsKey(ns.getFilterID())) {
+			if (ns.getFilterID().isPresent()) {
+				if (!filters.containsKey(ns.getFilterID().get())) {
 					throw new IllegalStateException(String.format(
 							"Application is misconfigured. Namespace %s requires filter %s but " +
 							"it is not configured.",
-							ns.getID().getName(), ns.getFilterID().getName()));
+							ns.getID().getName(), ns.getFilterID().get().getName()));
 				}
-				final MinHashDistanceFilterFactory fac = filters.get(ns.getFilterID());
+				final MinHashDistanceFilterFactory fac = filters.get(ns.getFilterID().get());
 				if (fac.getAuthSource().isPresent()) {
 					if (!token.isPresent()) {
 						throw new NoTokenProvidedException(String.format(
@@ -326,6 +324,8 @@ public class AssemblyHomology {
 				} else {
 					dbs.put(ns.getSketchDatabase(), fac.getFilter(distCol));
 				}
+			} else {
+				dbs.put(ns.getSketchDatabase(), defaultFilter);
 			}
 		}
 		return dbs;

@@ -51,7 +51,7 @@ public class NamespaceTest {
 		assertThat("incorrect mod date", ns.getModification(), is(Instant.ofEpochMilli(10000)));
 		assertThat("incorrect desc", ns.getDescription(), is(Optional.absent()));
 		assertThat("incorrect id", ns.getID(), is(new NamespaceID("foo")));
-		assertThat("incorrect collector id", ns.getFilterID(), is(FilterID.DEFAULT));
+		assertThat("incorrect collector id", ns.getFilterID(), is(Optional.absent()));
 		assertThat("incorrect load ID", ns.getLoadID(), is(new LoadID("bat")));
 		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
@@ -87,7 +87,8 @@ public class NamespaceTest {
 		assertThat("incorrect desc", ns.getDescription(), is(Optional.of("desc")));
 		assertThat("incorrect id", ns.getID(), is(new NamespaceID("foo")));
 		assertThat("incorrect load id", ns.getLoadID(), is(new LoadID("bat")));
-		assertThat("incorrect collector id", ns.getFilterID(), is(new FilterID("yay")));
+		assertThat("incorrect collector id", ns.getFilterID(),
+				is(Optional.of(new FilterID("yay"))));
 		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("foo"),
@@ -126,7 +127,7 @@ public class NamespaceTest {
 		assertThat("incorrect desc", ns.getDescription(), is(Optional.absent()));
 		assertThat("incorrect id", ns.getID(), is(new NamespaceID("foo")));
 		assertThat("incorrect load id", ns.getLoadID(), is(new LoadID("bat")));
-		assertThat("incorrect collector id", ns.getFilterID(), is(FilterID.DEFAULT));
+		assertThat("incorrect collector id", ns.getFilterID(), is(Optional.absent()));
 		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("foo"),
@@ -164,7 +165,8 @@ public class NamespaceTest {
 		assertThat("incorrect desc", ns.getDescription(), is(Optional.absent()));
 		assertThat("incorrect id", ns.getID(), is(new NamespaceID("foo")));
 		assertThat("incorrect load id", ns.getLoadID(), is(new LoadID("bat")));
-		assertThat("incorrect collector id", ns.getFilterID(), is(new FilterID("yo")));
+		assertThat("incorrect collector id", ns.getFilterID(),
+				is(Optional.of(new FilterID("yo"))));
 		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("foo"),

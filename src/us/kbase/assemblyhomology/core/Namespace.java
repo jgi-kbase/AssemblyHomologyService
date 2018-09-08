@@ -30,7 +30,7 @@ public class Namespace {
 	private final NamespaceID id;
 	private final MinHashSketchDatabase sketchDatabase;
 	private final LoadID loadID;
-	private final FilterID filterID;
+	private final Optional<FilterID> filterID;
 	private final DataSourceID dataSourceID;
 	private final Instant modification;
 	private final String sourceDatabaseID;
@@ -40,7 +40,7 @@ public class Namespace {
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
-			final FilterID filterID,
+			final Optional<FilterID> filterID,
 			final DataSourceID dataSourceID,
 			final Instant modification,
 			final String sourceDatabaseID,
@@ -77,10 +77,10 @@ public class Namespace {
 		return loadID;
 	}
 
-	/** Get the id for the {@link MinHashDistanceFilter} associated with this namespace.
-	 * @return the collector ID.
+	/** Get the id for the {@link MinHashDistanceFilter} associated with this namespace, if any.
+	 * @return the filter ID or absent() if a default filter should be used.
 	 */
-	public FilterID getFilterID() {
+	public Optional<FilterID> getFilterID() {
 		return filterID;
 	}
 	
@@ -233,7 +233,7 @@ public class Namespace {
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
-		private FilterID filterID = FilterID.DEFAULT; //TODO NOW use absent() vs. default
+		private Optional<FilterID> filterID = Optional.absent();
 		private DataSourceID dataSourceID = DEFAULT_DS_ID;
 		private Instant modification;
 		private String sourceDatabaseID = DEFAULT;
@@ -258,16 +258,15 @@ public class Namespace {
 			this.modification = modification;
 		}
 		
-		/** Add a filter ID. If the filter ID is null, the filter ID is reset to the 
-		 * default, "default".
+		/** Add a filter ID. If the filter ID is null, the filter ID is removed.
 		 * @param filterID the ID of the filter associated with the namespace.
 		 * @return this builder.
 		 */
 		public Builder withNullableFilterID(final FilterID filterID) {
 			if (filterID != null) {
-				this.filterID = filterID;
+				this.filterID = Optional.of(filterID);
 			} else {
-				this.filterID = FilterID.DEFAULT;
+				this.filterID = Optional.absent();
 			}
 			return this;
 		}
