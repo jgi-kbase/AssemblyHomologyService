@@ -17,15 +17,6 @@ public class FilterID extends Name {
 	private static final String INVALID_CHARS_REGEX = "[^a-z]+";
 	private final static Pattern INVALID_CHARS = Pattern.compile(INVALID_CHARS_REGEX);
 
-	public static final FilterID DEFAULT;
-	static {
-		try {
-			DEFAULT = new FilterID("default");
-		} catch (MissingParameterException | IllegalParameterException e) {
-			throw new RuntimeException("Programming error: " + e, e);
-		}
-	}
-	
 	/** Create a new filter ID. 
 	 * @param filterID the ID.
 	 * @throws MissingParameterException if the id is null or the empty string.

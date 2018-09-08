@@ -26,6 +26,7 @@ public class Namespace {
 	//TODO NOW load filter ID w/ namespace
 	//TODO NOW show auth requirements for namespaces in API
 	//TODO NOW filters should have a validate seq id format method and validate on load
+	//TODO NOW integration tests with authenticated & unauthenticated filters
 	
 	private final NamespaceID id;
 	private final MinHashSketchDatabase sketchDatabase;
