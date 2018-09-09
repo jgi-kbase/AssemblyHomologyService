@@ -22,6 +22,8 @@ public class Fields {
 	public static final String NAMESPACE_ID = "id";
 	/** The load ID for the currently active load in the namespace. */
 	public static final String NAMESPACE_LOAD_ID = "load";
+	/** The ID of the filter to use with the sketch database in the namespace. */
+	public static final String NAMESPACE_FILTER_ID = "filid";
 	/** The ID of the source of the data in the namespace. */
 	public static final String NAMESPACE_DATASOURCE_ID = "dsid";
 	/**
