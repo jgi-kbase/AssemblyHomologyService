@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
@@ -177,6 +178,8 @@ public class AssemblyHomology {
 	 * compatible with any of the selected namespaces' sketch databases.
 	 * @throws NoTokenProvidedException if a namespace requires authentication but no token
 	 * was provided.
+	 * @throws IncompatibleAuthenticationException if namespaces with different authentication
+	 * sources are requested.
 	 */
 	public SequenceMatches measureDistance(
 			final Set<NamespaceID> namespaceIDs,
@@ -186,7 +189,8 @@ public class AssemblyHomology {
 			final Token token)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException,
 				InvalidSketchException, IncompatibleNamespacesException,
-				IncompatibleSketchesException, NoTokenProvidedException {
+				IncompatibleSketchesException, NoTokenProvidedException,
+				IncompatibleAuthenticationException {
 		// may need a builder here, only 1st 2 arguments are always required
 		checkNoNullsInCollection(namespaceIDs, "namespaceIDs");
 		checkNotNull(sketchDB, "sketchDB");
@@ -264,7 +268,7 @@ public class AssemblyHomology {
 			final boolean strict,
 			final Optional<Token> token)
 			throws InvalidSketchException, IncompatibleSketchesException,
-				NoTokenProvidedException {
+				NoTokenProvidedException, IncompatibleAuthenticationException {
 		final MinHashSketchDatabase query = getQueryDB(sketchDB, impl);
 		final Set<String> warnings = new HashSet<>();
 		for (final Namespace ns: namespaces) {
@@ -301,9 +305,11 @@ public class AssemblyHomology {
 			final Set<Namespace> namespaces,
 			final MinHashDistanceCollector distCol,
 			final Optional<Token> token)
-			throws NoTokenProvidedException {
+			throws NoTokenProvidedException, IncompatibleAuthenticationException {
 		final MinHashDistanceFilter defaultFilter = new DefaultDistanceFilter(distCol);
 		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs = new HashMap<>();
+		NamespaceID authns = null;
+		String auth = null;
 		for (final Namespace ns: namespaces) {
 			if (ns.getFilterID().isPresent()) {
 				if (!filters.containsKey(ns.getFilterID().get())) {
@@ -319,6 +325,18 @@ public class AssemblyHomology {
 								"Namespace %s requires %s authentication, but no " +
 								"token was provided",
 								ns.getID().getName(), fac.getAuthSource().get()));
+					}
+					if (auth == null) {
+						auth = fac.getAuthSource().get();
+						authns = ns.getID();
+					} else {
+						if (!auth.equals(fac.getAuthSource().get())) {
+							throw new IncompatibleAuthenticationException(String.format(
+									"Namespace %s requires %s authentication, " +
+									"namespace %s requires %s authentication",
+									authns.getName(), auth,
+									ns.getID().getName(), fac.getAuthSource().get()));
+						}
 					}
 					dbs.put(ns.getSketchDatabase(), fac.getFilter(distCol, token.get()));
 				} else {
