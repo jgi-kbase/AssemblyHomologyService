@@ -41,7 +41,6 @@ import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
-import us.kbase.assemblyhomology.core.exceptions.NoTokenProvidedException;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
@@ -136,8 +135,6 @@ public class Namespaces {
 	 * MinHash implementations.
 	 * @throws IllegalParameterException if one or more of the namespace IDs are illegal, or if
 	 * max is not an integer if provided.
-	 * @throws NoTokenProvidedException if a namespace requires authentication but no token
-	 * was provided.
 	 * @throws IncompatibleAuthenticationException if namespaces with different authentication
 	 * sources are requested.
 	 */
@@ -153,8 +150,7 @@ public class Namespaces {
 			throws IOException, NoSuchNamespaceException, IncompatibleSketchesException,
 				MissingParameterException, AssemblyHomologyStorageException,
 				InvalidSketchException, IncompatibleNamespacesException,
-				IllegalParameterException, NoTokenProvidedException,
-				IncompatibleAuthenticationException { 
+				IllegalParameterException, IncompatibleAuthenticationException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
 		final Set<Namespace> nss = ah.getNamespaces(getNamespaceIDs(namespaces));
