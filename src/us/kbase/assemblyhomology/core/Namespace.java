@@ -233,9 +233,9 @@ public class Namespace {
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
+		private final Instant modification;
 		private Optional<FilterID> filterID = Optional.absent();
 		private DataSourceID dataSourceID = DEFAULT_DS_ID;
-		private Instant modification;
 		private String sourceDatabaseID = DEFAULT;
 		private String description = null;
 
