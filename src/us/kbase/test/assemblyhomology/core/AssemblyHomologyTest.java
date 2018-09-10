@@ -44,6 +44,7 @@ import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
+import us.kbase.assemblyhomology.core.NamespaceView;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
@@ -80,7 +81,11 @@ public class AssemblyHomologyTest {
 	private static final List<MinHashDistanceFilterFactory> MTFAC = Collections.emptyList();
 	
 	private static final Namespace NS1;
+	private static final NamespaceView NSV1;
 	private static final Namespace NS2;
+	private static final NamespaceView NSV2;
+	private static final Namespace NSFILTER1;
+	private static final NamespaceView NSVFILTER1;
 	static {
 		try {
 			NS1 = Namespace.getBuilder(
@@ -94,6 +99,7 @@ public class AssemblyHomologyTest {
 				new LoadID("bat"),
 				Instant.ofEpochMilli(10000))
 				.build();
+			NSV1 = new NamespaceView(NS1);
 			
 			NS2 = Namespace.getBuilder(
 					new NamespaceID("baz"),
@@ -106,8 +112,26 @@ public class AssemblyHomologyTest {
 					new LoadID("boo"),
 					Instant.ofEpochMilli(20000))
 					.build();
+			NSV2 = new NamespaceView(NS2);
+			
+			final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+			when(ffac.getID()).thenReturn(new FilterID("filterone"));
+			when(ffac.getAuthSource()).thenReturn(Optional.of("as"));
+			NSFILTER1 = Namespace.getBuilder(
+					new NamespaceID("fil"),
+					new MinHashSketchDatabase(
+							new MinHashSketchDBName("fil"),
+							new MinHashImplementationName("mash"),
+							MinHashParameters.getBuilder(8).withScaling(10).build(),
+							mock(MinHashDBLocation.class),
+							21),
+					new LoadID("boom"),
+					Instant.ofEpochMilli(30000))
+					.withNullableFilterID(new FilterID("filterone"))
+					.build();
+			NSVFILTER1 = new NamespaceView(NSFILTER1, ffac);
 		} catch (IllegalParameterException | MissingParameterException e) {
-			throw new RuntimeException("Fix yer tests newb");
+			throw new RuntimeException("Fix yer tests newb", e);
 		}
 	}
 	
@@ -265,28 +289,53 @@ public class AssemblyHomologyTest {
 	
 	@Test
 	public void getNamespacesNoArgs() throws Exception {
-		// not much to test here
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
+		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+		when(ffac.getID()).thenReturn(new FilterID("filterone"));
+		when(ffac.getAuthSource()).thenReturn(Optional.of("as"));
 		
+		final AssemblyHomology ah = new AssemblyHomology(
+				s, Collections.emptyList(), Arrays.asList(ffac), Paths.get("foo"), 30);
+		
+		when(s.getNamespaces()).thenReturn(new HashSet<>(Arrays.asList(NS1, NS2, NSFILTER1)));
+		
+		assertThat("incorrect namespaces", ah.getNamespaces(), is(
+				new HashSet<>(Arrays.asList(NSV2, NSV1, NSVFILTER1))));
+	}
+
+	@Test
+	public void getNamespacesNoArgsFail() throws Exception {
+		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
 		final AssemblyHomology ah = new AssemblyHomology(
 				s, Collections.emptyList(), MTFAC, Paths.get("foo"), 30);
 		
-		when(s.getNamespaces()).thenReturn(new HashSet<>(Arrays.asList(NS1, NS2)));
+		when(s.getNamespaces()).thenReturn(new HashSet<>(Arrays.asList(NS1, NS2, NSFILTER1)));
 		
-		assertThat("incorrect namespaces", ah.getNamespaces(), is(
-				new HashSet<>(Arrays.asList(NS2, NS1))));
+		try {
+			ah.getNamespaces();
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, new IllegalStateException(
+					"Application is misconfigured. Namespace fil requires filter filterone " +
+					"but it is not configured."));
+		}
 	}
 	
 	@Test
 	public void getNamespace() throws Exception {
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
+		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+		when(ffac.getID()).thenReturn(new FilterID("filterone"));
+		when(ffac.getAuthSource()).thenReturn(Optional.of("as"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				s, Collections.emptyList(), MTFAC, Paths.get("foo"), 30);
+				s, Collections.emptyList(), Arrays.asList(ffac), Paths.get("foo"), 30);
 		
 		when(s.getNamespace(new NamespaceID("baz"))).thenReturn(NS2);
+		when(s.getNamespace(new NamespaceID("fil"))).thenReturn(NSFILTER1);
 		
-		assertThat("incorrect namespace", ah.getNamespace(new NamespaceID("baz")), is(NS2));
+		assertThat("incorrect namespace", ah.getNamespace(new NamespaceID("baz")), is(NSV2));
+		assertThat("incorrect namespace", ah.getNamespace(new NamespaceID("fil")), is(NSVFILTER1));
 	}
 	
 	@Test
@@ -299,8 +348,13 @@ public class AssemblyHomologyTest {
 		
 		when(s.getNamespace(new NamespaceID("bar")))
 				.thenThrow(new NoSuchNamespaceException("bar"));
+		when(s.getNamespace(new NamespaceID("fil"))).thenReturn(NSFILTER1);
 		
 		failGetNamespace(ah, new NamespaceID("bar"), new NoSuchNamespaceException("bar"));
+		
+		failGetNamespace(ah, new NamespaceID("fil"), new IllegalStateException(
+					"Application is misconfigured. Namespace fil requires filter filterone " +
+					"but it is not configured."));
 		
 	}
 	
@@ -319,17 +373,20 @@ public class AssemblyHomologyTest {
 	@Test
 	public void getNamespaces() throws Exception {
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
+		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+		when(ffac.getID()).thenReturn(new FilterID("filterone"));
+		when(ffac.getAuthSource()).thenReturn(Optional.of("as"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				s, Collections.emptyList(), MTFAC, Paths.get("foo"), 30);
+				s, Collections.emptyList(), Arrays.asList(ffac), Paths.get("foo"), 30);
 		
 		assertThat("incorrect namespaces", ah.getNamespaces(set()), is(set()));
 		
-		when(s.getNamespace(new NamespaceID("foo"))).thenReturn(NS1);
 		when(s.getNamespace(new NamespaceID("baz"))).thenReturn(NS2);
+		when(s.getNamespace(new NamespaceID("fil"))).thenReturn(NSFILTER1);
 		
-		assertThat("incorrect namespaces", ah.getNamespaces(set(
-				new NamespaceID("baz"), new NamespaceID("foo"))), is(set(NS2, NS1)));
+		assertThat("incorrect namespaces", ah.getNamespaces(
+				set(new NamespaceID("baz"), new NamespaceID("fil"))), is(set(NSV2, NSVFILTER1)));
 	}
 	
 	@Test
@@ -346,9 +403,14 @@ public class AssemblyHomologyTest {
 		when(s.getNamespace(new NamespaceID("foo"))).thenReturn(NS1);
 		when(s.getNamespace(new NamespaceID("whee")))
 				.thenThrow(new NoSuchNamespaceException("whee"));
+		when(s.getNamespace(new NamespaceID("fil"))).thenReturn(NSFILTER1);
 		
 		failGetNamespaces(ah, set(new NamespaceID("foo"), new NamespaceID("whee")),
 				new NoSuchNamespaceException("whee"));
+		
+		failGetNamespaces(ah, set(new NamespaceID("fil")), new IllegalStateException(
+				"Application is misconfigured. Namespace fil requires filter filterone " +
+				"but it is not configured."));
 	}
 	
 	private void failGetNamespaces(
@@ -533,7 +595,7 @@ public class AssemblyHomologyTest {
 				null);
 		
 		final SequenceMatches expected = new SequenceMatches(
-				set(ns1, ns2),
+				set(new NamespaceView(ns1), new NamespaceView(ns2)),
 				new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
 				Arrays.asList(
@@ -671,7 +733,7 @@ public class AssemblyHomologyTest {
 				null);
 		
 		final SequenceMatches expected = new SequenceMatches(
-				set(ns1, ns2),
+				set(new NamespaceView(ns1, ffac), new NamespaceView(ns2)),
 				new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
 				Arrays.asList(
@@ -790,7 +852,7 @@ public class AssemblyHomologyTest {
 				new Token("tkn"));
 		
 		final SequenceMatches expected = new SequenceMatches(
-				set(ns1, ns2),
+				set(new NamespaceView(ns1, ffac), new NamespaceView(ns2)),
 				new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
 				Arrays.asList(
@@ -919,7 +981,7 @@ public class AssemblyHomologyTest {
 				new Token("tkn"));
 		
 		final SequenceMatches expected = new SequenceMatches(
-				set(ns1, ns2),
+				set(new NamespaceView(ns1, ffac1), new NamespaceView(ns2, ffac2)),
 				new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
 				Arrays.asList(

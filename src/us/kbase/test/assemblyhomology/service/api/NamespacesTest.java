@@ -38,9 +38,13 @@ import com.google.common.collect.ImmutableMap;
 
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
 import us.kbase.assemblyhomology.core.AssemblyHomology;
+import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
+import us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
+import us.kbase.assemblyhomology.core.NamespaceView;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
@@ -63,11 +67,12 @@ import us.kbase.test.assemblyhomology.TestCommon;
 
 public class NamespacesTest {
 
-	private static final Namespace NS1;
-	private static final Namespace NS2;
+	private static final NamespaceView NS1;
+	private static final NamespaceView NS2;
+	private static final NamespaceView NSFILTER1;
 	static {
 		try {
-			NS1 = Namespace.getBuilder(
+			NS1 = new NamespaceView(Namespace.getBuilder(
 				new NamespaceID("foo"),
 				new MinHashSketchDatabase(
 						new MinHashSketchDBName("foo"),
@@ -77,9 +82,9 @@ public class NamespacesTest {
 						42),
 				new LoadID("bat"),
 				Instant.ofEpochMilli(100000))
-				.build();
+				.build());
 			
-			NS2 = Namespace.getBuilder(
+			NS2 = new NamespaceView(Namespace.getBuilder(
 					new NamespaceID("baz"),
 					new MinHashSketchDatabase(
 							new MinHashSketchDBName("baz"),
@@ -90,7 +95,27 @@ public class NamespacesTest {
 					new LoadID("boo"),
 					Instant.ofEpochMilli(300000))
 					.withNullableDescription("some desc")
-					.build();
+					.build());
+			
+			final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+			when(ffac.getID()).thenReturn(new FilterID("filterone"));
+			when(ffac.getAuthSource()).thenReturn(Optional.of("as"));
+			NSFILTER1 = new NamespaceView(
+					Namespace.getBuilder(
+							new NamespaceID("fil"),
+							new MinHashSketchDatabase(
+									new MinHashSketchDBName("fil"),
+									new MinHashImplementationName("mash"),
+									MinHashParameters.getBuilder(8).withScaling(10).build(),
+									mock(MinHashDBLocation.class),
+									84),
+							new LoadID("boom"),
+							Instant.ofEpochMilli(40000))
+							.withNullableFilterID(new FilterID("filterone"))
+							.withNullableSourceDatabaseID("sdb")
+							.withNullableDataSourceID(new DataSourceID("dsid"))
+							.build(),
+					ffac);
 		} catch (IllegalParameterException | MissingParameterException e) {
 			throw new RuntimeException("Fix yer tests newb");
 		}
@@ -106,6 +131,7 @@ public class NamespacesTest {
 			.with("scaling", 4)
 			.with("desc", null)
 			.with("lastmod", 100000L)
+			.with("authsource", null)
 			.build();
 	
 	private static final Map<String, Object> EXPECTED_NS2 = MapBuilder.<String, Object>newHashMap()
@@ -119,7 +145,23 @@ public class NamespacesTest {
 			.with("sketchsize", 10000)
 			.with("desc", "some desc")
 			.with("lastmod", 300000L)
+			.with("authsource", null)
 			.build();
+	
+	private static final Map<String, Object> EXP_NSF1 = MapBuilder.<String, Object>newHashMap()
+			.with("id", "fil")
+			.with("impl", "mash")
+			.with("scaling", 10)
+			.with("database", "sdb")
+			.with("datasource", "dsid")
+			.with("seqcount", 84)
+			.with("kmersize", Arrays.asList(8))
+			.with("sketchsize", null)
+			.with("desc", null)
+			.with("lastmod", 40000L)
+			.with("authsource", "as")
+			.build();
+	
 	
 	private static Path TEMP_DIR;
 	
@@ -157,10 +199,10 @@ public class NamespacesTest {
 		final AssemblyHomology ah = mock(AssemblyHomology.class);
 		final Namespaces ns = getNamespaceInstance(ah);
 		
-		when(ah.getNamespaces()).thenReturn(set(NS1, NS2));
+		when(ah.getNamespaces()).thenReturn(set(NS1, NS2, NSFILTER1));
 		
 		assertThat("incorrect namespaces", ns.getNamespaces(),
-				is(set(EXPECTED_NS1, EXPECTED_NS2)));
+				is(set(EXPECTED_NS1, EXPECTED_NS2, EXP_NSF1)));
 	}
 	
 	@Test
@@ -170,9 +212,11 @@ public class NamespacesTest {
 
 		when(ah.getNamespace(new NamespaceID("foo"))).thenReturn(NS1);
 		when(ah.getNamespace(new NamespaceID("baz"))).thenReturn(NS2);
+		when(ah.getNamespace(new NamespaceID("fil"))).thenReturn(NSFILTER1);
 		
 		assertThat("incorrect namespace", ns.getNamespace("foo"), is(EXPECTED_NS1));
 		assertThat("incorrect namespace", ns.getNamespace("baz"), is(EXPECTED_NS2));
+		assertThat("incorrect namespace", ns.getNamespace("fil"), is(EXP_NSF1));
 	}
 	
 	@Test
@@ -266,12 +310,13 @@ public class NamespacesTest {
 	
 	@Test
 	public void searchNoExtensionNoMaxNoWarningsNoNotStrict() throws Exception {
+		// tests namespaces with and without an authsource
 		final AssemblyHomology ah = mock(AssemblyHomology.class);
 		final HttpServletRequest req = mock(HttpServletRequest.class);
 		final Namespaces ns = getNamespaceInstance(ah);
 		
-		when(ah.getNamespaces(set(new NamespaceID("foo"), new NamespaceID("baz"))))
-				.thenReturn(set(NS1, NS2));
+		when(ah.getNamespaces(set(new NamespaceID("foo"), new NamespaceID("fil"))))
+				.thenReturn(set(NS1, NSFILTER1));
 		when(ah.getExpectedFileExtension(new MinHashImplementationName("mash")))
 				.thenReturn(Optional.absent());
 		
@@ -279,13 +324,13 @@ public class NamespacesTest {
 				.thenReturn(new ByteArrayServletInputStream("file content".getBytes()));
 		
 		when(ah.measureDistance(
-				eq(set(new NamespaceID("foo"), new NamespaceID("baz"))),
+				eq(set(new NamespaceID("foo"), new NamespaceID("fil"))),
 				argThat(new TempFileMatcher(".tmp", "file content")),
 				eq(-1),
 				eq(true),
 				isNull()))
 				.thenReturn(new SequenceMatches(
-						set(NS1, NS2),
+						set(NS1, NSFILTER1),
 						new MinHashImplementationInformation(
 								new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
 						Arrays.asList(
@@ -296,9 +341,9 @@ public class NamespacesTest {
 										SequenceMetadata.getBuilder(
 												"s1", "ss1", Instant.ofEpochMilli(10000)).build()),
 								new SequenceDistanceAndMetadata(
-										new NamespaceID("baz"),
+										new NamespaceID("fil"),
 										new MinHashDistance(
-												new MinHashSketchDBName("baz"), "s1", 0.2),
+												new MinHashSketchDBName("fil"), "s1", 0.2),
 										SequenceMetadata.getBuilder(
 												"s1", "ss1", Instant.ofEpochMilli(10000))
 												.withRelatedID("id1", "castle")
@@ -316,13 +361,13 @@ public class NamespacesTest {
 						Collections.emptySet()));
 		
 		final Map<String, Object> ret = ns.searchNamespaces(
-				req, null, "  foo ,   \tbaz  ", null, null);
+				req, null, "  foo ,   \tfil  ", null, null);
 		
 		final Map<String, Object> expected = ImmutableMap.of(
 				"impl", "mash",
 				"implver", "2.0",
 				"warnings", Collections.emptySet(),
-				"namespaces", set(EXPECTED_NS1, EXPECTED_NS2),
+				"namespaces", set(EXPECTED_NS1, EXP_NSF1),
 				"distances", Arrays.asList(
 						MapBuilder.<String, Object>newHashMap()
 								.with("sourceid", "ss1")
@@ -334,7 +379,7 @@ public class NamespacesTest {
 						MapBuilder.<String, Object>newHashMap()
 								.with("sourceid", "ss1")
 								.with("sciname", null)
-								.with("namespaceid", "baz")
+								.with("namespaceid", "fil")
 								.with("dist", 0.2)
 								.with("relatedids",
 										ImmutableMap.of("id1", "castle", "id2", "arrg"))
@@ -529,7 +574,7 @@ public class NamespacesTest {
 		when(ah.getNamespaces(set(new NamespaceID("foo"), new NamespaceID("whee"))))
 				.thenReturn(set(
 						NS1,
-						Namespace.getBuilder(
+						new NamespaceView(Namespace.getBuilder(
 								new NamespaceID("whee"),
 								new MinHashSketchDatabase(
 										new MinHashSketchDBName("whee"),
@@ -540,7 +585,7 @@ public class NamespacesTest {
 										21),
 								new LoadID("boo"),
 								Instant.ofEpochMilli(20000))
-								.build()));
+								.build())));
 		
 		failSearch(ns, req, "foo, whee", null, new IncompatibleNamespacesException(
 				"Selected namespaces must have the same MinHash implementation"));

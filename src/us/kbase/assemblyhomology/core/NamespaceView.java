@@ -16,8 +16,6 @@ import us.kbase.assemblyhomology.minhash.MinHashParameters;
  */
 public class NamespaceView {
 
-	//TODO NOW JAVADOC
-	
 	private final Optional<String> authsource;
 	private final NamespaceID namespaceID;
 	private final Optional<String> description;
@@ -78,7 +76,7 @@ public class NamespaceView {
 	/** Get the ID of the namespace.
 	 * @return the ID.
 	 */
-	public NamespaceID getNamespaceID() {
+	public NamespaceID getID() {
 		return namespaceID;
 	}
 
