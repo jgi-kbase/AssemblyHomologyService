@@ -3,6 +3,7 @@ package us.kbase.test.assemblyhomology.service.api;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -280,7 +281,8 @@ public class NamespacesTest {
 				eq(set(new NamespaceID("foo"), new NamespaceID("baz"))),
 				argThat(new TempFileMatcher(".tmp", "file content")),
 				eq(-1),
-				eq(true)))
+				eq(true),
+				isNull()))
 				.thenReturn(new SequenceMatches(
 						set(NS1, NS2),
 						new MinHashImplementationInformation(
@@ -365,7 +367,8 @@ public class NamespacesTest {
 				eq(set(new NamespaceID("foo"), new NamespaceID("baz"))),
 				argThat(new TempFileMatcher(".tmp.msh", "file content")),
 				eq(7),
-				eq(false)))
+				eq(false),
+				isNull()))
 				.thenReturn(new SequenceMatches(
 						set(NS1, NS2),
 						new MinHashImplementationInformation(
@@ -516,7 +519,8 @@ public class NamespacesTest {
 				eq(set(new NamespaceID("foo"))),
 				argThat(new TempFileMatcher(".tmp", "file content")),
 				eq(-1),
-				eq(true)))
+				eq(true),
+				isNull()))
 				.thenThrow(new InvalidSketchException("this sketch is like sooooooo lame"));
 		
 		failSearch(ns, req, "foo", null, new InvalidSketchException(

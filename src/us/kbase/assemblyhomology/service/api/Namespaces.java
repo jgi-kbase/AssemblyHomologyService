@@ -36,6 +36,7 @@ import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
+import us.kbase.assemblyhomology.core.exceptions.NoTokenProvidedException;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
@@ -130,6 +131,8 @@ public class Namespaces {
 	 * MinHash implementations.
 	 * @throws IllegalParameterException if one or more of the namespace IDs are illegal, or if
 	 * max is not an integer if provided.
+	 * @throws NoTokenProvidedException if a namespace requires authentication but no token
+	 * was provided.
 	 */
 	@POST
 	@Produces(MediaType.APPLICATION_JSON)
@@ -142,7 +145,7 @@ public class Namespaces {
 			throws IOException, NoSuchNamespaceException, IncompatibleSketchesException,
 				MissingParameterException, AssemblyHomologyStorageException,
 				InvalidSketchException, IncompatibleNamespacesException,
-				IllegalParameterException { 
+				IllegalParameterException, NoTokenProvidedException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
 		final Set<Namespace> nss = ah.getNamespaces(getNamespaceIDs(namespaces));
@@ -166,7 +169,7 @@ public class Namespaces {
 			Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
 			res = ah.measureDistance(
 					nss.stream().map(n -> n.getID()).collect(Collectors.toSet()),
-					tempFile, maxReturn, strict);
+					tempFile, maxReturn, strict, null); //TODO NOW provide token
 		} finally {
 			if (tempFile != null) {
 				Files.delete(tempFile);

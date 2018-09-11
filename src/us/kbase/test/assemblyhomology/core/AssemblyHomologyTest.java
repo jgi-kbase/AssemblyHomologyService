@@ -45,6 +45,7 @@ import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
+import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
@@ -52,6 +53,7 @@ import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
+import us.kbase.assemblyhomology.core.exceptions.NoTokenProvidedException;
 import us.kbase.assemblyhomology.minhash.DefaultDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
@@ -525,7 +527,8 @@ public class AssemblyHomologyTest {
 				set(new NamespaceID("ns1"), new NamespaceID("ns2")),
 				EMPTY_FILE_MSH, // needs to exist or exception will be thrown. 
 				returnSize,
-				strict);
+				strict,
+				null);
 		
 		final SequenceMatches expected = new SequenceMatches(
 				set(ns1, ns2),
@@ -579,6 +582,7 @@ public class AssemblyHomologyTest {
 		when(ifac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
 		when(ffac.getID()).thenReturn(new FilterID("filter"));
+		when(ffac.getAuthSource()).thenReturn(Optional.absent());
 		final MinHashDistanceFilter filter = mock(MinHashDistanceFilter.class);
 		
 		final DistColArgMatch dcmatch = new DistColArgMatch(Arrays.asList(
@@ -661,7 +665,8 @@ public class AssemblyHomologyTest {
 				set(new NamespaceID("ns1"), new NamespaceID("ns2")),
 				EMPTY_FILE_MSH, // needs to exist or exception will be thrown.
 				5,
-				false);
+				false,
+				null);
 		
 		final SequenceMatches expected = new SequenceMatches(
 				set(ns1, ns2),
@@ -689,6 +694,125 @@ public class AssemblyHomologyTest {
 	}
 
 	@Test
+	public void measureDistanceWithConfiguredFilterAndAuth() throws Exception {
+		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
+		final MinHashImplementationFactory ifac = mock(MinHashImplementationFactory.class);
+		final MinHashImplementation mash = mock(MinHashImplementation.class);
+		when(ifac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
+		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+		when(ffac.getID()).thenReturn(new FilterID("filter"));
+		when(ffac.getAuthSource()).thenReturn(Optional.of("kbase"));
+		final MinHashDistanceFilter filter = mock(MinHashDistanceFilter.class);
+		
+		final DistColArgMatch dcmatch = new DistColArgMatch(Arrays.asList(
+				new MinHashDistance(new MinHashSketchDBName("ns1"), "mockymock", 0.12)));
+		
+		when(ffac.getFilter(argThat(dcmatch), eq(new Token("tkn")))).thenReturn(filter);
+		
+		final AssemblyHomology ah = new AssemblyHomology(
+				storage, Arrays.asList(ifac), Arrays.asList(ffac), Paths.get("temp_dir"), 5);
+		
+		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH),
+				2000);
+		final Namespace ns1 = Namespace.getBuilder(
+				new NamespaceID("ns1"), ref1, new LoadID("load1"), Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("filter"))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns1"))).thenReturn(ns1);
+		
+		final MinHashSketchDatabase ref2 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns2"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				4000);
+		final Namespace ns2 = Namespace.getBuilder(
+				new NamespaceID("ns2"), ref2, new LoadID("load2"), Instant.ofEpochMilli(20000))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns2"))).thenReturn(ns2);
+		
+		when(ifac.getImplementation(Paths.get("temp_dir"), 5)).thenReturn(mash);
+		
+		final MinHashSketchDatabase query = new MinHashSketchDatabase(
+				new MinHashSketchDBName("<query>"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH3),
+				1);
+		when(mash.getDatabase(
+				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH)))
+				.thenReturn(query);
+		
+		final DistFilterArgMatch match = new DistFilterArgMatch(
+				ImmutableMap.of(
+						ref1, MinHashDistanceFilter.class,
+						ref2, DefaultDistanceFilter.class
+				),
+				ImmutableMap.of(
+						ref1, Arrays.asList(
+								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
+								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)
+						),
+						ref2, Arrays.asList(
+								new MinHashDistance(new MinHashSketchDBName("ns2"), "seq2", 0.2)
+						)
+				));
+		
+		when(mash.computeDistance(eq(query), argThat(match), eq(false)))
+				.thenReturn(Collections.emptyList()); // minhash warnings are ignored
+		
+		when(storage.getSequenceMetadata(
+				new NamespaceID("ns1"), new LoadID("load1"), Arrays.asList("mockymock")))
+				.thenReturn(Arrays.asList(
+						SequenceMetadata.getBuilder("mockymock", "somemock",
+								Instant.ofEpochMilli(10000)).build()));
+		
+		when(storage.getSequenceMetadata(
+				new NamespaceID("ns2"), new LoadID("load2"), Arrays.asList("seq2")))
+				.thenReturn(Arrays.asList(
+						SequenceMetadata.getBuilder("seq2", "ss2", Instant.ofEpochMilli(20000))
+								.build()));
+		
+		when(mash.getImplementationInformation()).thenReturn(new MinHashImplementationInformation(
+				new MinHashImplementationName("mash"), "2.0", Paths.get("msh")));
+		
+		final SequenceMatches res = ah.measureDistance(
+				set(new NamespaceID("ns1"), new NamespaceID("ns2")),
+				EMPTY_FILE_MSH, // needs to exist or exception will be thrown.
+				5,
+				false,
+				new Token("tkn"));
+		
+		final SequenceMatches expected = new SequenceMatches(
+				set(ns1, ns2),
+				new MinHashImplementationInformation(
+						new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
+				Arrays.asList(
+						new SequenceDistanceAndMetadata(
+								new NamespaceID("ns1"),
+								new MinHashDistance(
+										new MinHashSketchDBName("ns1"), "mockymock", 0.12),
+								SequenceMetadata.getBuilder(
+										"mockymock", "somemock", Instant.ofEpochMilli(10000))
+										.build()),
+						new SequenceDistanceAndMetadata(
+								new NamespaceID("ns2"),
+								new MinHashDistance(new MinHashSketchDBName("ns2"), "seq2", 0.2),
+								SequenceMetadata.getBuilder(
+										"seq2", "ss2", Instant.ofEpochMilli(20000)).build())
+						),
+				Collections.emptySet());
+		
+		verify(filter).accept(new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1));
+		verify(filter).accept(new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4));
+		assertThat("incorrect matches", res, is(expected));
+	}
+	
+	@Test
 	public void measureDistanceFailNullsAndEmpties() throws Exception {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		
@@ -698,12 +822,12 @@ public class AssemblyHomologyTest {
 		final Path p = Paths.get("query");
 		final Set<NamespaceID> i = set(new NamespaceID("n"));
 		
-		failMeasureDistance(ah, null, p, true, new NullPointerException("namespaceIDs"));
-		failMeasureDistance(ah, set(new NamespaceID("n"), null), p, true,
+		failMeasureDistance(ah, null, p, true, null, new NullPointerException("namespaceIDs"));
+		failMeasureDistance(ah, set(new NamespaceID("n"), null), p, true, null,
 				new NullPointerException("Null item in collection namespaceIDs"));
-		failMeasureDistance(ah, set(), p, true, new IllegalArgumentException(
+		failMeasureDistance(ah, set(), p, true, null, new IllegalArgumentException(
 				"No namespace IDs provided"));
-		failMeasureDistance(ah, i, null, true, new NullPointerException("sketchDB"));
+		failMeasureDistance(ah, i, null, true, null, new NullPointerException("sketchDB"));
 	}
 	
 	@Test
@@ -716,7 +840,7 @@ public class AssemblyHomologyTest {
 		when(storage.getNamespace(new NamespaceID("foo")))
 				.thenThrow(new NoSuchNamespaceException("foo"));
 		
-		failMeasureDistance(ah, set(new NamespaceID("foo")), Paths.get("foo"), true,
+		failMeasureDistance(ah, set(new NamespaceID("foo")), Paths.get("foo"), true, null,
 				new NoSuchNamespaceException("foo"));
 	}
 	
@@ -750,7 +874,7 @@ public class AssemblyHomologyTest {
 		when(storage.getNamespace(new NamespaceID("ns2"))).thenReturn(ns2);
 		
 		failMeasureDistance(ah, set(new NamespaceID("ns1"), new NamespaceID("ns2")),
-				Paths.get("foo"), true, new IncompatibleNamespacesException(
+				Paths.get("foo"), true, null, new IncompatibleNamespacesException(
 						"The selected namespaces must share the same Minhash implementation"));
 	}
 
@@ -772,7 +896,7 @@ public class AssemblyHomologyTest {
 				.build();
 		when(storage.getNamespace(new NamespaceID("ns1"))).thenReturn(ns1);
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new IllegalStateException("Application is misconfigured. Implementation " +
 						"mash stored in database but not available."));
 	}
@@ -801,7 +925,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementation(Paths.get("temp_dir"), 600))
 				.thenThrow(new MinHashInitException("aw crap"));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new IllegalStateException("Application is misconfigured. Error attempting " +
 						"to build the mash MinHash implementation."));
 	}
@@ -834,7 +958,7 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
 				.thenThrow(new NotASketchException("foo"));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new InvalidSketchException("The input sketch is not a valid sketch."));
 		
 		assertThat("unexpected logging", logEvents, is(Collections.emptyList()));
@@ -868,7 +992,7 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
 				.thenThrow(new NotASketchException("foo", "stderr output"));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new InvalidSketchException("The input sketch is not a valid sketch."));
 		
 		assertLogEventsCorrect(logEvents, new LogEvent(Level.ERROR,
@@ -903,7 +1027,7 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
 				.thenThrow(new MinHashException("some error"));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new IllegalStateException("Error loading query sketch database: some error"));
 	}
 	
@@ -940,7 +1064,7 @@ public class AssemblyHomologyTest {
 						new MinHashDBLocation(EMPTY_FILE_MSH2),
 						2));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new InvalidSketchException("Query sketch database must have exactly one sketch"));
 	}
 	
@@ -977,7 +1101,7 @@ public class AssemblyHomologyTest {
 						new MinHashDBLocation(EMPTY_FILE_MSH2),
 						1));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new IncompatibleSketchesException("Unable to query namespace ns1 with input " +
 						"sketch: Query sketch size 1500 does not match target 1000"));
 //						"sketch: Kmer size for sketches are not compatible: 31 21"));
@@ -1016,7 +1140,7 @@ public class AssemblyHomologyTest {
 						new MinHashDBLocation(EMPTY_FILE_MSH2),
 						1));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, false,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, false, null,
 				new IncompatibleSketchesException("Unable to query namespace ns1 with input " +
 						"sketch: Kmer size for sketches are not compatible: 31 21"));
 	}
@@ -1057,9 +1181,51 @@ public class AssemblyHomologyTest {
 				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
 				.thenReturn(query);
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new IllegalStateException("Application is misconfigured. Namespace ns1 " +
 						"requires filter bar but it is not configured."));
+	}
+	
+	@Test
+	public void measureDistanceFailMissingtoken() throws Exception {
+		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
+		final MinHashImplementationFactory ifac = mock(MinHashImplementationFactory.class);
+		final MinHashImplementation impl = mock(MinHashImplementation.class);
+		when(ifac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
+		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+		when(ffac.getID()).thenReturn(new FilterID("foo"));
+		when(ffac.getAuthSource()).thenReturn(Optional.of("reallyneatauthsource"));
+		
+		final AssemblyHomology ah = new AssemblyHomology(
+				storage, Arrays.asList(ifac), Arrays.asList(ffac), Paths.get("temp_dir"), 6674);
+		
+		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH),
+				2000);
+		final Namespace ns1 = Namespace.getBuilder(
+				new NamespaceID("ns1"), ref1, new LoadID("load1"), Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("foo"))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns1"))).thenReturn(ns1);
+		
+		when(ifac.getImplementation(Paths.get("temp_dir"), 6674)).thenReturn(impl);
+		
+		final MinHashSketchDatabase query = new MinHashSketchDatabase(
+				new MinHashSketchDBName("<query>"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				1);
+		when(impl.getDatabase(
+				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
+				.thenReturn(query);
+		
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
+				new NoTokenProvidedException("Namespace ns1 requires reallyneatauthsource " +
+						"authentication, but no token was provided"));
 	}
 	
 	@Test
@@ -1106,7 +1272,7 @@ public class AssemblyHomologyTest {
 		when(impl.getImplementationInformation()).thenReturn(new MinHashImplementationInformation(
 				new MinHashImplementationName("mash"), "2.0", Paths.get("msh")));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new IllegalStateException("Unexpected error running MinHash implementation mash"));
 	}
 	
@@ -1160,7 +1326,7 @@ public class AssemblyHomologyTest {
 				new NamespaceID("ns1"), new LoadID("load1"), Arrays.asList("seq1", "seq5")))
 				.thenThrow(new NoSuchSequenceException("seq1 seq5"));
 		
-		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new IllegalStateException("Database is corrupt. Unable to find sequences " +
 						"from sketch file for namespace ns1: 50010 No such sequence: seq1 seq5"));
 	}
@@ -1170,9 +1336,10 @@ public class AssemblyHomologyTest {
 			final Set<NamespaceID> namespaceIDs,
 			final Path query,
 			final boolean strict,
+			final Token token,
 			final Exception expected) {
 		try {
-			ah.measureDistance(namespaceIDs, query, 10, strict);
+			ah.measureDistance(namespaceIDs, query, 10, strict, token);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);
