@@ -9,7 +9,7 @@ import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
 /** A namespace containing a MinHash sketch database. A namespace contains the sketch database
@@ -30,7 +30,7 @@ public class Namespace {
 	private final NamespaceID id;
 	private final MinHashSketchDatabase sketchDatabase;
 	private final LoadID loadID;
-	private final CollectorID collectorID;
+	private final FilterID filterID;
 	private final DataSourceID dataSourceID;
 	private final Instant modification;
 	private final String sourceDatabaseID;
@@ -40,7 +40,7 @@ public class Namespace {
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
-			final CollectorID collectorID,
+			final FilterID filterID,
 			final DataSourceID dataSourceID,
 			final Instant modification,
 			final String sourceDatabaseID,
@@ -48,7 +48,7 @@ public class Namespace {
 		this.id = id;
 		this.sketchDatabase = sketchDatabase;
 		this.loadID = loadID;
-		this.collectorID = collectorID;
+		this.filterID = filterID;
 		this.dataSourceID = dataSourceID;
 		this.modification = modification;
 		this.sourceDatabaseID = sourceDatabaseID;
@@ -77,11 +77,11 @@ public class Namespace {
 		return loadID;
 	}
 
-	/** Get the id for the {@link MinHashDistanceCollector} associated with this namespace.
+	/** Get the id for the {@link MinHashDistanceFilter} associated with this namespace.
 	 * @return the collector ID.
 	 */
-	public CollectorID getCollectorID() {
-		return collectorID;
+	public FilterID getFilterID() {
+		return filterID;
 	}
 	
 	/** Get the ID of the data's source - often an institution like JGI, EMBL, etc.
@@ -117,7 +117,7 @@ public class Namespace {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((collectorID == null) ? 0 : collectorID.hashCode());
+		result = prime * result + ((filterID == null) ? 0 : filterID.hashCode());
 		result = prime * result + ((dataSourceID == null) ? 0 : dataSourceID.hashCode());
 		result = prime * result + ((description == null) ? 0 : description.hashCode());
 		result = prime * result + ((id == null) ? 0 : id.hashCode());
@@ -140,11 +140,11 @@ public class Namespace {
 			return false;
 		}
 		Namespace other = (Namespace) obj;
-		if (collectorID == null) {
-			if (other.collectorID != null) {
+		if (filterID == null) {
+			if (other.filterID != null) {
 				return false;
 			}
-		} else if (!collectorID.equals(other.collectorID)) {
+		} else if (!filterID.equals(other.filterID)) {
 			return false;
 		}
 		if (dataSourceID == null) {
@@ -233,7 +233,7 @@ public class Namespace {
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
-		private CollectorID collectorID = CollectorID.DEFAULT;
+		private FilterID filterID = FilterID.DEFAULT;
 		private DataSourceID dataSourceID = DEFAULT_DS_ID;
 		private Instant modification;
 		private String sourceDatabaseID = DEFAULT;
@@ -258,16 +258,16 @@ public class Namespace {
 			this.modification = modification;
 		}
 		
-		/** Add a collector ID. If the collector ID is null, the collector ID is reset to the 
+		/** Add a filter ID. If the filter ID is null, the filter ID is reset to the 
 		 * default, "default".
-		 * @param collectorID the ID of the collector associated with the namespace.
+		 * @param filterID the ID of the filter associated with the namespace.
 		 * @return this builder.
 		 */
-		public Builder withNullableCollectorID(final CollectorID collectorID) {
-			if (collectorID != null) {
-				this.collectorID = collectorID;
+		public Builder withNullableFilterID(final FilterID filterID) {
+			if (filterID != null) {
+				this.filterID = filterID;
 			} else {
-				this.collectorID = CollectorID.DEFAULT;
+				this.filterID = FilterID.DEFAULT;
 			}
 			return this;
 		}
@@ -318,7 +318,7 @@ public class Namespace {
 		 * @return the new {@link Namespace}.
 		 */
 		public Namespace build() {
-			return new Namespace(id, sketchDatabase, loadID, collectorID, dataSourceID,
+			return new Namespace(id, sketchDatabase, loadID, filterID, dataSourceID,
 					modification, sourceDatabaseID, description);
 		}
 	}
