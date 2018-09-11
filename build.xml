@@ -265,7 +265,7 @@
         <sysproperty key="ASSEMHOMOL_TEST_CONFIG" value="${testcfg}"/>
         <test name="us.kbase.test.assemblyhomology.config.AssemblyHomologyConfigTest"/>
         <test name="us.kbase.test.assemblyhomology.core.AssemblyHomologyTest"/>
-        <test name="us.kbase.test.assemblyhomology.core.CollectorIDTest"/>
+        <test name="us.kbase.test.assemblyhomology.core.FilterIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.DataSourceIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.LoadIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.NameTest"/>
