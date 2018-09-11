@@ -6,6 +6,7 @@ import static org.junit.Assert.fail;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static us.kbase.test.assemblyhomology.TestCommon.set;
 import static us.kbase.test.assemblyhomology.TestCommon.assertLogEventsCorrect;
@@ -36,7 +37,9 @@ import com.google.common.collect.ImmutableMap;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import us.kbase.assemblyhomology.core.AssemblyHomology;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
+import us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMatches;
@@ -52,6 +55,7 @@ import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
 import us.kbase.assemblyhomology.minhash.DefaultDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
@@ -68,6 +72,8 @@ import us.kbase.test.assemblyhomology.TestCommon;
 import us.kbase.test.assemblyhomology.TestCommon.LogEvent;
 
 public class AssemblyHomologyTest {
+	
+	private static final List<MinHashDistanceFilterFactory> MTFAC = Collections.emptyList();
 	
 	private static final Namespace NS1;
 	private static final Namespace NS2;
@@ -143,6 +149,7 @@ public class AssemblyHomologyTest {
 		new AssemblyHomology(
 				mock(AssemblyHomologyStorage.class),
 				Collections.emptyList(),
+				Collections.emptyList(),
 				Paths.get("foo"),
 				30);
 	}
@@ -150,31 +157,50 @@ public class AssemblyHomologyTest {
 	@Test
 	public void constructFail() throws Exception {
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
+		
 		final MinHashImplementationFactory f1 = mock(MinHashImplementationFactory.class);
 		when(f1.getImplementationName()).thenReturn(new MinHashImplementationName("Foo"));
 		final MinHashImplementationFactory f2 = mock(MinHashImplementationFactory.class);
 		when(f2.getImplementationName()).thenReturn(new MinHashImplementationName("foo"));
 		final List<MinHashImplementationFactory> fs = Arrays.asList(f1);
+		
+		final MinHashDistanceFilterFactory ff1 = mock(MinHashDistanceFilterFactory.class);
+		when(ff1.getID()).thenReturn(new FilterID("bar"));
+		final MinHashDistanceFilterFactory ff2 = mock(MinHashDistanceFilterFactory.class);
+		when(ff2.getID()).thenReturn(new FilterID("bar"));
+		final List<MinHashDistanceFilterFactory> ffs = Arrays.asList(ff1);
+		
 		final Path t = Paths.get("foo");
 		
-		failConstruct(null, fs, t, 1, new NullPointerException("storage"));
-		failConstruct(s, null, t, 1, new NullPointerException("implementationFactories"));
-		failConstruct(s, Arrays.asList(f1, null), t, 1, new NullPointerException(
+		failConstruct(null, fs, ffs, t, 1, new NullPointerException("storage"));
+		
+		failConstruct(s, null, ffs, t, 1, new NullPointerException("implementationFactories"));
+		failConstruct(s, Arrays.asList(f1, null), ffs, t, 1, new NullPointerException(
 				"Null item in collection implementationFactories"));
-		failConstruct(s, fs, null, 1, new NullPointerException("tempFileDirectory"));
-		failConstruct(s, Arrays.asList(f1, f2), t, 1,
+		failConstruct(s, Arrays.asList(f1, f2), ffs, t, 1,
 				new IllegalArgumentException("Duplicate implementation: foo"));
-		failConstruct(s, fs, t, 0, new IllegalArgumentException("minhashTimeout must be > 0"));
+		
+		failConstruct(s, fs, null, t, 1, new NullPointerException("filterFactories"));
+		failConstruct(s, fs, Arrays.asList(ff1, null), t, 1, new NullPointerException(
+				"Null item in collection filterFactories"));
+		failConstruct(s, fs, Arrays.asList(ff1, ff2), t, 1,
+				new IllegalArgumentException("Duplicate filter: bar"));
+		
+		failConstruct(s, fs, ffs, null, 1, new NullPointerException("tempFileDirectory"));
+		failConstruct(s, fs, ffs, t, 0,
+				new IllegalArgumentException("minhashTimeout must be > 0"));
 	}
 	
 	private void failConstruct(
 			final AssemblyHomologyStorage storage,
 			final Collection<MinHashImplementationFactory> implementationFactories,
+			final Collection<MinHashDistanceFilterFactory> filterFactories,
 			final Path tempFileDirectory,
 			final int timeout,
 			final Exception expected) {
 		try {
-			new AssemblyHomology(storage, implementationFactories, tempFileDirectory, timeout);
+			new AssemblyHomology(storage, implementationFactories, filterFactories,
+					tempFileDirectory, timeout);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);
@@ -194,7 +220,7 @@ public class AssemblyHomologyTest {
 		when(f2.getExpectedFileExtension()).thenReturn(Optional.of(Paths.get("bat")));
 		
 		final AssemblyHomology as = new AssemblyHomology(
-				s, Arrays.asList(f1, f2), Paths.get("foo"), 30);
+				s, Arrays.asList(f1, f2), MTFAC, Paths.get("foo"), 30);
 		
 		assertThat("incorrect ext",
 				as.getExpectedFileExtension(new MinHashImplementationName("Foo")),
@@ -214,7 +240,7 @@ public class AssemblyHomologyTest {
 		when(f1.getExpectedFileExtension()).thenReturn(Optional.of(Paths.get("bar")));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				s, Arrays.asList(f1), Paths.get("foo"), 30);
+				s, Arrays.asList(f1), MTFAC, Paths.get("foo"), 30);
 		
 		failGetExpectedFileExtension(ah, null, new NullPointerException("impl"));
 		failGetExpectedFileExtension(ah, new MinHashImplementationName("foo1"),
@@ -239,7 +265,7 @@ public class AssemblyHomologyTest {
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				s, Collections.emptyList(), Paths.get("foo"), 30);
+				s, Collections.emptyList(), MTFAC, Paths.get("foo"), 30);
 		
 		when(s.getNamespaces()).thenReturn(new HashSet<>(Arrays.asList(NS1, NS2)));
 		
@@ -252,7 +278,7 @@ public class AssemblyHomologyTest {
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				s, Collections.emptyList(), Paths.get("foo"), 30);
+				s, Collections.emptyList(), MTFAC, Paths.get("foo"), 30);
 		
 		when(s.getNamespace(new NamespaceID("baz"))).thenReturn(NS2);
 		
@@ -264,7 +290,7 @@ public class AssemblyHomologyTest {
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				s, Collections.emptyList(), Paths.get("foo"), 30);
+				s, Collections.emptyList(), MTFAC, Paths.get("foo"), 30);
 		failGetNamespace(ah, null, new NullPointerException("namespaceID"));
 		
 		when(s.getNamespace(new NamespaceID("bar")))
@@ -291,7 +317,7 @@ public class AssemblyHomologyTest {
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				s, Collections.emptyList(), Paths.get("foo"), 30);
+				s, Collections.emptyList(), MTFAC, Paths.get("foo"), 30);
 		
 		assertThat("incorrect namespaces", ah.getNamespaces(set()), is(set()));
 		
@@ -307,7 +333,7 @@ public class AssemblyHomologyTest {
 		final AssemblyHomologyStorage s = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				s, Collections.emptyList(), Paths.get("foo"), 1);
+				s, Collections.emptyList(), MTFAC, Paths.get("foo"), 1);
 		
 		failGetNamespaces(ah, null, new NullPointerException("ids"));
 		failGetNamespaces(ah, set(new NamespaceID("foo"), null),
@@ -424,7 +450,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 5);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 5);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -527,12 +553,147 @@ public class AssemblyHomologyTest {
 		assertThat("incorrect matches", res, is(expected));
 	}
 	
+	private class DistColArgMatch implements ArgumentMatcher<MinHashDistanceCollector> {
+
+		private final Collection<MinHashDistance> toCollect;
+		
+		public DistColArgMatch(final Collection<MinHashDistance> toCollect) {
+			this.toCollect = toCollect;
+		}
+		
+		@Override
+		public boolean matches(MinHashDistanceCollector col) {
+			for (final MinHashDistance d: toCollect) {
+				col.accept(d);
+			}
+			return true;
+		}
+		
+	}
+	
+	@Test
+	public void measureDistanceWithConfiguredFilter() throws Exception {
+		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
+		final MinHashImplementationFactory ifac = mock(MinHashImplementationFactory.class);
+		final MinHashImplementation mash = mock(MinHashImplementation.class);
+		when(ifac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
+		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+		when(ffac.getID()).thenReturn(new FilterID("filter"));
+		final MinHashDistanceFilter filter = mock(MinHashDistanceFilter.class);
+		
+		final DistColArgMatch dcmatch = new DistColArgMatch(Arrays.asList(
+				new MinHashDistance(new MinHashSketchDBName("ns1"), "mockymock", 0.12)));
+		
+		when(ffac.getFilter(argThat(dcmatch))).thenReturn(filter);
+		
+		final AssemblyHomology ah = new AssemblyHomology(
+				storage, Arrays.asList(ifac), Arrays.asList(ffac), Paths.get("temp_dir"), 5);
+		
+		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH),
+				2000);
+		final Namespace ns1 = Namespace.getBuilder(
+				new NamespaceID("ns1"), ref1, new LoadID("load1"), Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("filter"))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns1"))).thenReturn(ns1);
+		
+		final MinHashSketchDatabase ref2 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns2"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				4000);
+		final Namespace ns2 = Namespace.getBuilder(
+				new NamespaceID("ns2"), ref2, new LoadID("load2"), Instant.ofEpochMilli(20000))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns2"))).thenReturn(ns2);
+		
+		when(ifac.getImplementation(Paths.get("temp_dir"), 5)).thenReturn(mash);
+		
+		final MinHashSketchDatabase query = new MinHashSketchDatabase(
+				new MinHashSketchDBName("<query>"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH3),
+				1);
+		when(mash.getDatabase(
+				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH)))
+				.thenReturn(query);
+		
+		final DistFilterArgMatch match = new DistFilterArgMatch(
+				ImmutableMap.of(
+						ref1, MinHashDistanceFilter.class,
+						ref2, DefaultDistanceFilter.class
+				),
+				ImmutableMap.of(
+						ref1, Arrays.asList(
+								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1),
+								new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4)
+						),
+						ref2, Arrays.asList(
+								new MinHashDistance(new MinHashSketchDBName("ns2"), "seq2", 0.2)
+						)
+				));
+		
+		when(mash.computeDistance(eq(query), argThat(match), eq(false)))
+				.thenReturn(Collections.emptyList()); // minhash warnings are ignored
+		
+		when(storage.getSequenceMetadata(
+				new NamespaceID("ns1"), new LoadID("load1"), Arrays.asList("mockymock")))
+				.thenReturn(Arrays.asList(
+						SequenceMetadata.getBuilder("mockymock", "somemock",
+								Instant.ofEpochMilli(10000)).build()));
+		
+		when(storage.getSequenceMetadata(
+				new NamespaceID("ns2"), new LoadID("load2"), Arrays.asList("seq2")))
+				.thenReturn(Arrays.asList(
+						SequenceMetadata.getBuilder("seq2", "ss2", Instant.ofEpochMilli(20000))
+								.build()));
+		
+		when(mash.getImplementationInformation()).thenReturn(new MinHashImplementationInformation(
+				new MinHashImplementationName("mash"), "2.0", Paths.get("msh")));
+		
+		final SequenceMatches res = ah.measureDistance(
+				set(new NamespaceID("ns1"), new NamespaceID("ns2")),
+				EMPTY_FILE_MSH, // needs to exist or exception will be thrown.
+				5,
+				false);
+		
+		final SequenceMatches expected = new SequenceMatches(
+				set(ns1, ns2),
+				new MinHashImplementationInformation(
+						new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
+				Arrays.asList(
+						new SequenceDistanceAndMetadata(
+								new NamespaceID("ns1"),
+								new MinHashDistance(
+										new MinHashSketchDBName("ns1"), "mockymock", 0.12),
+								SequenceMetadata.getBuilder(
+										"mockymock", "somemock", Instant.ofEpochMilli(10000))
+										.build()),
+						new SequenceDistanceAndMetadata(
+								new NamespaceID("ns2"),
+								new MinHashDistance(new MinHashSketchDBName("ns2"), "seq2", 0.2),
+								SequenceMetadata.getBuilder(
+										"seq2", "ss2", Instant.ofEpochMilli(20000)).build())
+						),
+				Collections.emptySet());
+		
+		verify(filter).accept(new MinHashDistance(new MinHashSketchDBName("ns1"), "seq1", 0.1));
+		verify(filter).accept(new MinHashDistance(new MinHashSketchDBName("ns1"), "seq5", 0.4));
+		assertThat("incorrect matches", res, is(expected));
+	}
+
 	@Test
 	public void measureDistanceFailNullsAndEmpties() throws Exception {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Collections.emptyList(), Paths.get("temp_dir"), 5);
+				storage, Collections.emptyList(), MTFAC, Paths.get("temp_dir"), 5);
 		
 		final Path p = Paths.get("query");
 		final Set<NamespaceID> i = set(new NamespaceID("n"));
@@ -550,7 +711,7 @@ public class AssemblyHomologyTest {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Collections.emptyList(), Paths.get("temp_dir"), 5);
+				storage, Collections.emptyList(), MTFAC, Paths.get("temp_dir"), 5);
 		
 		when(storage.getNamespace(new NamespaceID("foo")))
 				.thenThrow(new NoSuchNamespaceException("foo"));
@@ -564,7 +725,7 @@ public class AssemblyHomologyTest {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Collections.emptyList(), Paths.get("temp_dir"), 5);
+				storage, Collections.emptyList(), MTFAC, Paths.get("temp_dir"), 5);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -598,7 +759,7 @@ public class AssemblyHomologyTest {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Collections.emptyList(), Paths.get("temp_dir"), 5);
+				storage, Collections.emptyList(), MTFAC, Paths.get("temp_dir"), 5);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -624,7 +785,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 600);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 600);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -654,7 +815,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 1);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 1);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -688,7 +849,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 42);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 42);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -723,7 +884,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 6022);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 6022);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -755,7 +916,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 31415);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 31415);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -792,7 +953,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 6626);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 6626);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -831,7 +992,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 299792);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 299792);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -861,6 +1022,47 @@ public class AssemblyHomologyTest {
 	}
 	
 	@Test
+	public void measureDistanceFailMissingFilter() throws Exception {
+		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
+		final MinHashImplementationFactory ifac = mock(MinHashImplementationFactory.class);
+		final MinHashImplementation impl = mock(MinHashImplementation.class);
+		when(ifac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
+		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+		when(ffac.getID()).thenReturn(new FilterID("foo"));
+		
+		final AssemblyHomology ah = new AssemblyHomology(
+				storage, Arrays.asList(ifac), Arrays.asList(ffac), Paths.get("temp_dir"), 6674);
+		
+		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH),
+				2000);
+		final Namespace ns1 = Namespace.getBuilder(
+				new NamespaceID("ns1"), ref1, new LoadID("load1"), Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("bar"))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns1"))).thenReturn(ns1);
+		
+		when(ifac.getImplementation(Paths.get("temp_dir"), 6674)).thenReturn(impl);
+		
+		final MinHashSketchDatabase query = new MinHashSketchDatabase(
+				new MinHashSketchDBName("<query>"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				1);
+		when(impl.getDatabase(
+				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
+				.thenReturn(query);
+		
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+				new IllegalStateException("Application is misconfigured. Namespace ns1 " +
+						"requires filter bar but it is not configured."));
+	}
+	
+	@Test
 	public void measureDistanceFailComputeDistance() throws Exception {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		final MinHashImplementationFactory fac = mock(MinHashImplementationFactory.class);
@@ -869,7 +1071,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 6674);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 6674);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
@@ -917,7 +1119,7 @@ public class AssemblyHomologyTest {
 		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
 		
 		final AssemblyHomology ah = new AssemblyHomology(
-				storage, Arrays.asList(fac), Paths.get("temp_dir"), 1602);
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 1602);
 		
 		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
 				new MinHashSketchDBName("ns1"),
