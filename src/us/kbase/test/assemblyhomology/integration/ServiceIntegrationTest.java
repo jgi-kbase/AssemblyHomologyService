@@ -37,21 +37,32 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 import com.mongodb.client.MongoDatabase;
 
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
+import us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
+import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.core.exceptions.AssemblyHomologyException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
+import us.kbase.assemblyhomology.core.exceptions.MinHashFilterFactoryInitializationException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
+import us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilter;
+import us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilterFactory;
+import us.kbase.assemblyhomology.minhash.DefaultDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
+import us.kbase.assemblyhomology.minhash.MinHashDistance;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterAuthenticationException;
 import us.kbase.auth.AuthToken;
 import us.kbase.common.test.RegexMatcher;
 import us.kbase.test.assemblyhomology.MapBuilder;
@@ -61,6 +72,7 @@ import us.kbase.test.assemblyhomology.StandaloneAssemblyHomologyServer.ServerThr
 import us.kbase.test.assemblyhomology.data.TestDataManager;
 import us.kbase.test.assemblyhomology.service.api.RootTest;
 import us.kbase.test.auth2.authcontroller.AuthController;
+import us.kbase.workspace.CreateWorkspaceParams;
 import us.kbase.workspace.WorkspaceClient;
 import us.kbase.test.assemblyhomology.TestCommon;
 import us.kbase.test.assemblyhomology.controllers.workspace.WorkspaceController;
@@ -91,14 +103,18 @@ public class ServiceIntegrationTest {
 	private static MongoStorageTestManager MANAGER = null;
 	private static AuthController AUTH = null;
 	private static WorkspaceController WS = null;
-	private static WorkspaceClient WS_CLI = null;
+	private static URL WS_URL;
+	private static WorkspaceClient WS_CLI1 = null;
+	private static WorkspaceClient WS_CLI2 = null;
 	private static MongoDatabase WSDB = null;
 	private static StandaloneAssemblyHomologyServer SERVER = null;
 	private static int PORT = -1;
 	private static String HOST = null;
 	private static Path TEMP_DIR = null;
 
-	private static String TOKEN = null;
+	private static String TOKEN1 = null;
+	private static String TOKEN2 = null;
+
 
 	private static final Path QUERY_K31_S1500 = Paths.get("kb_15792_446_1_k31_s1500.msh");
 	private static final Path TARGET_4SEQS = Paths.get("kb_4seqs_k31_s1000.msh");
@@ -155,7 +171,9 @@ public class ServiceIntegrationTest {
 		final URL authURL = new URL("http://localhost:" + AUTH.getServerPort() + "/testmode");
 		System.out.println("started auth server at " + authURL);
 		TestCommon.createAuthUser(authURL, "user1", "display1");
-		TOKEN = TestCommon.createLoginToken(authURL, "user1");
+		TOKEN1 = TestCommon.createLoginToken(authURL, "user1");
+		TestCommon.createAuthUser(authURL, "user2", "display2");
+		TOKEN2 = TestCommon.createLoginToken(authURL, "user2");
 
 		// set up Workspace
 		WS = new WorkspaceController(
@@ -165,13 +183,15 @@ public class ServiceIntegrationTest {
 				"fakeadmin",
 				authURL,
 				TEMP_DIR);
-		WSDB  = MANAGER.mc.getDatabase("IndexerIntegTestWSDB");
+		WSDB = MANAGER.mc.getDatabase("IndexerIntegTestWSDB");
 
-		final URL wsUrl = new URL("http://localhost:" + WS.getServerPort());
-		WS_CLI = new WorkspaceClient(wsUrl, new AuthToken(TOKEN, "user1"));
-		WS_CLI.setIsInsecureHttpConnectionAllowed(true);
+		WS_URL = new URL("http://localhost:" + WS.getServerPort());
+		WS_CLI1 = new WorkspaceClient(WS_URL, new AuthToken(TOKEN1, "user1"));
+		WS_CLI1.setIsInsecureHttpConnectionAllowed(true);
+		WS_CLI2 = new WorkspaceClient(WS_URL, new AuthToken(TOKEN2, "user2"));
+		WS_CLI2.setIsInsecureHttpConnectionAllowed(true);
 		System.out.println(String.format("Started workspace service %s at %s",
-				WS_CLI.ver(), wsUrl));
+				WS_CLI1.ver(), WS_URL));
 
 		// set up the AH server
 		final Path cfgfile = generateTempConfigFile(MANAGER, DB_NAME, serviceTempDir);
@@ -479,5 +499,123 @@ public class ServiceIntegrationTest {
 		failRequestJSON(res, 400, "Bad Request", new IncompatibleSketchesException(
 				"Unable to query namespace id1 with input sketch: " +
 				"Query sketch size 1500 does not match target 1000"));
+	}
+	
+	/* ******************************************
+	 * KBase authenticated filter tests
+	 * 
+	 * Testing this here vs. a unit test to avoid starting up the workspace twice and avoid using
+	 * a mock server. Since the workspace is already started here might as well take advantage
+	 * of it.
+	 * 
+	 * This tests the filter factory. The filter itself has its own unit tests since it does
+	 * not contact the workspace once built.
+	 * ******************************************/
+	
+	@Test
+	public void kbaseFilterBuildFilterWithWorkspaces() throws Exception {
+		// tests with public, private, and inaccessible workspaces.
+		WS_CLI1.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo1"));
+		WS_CLI2.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo2"));
+		WS_CLI1.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo3"));
+		WS_CLI2.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo4")
+				.withGlobalread("r"));
+		
+		final MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
+				ImmutableMap.of("url", WS_URL.toString()));
+		
+		final MinHashDistanceCollector col = new DefaultDistanceCollector(10);
+		KBaseAuthenticatedFilter kbf = (KBaseAuthenticatedFilter) fac.getFilter(
+				col, new Token(TOKEN1));
+		assertThat("incorrect filter", kbf.getWorkspaceIDs(), is(set(1L, 3L, 4L)));
+		
+		kbf.accept(new MinHashDistance(new MinHashSketchDBName("d"), "1_1_1", 0.1));
+		assertThat("incorrect collector", col.getDistances(),
+				is(set(new MinHashDistance(new MinHashSketchDBName("d"), "1_1_1", 0.1))));
+		
+		kbf = (KBaseAuthenticatedFilter) fac.getFilter(col, new Token(TOKEN2));
+		assertThat("incorrect filter", kbf.getWorkspaceIDs(), is(set(2L, 4L)));
+		
+		kbf = (KBaseAuthenticatedFilter) fac.getFilter(col, null);
+		assertThat("incorrect filter", kbf.getWorkspaceIDs(), is(set(4L)));
+	}
+	
+	@Test
+	public void kbaseFilterFactoryFilterIDAndAuthsource() throws Exception {
+		// tests creating with the various environments.
+
+		// default
+		MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
+				ImmutableMap.of("url", WS_URL.toString()));
+		assertThat("incorrect filter ID", fac.getID(), is(new FilterID("kbaseprod")));
+		assertThat("incorrect auth source", fac.getAuthSource(), is(Optional.of("kbaseprod")));
+		
+		for (final String env: Arrays.asList("prod", "appdev", "next", "ci")) {
+			fac = new KBaseAuthenticatedFilterFactory(ImmutableMap.of(
+					"url", WS_URL.toString(),
+					"env", env));
+			assertThat("incorrect filter ID", fac.getID(), is(new FilterID("kbase" + env)));
+			assertThat("incorrect auth source", fac.getAuthSource(),
+					is(Optional.of("kbase" + env)));
+		}
+	}
+	
+	@Test
+	public void kbaseFilterConstructFailNullInput() {
+		kbaseFilterFailConstruct(null, new NullPointerException("config"));
+	}
+	
+	@Test
+	public void kbaseFilterConstructFailBadEnv() {
+		kbaseFilterFailConstruct(ImmutableMap.of("url", WS_URL.toString(), "env", "foo"),
+				new MinHashFilterFactoryInitializationException(
+						"Illegal KBase filter environment value: foo"));
+	}
+	
+	@Test
+	public void kbaseFilterConstructFailBadUrl() {
+		final Map<String, String> config = new HashMap<>();
+		config.put("url", null);
+		kbaseFilterFailConstruct(config, new MinHashFilterFactoryInitializationException(
+				"KBase filter requires key 'url' in config"));
+		kbaseFilterFailConstruct(ImmutableMap.of("url", "    \t    \n  "),
+				new MinHashFilterFactoryInitializationException(
+						"KBase filter requires key 'url' in config"));
+		
+		kbaseFilterFailConstruct(ImmutableMap.of("url", "htps://thisisabadurl.com"),
+				new MinHashFilterFactoryInitializationException(
+						"KBase filter url malformed: htps://thisisabadurl.com"));
+		
+		kbaseFilterFailConstruct(ImmutableMap.of(
+				"url", "http://ihopethisisanonexistenturlorthistestwillfailforsure.com"),
+				new MinHashFilterFactoryInitializationException(
+						"KBase filter failed contacting workspace at url " +
+						"http://ihopethisisanonexistenturlorthistestwillfailforsure.com: " +
+						"ihopethisisanonexistenturlorthistestwillfailforsure.com"));
+	}
+
+	private void kbaseFilterFailConstruct(
+			final Map<String, String> config,
+			final Exception expected) {
+		try {
+			new KBaseAuthenticatedFilterFactory(config);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, expected);
+		}
+	}
+	
+	@Test
+	public void kbaseFilterBuildFailUnauthorized() throws Exception {
+		final MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
+				ImmutableMap.of("url", WS_URL.toString()));
+		
+		try {
+			fac.getFilter(new DefaultDistanceCollector(10), new Token("bustedasstoken"));
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got,
+					new MinHashDistanceFilterAuthenticationException("Invalid token"));
+		}
 	}
 }

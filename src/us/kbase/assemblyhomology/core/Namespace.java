@@ -23,7 +23,6 @@ import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 public class Namespace {
 	
 	//TODO NOW load filter ID w/ namespace
-	//TODO NOW filters should have a validate seq id format method and validate on load
 	//TODO NOW integration tests with authenticated & unauthenticated filters
 	
 	private final NamespaceID id;

@@ -6,6 +6,7 @@ import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 
 /** A factory for producing Minhash filters.
  * @see MinHashDistanceFilter
@@ -31,8 +32,10 @@ public interface MinHashDistanceFilterFactory {
 	 * @param token the authentication token to be used by the filter. Pass null if no token
 	 * is available. If the filter requires a token, the filter will thrown an error.
 	 * @return the new filter.
+	 * @throws MinHashDistanceFilterException if the filter could not be built.
 	 */
-	MinHashDistanceFilter getFilter(MinHashDistanceCollector collector, Token token);
+	MinHashDistanceFilter getFilter(MinHashDistanceCollector collector, Token token)
+			throws MinHashDistanceFilterException;
 	
 	
 	/** Validate that a sequence ID is a valid ID for this filter.

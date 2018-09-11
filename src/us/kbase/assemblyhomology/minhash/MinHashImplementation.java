@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
 
@@ -45,11 +46,13 @@ public interface MinHashImplementation {
 	 * @throws MinHashException if the distances were unable to be calculated.
 	 * @throws IncompatibleSketchesException if the sketches have incompatible parameters.
 	 * @throws NotASketchException if one of the databases is invalid.
+	 * @throws MinHashDistanceFilterException if a filter encounters a problem.
 	 */
 	List<String> computeDistance(
 			MinHashSketchDatabase query,
 			Map<MinHashSketchDatabase, MinHashDistanceFilter> references,
 			boolean strict)
-			throws MinHashException, IncompatibleSketchesException, NotASketchException;
+			throws MinHashException, IncompatibleSketchesException, NotASketchException,
+				MinHashDistanceFilterException;
 	
 }
