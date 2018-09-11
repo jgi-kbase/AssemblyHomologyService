@@ -1,7 +1,6 @@
 package us.kbase.assemblyhomology.minhash.mash;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,6 +14,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -24,7 +25,7 @@ import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
@@ -263,11 +264,14 @@ public class Mash implements MinHashImplementation {
 	
 	private static class DistanceCollector implements LineCollector {
 		
-		private final MinHashDistanceCollector distCollector;
-		private MinHashSketchDBName dbname;
+		private final MinHashDistanceFilter distFilter;
+		private final MinHashSketchDBName dbname;
 		
-		public DistanceCollector(final MinHashDistanceCollector distCollector) {
-			this.distCollector = distCollector;
+		public DistanceCollector(
+				final MinHashDistanceFilter distFilter,
+				final MinHashSketchDBName dbname) {
+			this.distFilter = distFilter;
+			this.dbname = dbname;
 		}
 
 		@Override
@@ -276,33 +280,45 @@ public class Mash implements MinHashImplementation {
 			final String[] sl = line.trim().split("\\s+");
 			final String id = sl[0].trim();
 			final double distance = Double.parseDouble(sl[2].trim());
-			distCollector.accept(new MinHashDistance(dbname, id, distance));
+			distFilter.accept(new MinHashDistance(dbname, id, distance));
 		}
 	}
 	
 	@Override
 	public List<String> computeDistance(
 			final MinHashSketchDatabase query,
-			final Collection<MinHashSketchDatabase> references,
-			final MinHashDistanceCollector distCollector,
+			final Map<MinHashSketchDatabase, MinHashDistanceFilter> references,
 			final boolean strict)
 			throws MinHashException, NotASketchException, IncompatibleSketchesException {
 		checkNotNull(query, "query");
-		checkNoNullsInCollection(references, "references");
-		checkNotNull(distCollector, "distCollector");
+		checkNoNulls(references);
 		if (query.getSequenceCount() != 1) {
 			// may want to relax this, but that'll require changing a bunch of stuff
 			throw new IllegalArgumentException("Only 1 query sequence is allowed");
 		}
-		final List<String> warnings = checkQueryable(query, references, strict);
-		final DistanceCollector distanceProcessor = new DistanceCollector(distCollector);
-		for (final MinHashSketchDatabase ref: references) {
-			distanceProcessor.dbname = ref.getName();
+		final List<String> warnings = checkQueryable(query, references.keySet(), strict);
+		for (final Entry<MinHashSketchDatabase, MinHashDistanceFilter> r: references.entrySet()) {
+			final MinHashSketchDatabase ref = r.getKey();
+			final DistanceCollector distanceProcessor = new DistanceCollector(
+					r.getValue(), ref.getName());
 			processMashOutput(distanceProcessor, false, "dist", "-d", "0.5",
 						ref.getLocation().getPathToFile().get().toString(),
 						query.getLocation().getPathToFile().get().toString());
+			r.getValue().flush();
 		}
 		return warnings;
+	}
+
+	private void checkNoNulls(final Map<MinHashSketchDatabase, MinHashDistanceFilter> references) {
+		checkNotNull(references, "references");
+		for (final Entry<MinHashSketchDatabase, MinHashDistanceFilter> e: references.entrySet()) {
+			if (e.getKey() == null) {
+				throw new NullPointerException("Null key in references map");
+			}
+			if (e.getValue() == null) {
+				throw new NullPointerException("Null value in references map");
+			}
+		}
 	}
 	
 	private List<String> checkQueryable(

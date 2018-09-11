@@ -4,11 +4,12 @@ import java.util.TreeSet;
 
 /** An interface for a collector of MinHash distances. 
  * 
- * Typical implementations may maintain a cap on the number of distances in memory, check that
- * a user has authorization to view the sequences, or other functionality that filters out
- * sequences from the full set returned by the MinHash implementation. The collector is used
- * so the filtering can happen online rather than collecting all the sequences in memory and then
- * filtering.
+ * Typical implementations maintain a cap on the number of distances in memory. The collector is
+ * used so any filtering via {@link MinHashDistanceFilter} can happen online rather than
+ * collecting all the sequences in memory and then filtering.
+ * 
+ * There is typically one collector per data set and one filter per target sketch database in
+ * the data set. The filters feed into the collector.
  * 
  * @author gaprice@lbl.gov
  *
@@ -20,7 +21,7 @@ public interface MinHashDistanceCollector {
 	 */
 	void accept(MinHashDistance dist);
 	
-	/** Get the distances accepted so far that have not been filtered by the collector. 
+	/** Get the distances accepted so far.
 	 * @return the distances.
 	 */
 	TreeSet<MinHashDistance> getDistances();
