@@ -3,6 +3,7 @@ package us.kbase.assemblyhomology.build;
 import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
@@ -74,6 +75,7 @@ public class AssemblyHomologyBuilder {
 		return new AssemblyHomology(
 				storage,
 				new HashSet<>(Arrays.asList(new MashFactory())),
+				Collections.emptyList(), //TODO NOW configure filter factories
 				c.getPathToTemporaryFileDirectory(),
 				c.getMinhashTimeoutSec());
 	}

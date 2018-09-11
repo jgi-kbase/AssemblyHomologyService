@@ -54,6 +54,7 @@ public class AssemblyHomology {
 	
 	private final AssemblyHomologyStorage storage;
 	private final Map<String, MinHashImplementationFactory> impls = new HashMap<>();
+	private final Map<FilterID, MinHashDistanceFilterFactory> filters = new HashMap<>();
 	private final Path tempFileDirectory;
 	private final int minhashTimeoutSec;
 	
@@ -61,16 +62,20 @@ public class AssemblyHomology {
 	 * @param storage the storage system to be used by the class.
 	 * @param implementationFactories the factories for the various MinHash implementations to
 	 * be used by the class.
+	 * @param filterFactories the factories for the filters required by the namespaces in storage.
 	 * @param tempFileDirectory a directory for storing temporary files.
 	 * @param minhashTimeoutSec the timeout for any minhash processes in seconds.
 	 */
 	public AssemblyHomology(
 			final AssemblyHomologyStorage storage,
 			final Collection<MinHashImplementationFactory> implementationFactories,
+			final Collection<MinHashDistanceFilterFactory> filterFactories,
 			final Path tempFileDirectory,
 			final int minhashTimeoutSec) {
+		// probably needs a builder
 		checkNotNull(storage, "storage");
 		checkNoNullsInCollection(implementationFactories, "implementationFactories");
+		checkNoNullsInCollection(filterFactories, "filterFactories");
 		checkNotNull(tempFileDirectory, "tempFileDirectory");
 		if (minhashTimeoutSec < 1) {
 			throw new IllegalArgumentException("minhashTimeout must be > 0");
@@ -84,6 +89,12 @@ public class AssemblyHomology {
 				throw new IllegalArgumentException("Duplicate implementation: " + impl);
 			}
 			impls.put(impl, fac);
+		}
+		for (final MinHashDistanceFilterFactory fac: filterFactories) {
+			if (filters.containsKey(fac.getID())) {
+				throw new IllegalArgumentException("Duplicate filter: " + fac.getID().getName());
+			}
+			filters.put(fac.getID(), fac);
 		}
 	}
 	
@@ -260,9 +271,8 @@ public class AssemblyHomology {
 			}
 		}
 		final MinHashDistanceCollector distCol = new DefaultDistanceCollector(returnCount);
-		final MinHashDistanceFilter distFil = new DefaultDistanceFilter(distCol);
-		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs = namespaces.stream()
-				.collect(Collectors.toMap(n -> n.getSketchDatabase(), n -> distFil));
+		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs =
+				setUpDistanceFilters(namespaces, distCol);
 		try {
 			// ignore returned warnings since we gather them above
 			impl.computeDistance(query, dbs, strict);
@@ -276,6 +286,29 @@ public class AssemblyHomology {
 					impl.getImplementationInformation().getImplementationName().getName(), e);
 		}
 		return new DistReturn(distCol.getDistances(), warnings);
+	}
+
+	private Map<MinHashSketchDatabase, MinHashDistanceFilter> setUpDistanceFilters(
+			final Set<Namespace> namespaces,
+			final MinHashDistanceCollector distCol) {
+		final MinHashDistanceFilter defaultFilter = new DefaultDistanceFilter(distCol);
+		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs = new HashMap<>();
+		for (final Namespace ns: namespaces) {
+			if (ns.getFilterID().equals(FilterID.DEFAULT)) {
+				dbs.put(ns.getSketchDatabase(), defaultFilter);
+			} else {
+				if (!filters.containsKey(ns.getFilterID())) {
+					throw new IllegalStateException(String.format(
+							"Application is misconfigured. Namespace %s requires filter %s but " +
+							"it is not configured.",
+							ns.getID().getName(), ns.getFilterID().getName()));
+				}
+				final MinHashDistanceFilterFactory fac = filters.get(ns.getFilterID());
+				//TODO NOW provide token if required
+				dbs.put(ns.getSketchDatabase(), fac.getFilter(distCol));
+			}
+		}
+		return dbs;
 	}
 
 	private MinHashSketchDatabase getQueryDB(final Path sketchDB, final MinHashImplementation impl)

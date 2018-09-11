@@ -24,7 +24,7 @@ public class Namespace {
 	
 	//TODO NOW store filter ID w/ namespace
 	//TODO NOW load filter ID w/ namespace
-	//TODO NOW mark namespaces as auth required and auth source (need header per auth source)
+	//TODO NOW show auth requirements for namespaces in API
 	//TODO NOW filters should have a validate seq id format method and validate on load
 	
 	private final NamespaceID id;
