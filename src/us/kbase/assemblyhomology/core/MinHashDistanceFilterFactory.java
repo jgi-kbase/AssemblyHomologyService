@@ -7,7 +7,7 @@ import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 
-/** A factory for produing Minhash filters.
+/** A factory for producing Minhash filters.
  * @see MinHashDistanceFilter
  * @author gaprice@lbl.gov
  *
@@ -22,24 +22,14 @@ public interface MinHashDistanceFilterFactory {
 	/** Get the authentication source used by this filter, if any.
 	 * @return A string providing the name of the authentication source used by the this
 	 * filter (e.g. KBase, JGI, etc.) or absent() if the filter does not use an authentication
-	 * source. If the authentication source is present,
-	 * {@link #getFilter(MinHashDistanceCollector, Token)} must be used to get the filter from
-	 * this factory.
+	 * source.
 	 */
 	Optional<String> getAuthSource();
 	
-	/** Get a filter that passes on unfiltered distances to a provided collector and that does
-	 * not require authentication.
+	/** Get a filter that passes on unfiltered distances to a provided collector.
 	 * @param collector the collector that is the final destination for any unfiltered distances.
-	 * @return the new filter.
-	 */
-	//TODO NOW throw an exception if a token is required
-	MinHashDistanceFilter getFilter(MinHashDistanceCollector collector);
-	
-	/** Get a filter that passes on unfiltered distances to a provided collector and that
-	 * requires authentication.
-	 * @param collector the collector that is the final destination for any unfiltered distances.
-	 * @param token the authentication token to be used by the filter.
+	 * @param token the authentication token to be used by the filter. Pass null if no token
+	 * is available. If the filter requires a token, the filter will thrown an error.
 	 * @return the new filter.
 	 */
 	MinHashDistanceFilter getFilter(MinHashDistanceCollector collector, Token token);
