@@ -34,4 +34,10 @@ public interface MinHashDistanceFilterFactory {
 	 */
 	MinHashDistanceFilter getFilter(MinHashDistanceCollector collector, Token token);
 	
+	
+	/** Validate that a sequence ID is a valid ID for this filter.
+	 * @param id the ID to validate.
+	 * @return true if the sequence ID is valid, false otherwise.
+	 */
+	boolean validateID(String id);
 }
