@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
+import us.kbase.assemblyhomology.core.exceptions.AuthenticationException;
+import us.kbase.assemblyhomology.core.exceptions.ErrorType;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
@@ -36,6 +38,8 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterAuthenticationException;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
@@ -192,6 +196,8 @@ public class AssemblyHomology {
 	 * compatible with any of the selected namespaces' sketch databases.
 	 * @throws IncompatibleAuthenticationException if namespaces with different authentication
 	 * sources are requested.
+	 * @throws MinHashDistanceFilterException if a filter exception occurs.
+	 * @throws AuthenticationException if an authentication error occurs.
 	 */
 	public SequenceMatches measureDistance(
 			final Set<NamespaceID> namespaceIDs,
@@ -201,7 +207,8 @@ public class AssemblyHomology {
 			final Token token)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException,
 				InvalidSketchException, IncompatibleNamespacesException,
-				IncompatibleSketchesException, IncompatibleAuthenticationException {
+				IncompatibleSketchesException, IncompatibleAuthenticationException,
+				AuthenticationException, MinHashDistanceFilterException {
 		// may need a builder here, only 1st 2 arguments are always required
 		checkNoNullsInCollection(namespaceIDs, "namespaceIDs");
 		checkNotNull(sketchDB, "sketchDB");
@@ -279,7 +286,7 @@ public class AssemblyHomology {
 			final boolean strict,
 			final Token token)
 			throws InvalidSketchException, IncompatibleSketchesException,
-				IncompatibleAuthenticationException {
+				AuthenticationException, MinHashDistanceFilterException {
 		final MinHashSketchDatabase query = getQueryDB(sketchDB, impl);
 		final Set<String> warnings = new HashSet<>();
 		for (final Namespace ns: namespaces) {
@@ -295,9 +302,9 @@ public class AssemblyHomology {
 			}
 		}
 		final MinHashDistanceCollector distCol = new DefaultDistanceCollector(returnCount);
-		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs =
-				setUpDistanceFilters(namespaces, distCol, token);
 		try {
+			final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs =
+					setUpDistanceFilters(namespaces, distCol, token);
 			// ignore returned warnings since we gather them above
 			impl.computeDistance(query, dbs, strict);
 		} catch (MinHashException e) {
@@ -308,6 +315,8 @@ public class AssemblyHomology {
 			 */
 			throw new IllegalStateException("Unexpected error running MinHash implementation " +
 					impl.getImplementationInformation().getImplementationName().getName(), e);
+		} catch (MinHashDistanceFilterAuthenticationException e) {
+			throw new AuthenticationException(ErrorType.AUTHENTICATION_FAILED, e.getMessage(), e);
 		}
 		return new DistReturn(distCol.getDistances(), warnings);
 	}
@@ -316,7 +325,7 @@ public class AssemblyHomology {
 			final Set<Namespace> namespaces,
 			final MinHashDistanceCollector distCol,
 			final Token token)
-			throws IncompatibleAuthenticationException {
+			throws MinHashDistanceFilterException, IncompatibleAuthenticationException {
 		final MinHashDistanceFilter defaultFilter = new DefaultDistanceFilter(distCol);
 		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs = new HashMap<>();
 		NamespaceID authns = null;

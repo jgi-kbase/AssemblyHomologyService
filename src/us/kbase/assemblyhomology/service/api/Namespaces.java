@@ -34,6 +34,7 @@ import us.kbase.assemblyhomology.core.NamespaceView;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.Token;
+import us.kbase.assemblyhomology.core.exceptions.AuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
@@ -44,6 +45,7 @@ import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 import us.kbase.assemblyhomology.service.Fields;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
 
@@ -136,6 +138,8 @@ public class Namespaces {
 	 * max is not an integer if provided.
 	 * @throws IncompatibleAuthenticationException if namespaces with different authentication
 	 * sources are requested.
+	 * @throws MinHashDistanceFilterException if a filter exception occurs.
+	 * @throws AuthenticationException if an authentication error occurs.
 	 */
 	@POST
 	@Produces(MediaType.APPLICATION_JSON)
@@ -149,7 +153,8 @@ public class Namespaces {
 			throws IOException, NoSuchNamespaceException, IncompatibleSketchesException,
 				MissingParameterException, AssemblyHomologyStorageException,
 				InvalidSketchException, IncompatibleNamespacesException,
-				IllegalParameterException, IncompatibleAuthenticationException { 
+				IllegalParameterException, IncompatibleAuthenticationException,
+				AuthenticationException, MinHashDistanceFilterException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
 		final Set<NamespaceView> nss = ah.getNamespaces(getNamespaceIDs(namespaces));
