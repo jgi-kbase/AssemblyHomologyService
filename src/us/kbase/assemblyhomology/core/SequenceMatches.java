@@ -23,7 +23,7 @@ public class SequenceMatches {
 	
 	// could add some consistency checks at some point but doesn't seem particularly important
 	
-	private final Set<Namespace> namespaces;
+	private final Set<NamespaceView> namespaces;
 	private final MinHashImplementationInformation implementationInformation;
 	private final List<SequenceDistanceAndMetadata> distances;
 	private final Set<String> warnings;
@@ -36,7 +36,7 @@ public class SequenceMatches {
 	 * @param warnings any warnings that were generated while processing the matches.
 	 */
 	public SequenceMatches(
-			final Set<Namespace> namespaces,
+			final Set<NamespaceView> namespaces,
 			final MinHashImplementationInformation implementationInformation,
 			final List<SequenceDistanceAndMetadata> distances,
 			final Set<String> warnings) {
@@ -53,7 +53,7 @@ public class SequenceMatches {
 	/** Get the namespaces containing sequences that were matched against.
 	 * @return the namespaces.
 	 */
-	public Set<Namespace> getNamespaces() {
+	public Set<NamespaceView> getNamespaces() {
 		return namespaces;
 	}
 

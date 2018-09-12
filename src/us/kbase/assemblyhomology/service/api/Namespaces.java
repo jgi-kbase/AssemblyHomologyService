@@ -29,8 +29,8 @@ import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
 import us.kbase.assemblyhomology.core.AssemblyHomology;
-import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
+import us.kbase.assemblyhomology.core.NamespaceView;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.Token;
@@ -44,7 +44,6 @@ import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
-import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.service.Fields;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
 
@@ -97,15 +96,15 @@ public class Namespaces {
 		return fromNamespace(ah.getNamespace(new NamespaceID(namespace)));
 	}
 
-	private Map<String, Object> fromNamespace(final Namespace ns) {
-		final MinHashSketchDatabase db = ns.getSketchDatabase();
-		final MinHashParameters params = db.getParameterSet();
+	private Map<String, Object> fromNamespace(final NamespaceView ns) {
 		final Map<String, Object> ret = new HashMap<>();
+		final MinHashParameters params = ns.getParameterSet();
+		ret.put(Fields.NAMESPACE_AUTH_SOURCE, ns.getAuthsource().orNull());
 		ret.put(Fields.NAMESPACE_DESCRIPTION, ns.getDescription().orNull());
 		ret.put(Fields.NAMESPACE_ID, ns.getID().getName());
 		ret.put(Fields.NAMESPACE_LASTMOD, ns.getModification().toEpochMilli());
-		ret.put(Fields.NAMESPACE_IMPLEMENTATION, db.getImplementationName().getName());
-		ret.put(Fields.NAMESPACE_SEQ_COUNT, db.getSequenceCount());
+		ret.put(Fields.NAMESPACE_IMPLEMENTATION, ns.getImplementationName().getName());
+		ret.put(Fields.NAMESPACE_SEQ_COUNT, ns.getSequenceCount());
 		ret.put(Fields.NAMESPACE_KMER_SIZE, Arrays.asList(params.getKmerSize()));
 		ret.put(Fields.NAMESPACE_SCALING, params.getScaling().orNull());
 		ret.put(Fields.NAMESPACE_SKETCH_SIZE, params.getSketchSize().orNull());
@@ -153,9 +152,9 @@ public class Namespaces {
 				IllegalParameterException, IncompatibleAuthenticationException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
-		final Set<Namespace> nss = ah.getNamespaces(getNamespaceIDs(namespaces));
+		final Set<NamespaceView> nss = ah.getNamespaces(getNamespaceIDs(namespaces));
 		final Set<MinHashImplementationName> impls = nss.stream().map(
-				n -> n.getSketchDatabase().getImplementationName()).collect(Collectors.toSet());
+				n -> n.getImplementationName()).collect(Collectors.toSet());
 		if (impls.size() != 1) {
 			throw new IncompatibleNamespacesException(
 					"Selected namespaces must have the same MinHash implementation");

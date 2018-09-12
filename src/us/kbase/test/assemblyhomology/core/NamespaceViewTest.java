@@ -56,7 +56,7 @@ public class NamespaceViewTest {
 		assertThat("incorrect impl", nv.getImplementationName(),
 				is(new MinHashImplementationName("impl")));
 		assertThat("incorrect mod date", nv.getModification(), is(Instant.ofEpochMilli(40000)));
-		assertThat("incorrect ns id", nv.getNamespaceID(), is(new NamespaceID("id")));
+		assertThat("incorrect ns id", nv.getID(), is(new NamespaceID("id")));
 		assertThat("incorrect params", nv.getParameterSet(),
 				is(MinHashParameters.getBuilder(5).withScaling(400).build()));
 		assertThat("incorrect seq count", nv.getSequenceCount(), is(42));
@@ -89,7 +89,7 @@ public class NamespaceViewTest {
 		assertThat("incorrect impl", nv.getImplementationName(),
 				is(new MinHashImplementationName("impl")));
 		assertThat("incorrect mod date", nv.getModification(), is(Instant.ofEpochMilli(40000)));
-		assertThat("incorrect ns id", nv.getNamespaceID(), is(new NamespaceID("id")));
+		assertThat("incorrect ns id", nv.getID(), is(new NamespaceID("id")));
 		assertThat("incorrect params", nv.getParameterSet(),
 				is(MinHashParameters.getBuilder(5).withScaling(400).build()));
 		assertThat("incorrect seq count", nv.getSequenceCount(), is(42));
@@ -124,7 +124,7 @@ public class NamespaceViewTest {
 		assertThat("incorrect impl", nv.getImplementationName(),
 				is(new MinHashImplementationName("impl")));
 		assertThat("incorrect mod date", nv.getModification(), is(Instant.ofEpochMilli(40000)));
-		assertThat("incorrect ns id", nv.getNamespaceID(), is(new NamespaceID("id")));
+		assertThat("incorrect ns id", nv.getID(), is(new NamespaceID("id")));
 		assertThat("incorrect params", nv.getParameterSet(),
 				is(MinHashParameters.getBuilder(5).withScaling(400).build()));
 		assertThat("incorrect seq count", nv.getSequenceCount(), is(42));
@@ -162,7 +162,7 @@ public class NamespaceViewTest {
 		assertThat("incorrect impl", nv.getImplementationName(),
 				is(new MinHashImplementationName("impl")));
 		assertThat("incorrect mod date", nv.getModification(), is(Instant.ofEpochMilli(40000)));
-		assertThat("incorrect ns id", nv.getNamespaceID(), is(new NamespaceID("id")));
+		assertThat("incorrect ns id", nv.getID(), is(new NamespaceID("id")));
 		assertThat("incorrect params", nv.getParameterSet(),
 				is(MinHashParameters.getBuilder(5).withScaling(400).build()));
 		assertThat("incorrect seq count", nv.getSequenceCount(), is(42));

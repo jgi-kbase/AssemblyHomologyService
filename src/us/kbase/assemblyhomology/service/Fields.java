@@ -21,6 +21,8 @@ public class Fields {
 	
 	/** An ID for a namespace. */
 	public static final String NAMESPACE_ID = "id";
+	/** The authentication source associated with a namespace. */
+	public static final String NAMESPACE_AUTH_SOURCE = "authsource";
 	/** A description for a namespace. */
 	public static final String NAMESPACE_DESCRIPTION = "desc";
 	/** The last modification date of the namespace. */
