@@ -35,6 +35,7 @@ script:
   - sed -i "s#^test.temp.dir=.*#test.temp.dir=temp_test_dir#" test.cfg
   - sed -i "s#^test.mongo.exe.*#test.mongo.exe=$MONGOD#" test.cfg
   - sed -i "s#^test.mongo.wired_tiger.*#test.mongo.wired_tiger=$WIRED_TIGER#" test.cfg
+  - sed -i "s#^test.jars.dir=.*#test.jars.dir=../jars/lib/jars#" test.cfg
   - cat test.cfg
   - ant $ANT_TEST
 
