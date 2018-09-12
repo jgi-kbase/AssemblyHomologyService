@@ -20,6 +20,7 @@ before_install:
 install:
   - cd ..
   - git clone https://github.com/kbase/jars
+  - export JARSDIR=`pwd`/jars/lib/jars/
   - wget https://github.com/marbl/Mash/releases/download/v2.0/mash-Linux64-v2.0.tar
   - tar -xf mash-Linux64-v2.0.tar
   - export PATH=$PATH:$PWD/mash-Linux64-v2.0
@@ -35,7 +36,7 @@ script:
   - sed -i "s#^test.temp.dir=.*#test.temp.dir=temp_test_dir#" test.cfg
   - sed -i "s#^test.mongo.exe.*#test.mongo.exe=$MONGOD#" test.cfg
   - sed -i "s#^test.mongo.wired_tiger.*#test.mongo.wired_tiger=$WIRED_TIGER#" test.cfg
-  - sed -i "s#^test.jars.dir=.*#test.jars.dir=../jars/lib/jars#" test.cfg
+  - sed -i "s#^test.jars.dir=.*#test.jars.dir=$JARSDIR#" test.cfg
   - cat test.cfg
   - ant $ANT_TEST
 
