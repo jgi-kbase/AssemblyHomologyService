@@ -92,6 +92,7 @@ public class ServiceIntegrationTest {
 	private static final Path TARGET_4SEQS = Paths.get("kb_4seqs_k31_s1000.msh");
 	private static final Path TARGET_4SEQS_2 = Paths.get("kb_4seqs_k31_s1000_2.msh");
 	
+	//TODO NOW test with filters with an authsource
 	private static final Map<String, Object> EXPECTED_NS1 = MapBuilder.<String, Object>newHashMap()
 			.with("id", "id1")
 			.with("impl", "mash")
@@ -103,6 +104,7 @@ public class ServiceIntegrationTest {
 			.with("scaling", null)
 			.with("desc", "desc1")
 			.with("lastmod", 100000)
+			.with("authsource", null)
 			.build();
 	
 	private static final Map<String, Object> EXPECTED_NS2 = MapBuilder.<String, Object>newHashMap()
@@ -116,6 +118,7 @@ public class ServiceIntegrationTest {
 			.with("sketchsize", 1000)
 			.with("desc", "desc2")
 			.with("lastmod", 300000)
+			.with("authsource", null)
 			.build();
 	
 	@BeforeClass

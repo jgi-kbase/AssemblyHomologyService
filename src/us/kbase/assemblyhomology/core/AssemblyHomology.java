@@ -99,17 +99,27 @@ public class AssemblyHomology {
 		}
 	}
 	
-	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
 	/** Get all the namespaces available.
 	 * @return the namespaces.
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
 	 */
-	public Set<Namespace> getNamespaces() throws AssemblyHomologyStorageException {
-		return storage.getNamespaces();
+	public Set<NamespaceView> getNamespaces() throws AssemblyHomologyStorageException {
+		return toNamespaceView(storage.getNamespaces());
 	}
 	
-	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
+	private Set<NamespaceView> toNamespaceView(final Set<Namespace> namespaces) {
+		return namespaces.stream().map(ns -> toNamespaceView(ns)).collect(Collectors.toSet());
+	}
+	
+	private NamespaceView toNamespaceView(final Namespace namespace) {
+		if (namespace.getFilterID().isPresent()) {
+			return new NamespaceView(namespace, getFilter(namespace));
+		} else {
+			return new NamespaceView(namespace);
+		}
+	}
+
 	/** Get a set of namespaces.
 	 * @param ids the IDs of the namespaces to get.
 	 * @return the namespaces.
@@ -117,8 +127,13 @@ public class AssemblyHomology {
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
 	 */
-	public Set<Namespace> getNamespaces(final Set<NamespaceID> ids)
+	public Set<NamespaceView> getNamespaces(final Set<NamespaceID> ids)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
+		return toNamespaceView(getNamespacesInternal(ids));
+	}
+
+	private Set<Namespace> getNamespacesInternal(final Set<NamespaceID> ids)
+			throws AssemblyHomologyStorageException, NoSuchNamespaceException {
 		checkNoNullsInCollection(ids, "ids");
 		final Set<Namespace> namespaces = new HashSet<>();
 		for (final NamespaceID id: ids) {
@@ -128,7 +143,6 @@ public class AssemblyHomology {
 		return namespaces;
 	}
 	
-	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
 	/** Get a namespace.
 	 * @param namespaceID the ID of the namespace to get.
 	 * @return the namespace.
@@ -136,10 +150,10 @@ public class AssemblyHomology {
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
 	 */
-	public Namespace getNamespace(final NamespaceID namespaceID)
+	public NamespaceView getNamespace(final NamespaceID namespaceID)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
 		checkNotNull(namespaceID, "namespaceID");
-		return storage.getNamespace(namespaceID);
+		return toNamespaceView(storage.getNamespace(namespaceID));
 	}
 	
 	/** Get the file extension expected by a particular implementation.
@@ -198,7 +212,7 @@ public class AssemblyHomology {
 			returnCount = DEFAULT_RETURN;
 		}
 		
-		final Set<Namespace> namespaces = getNamespaces(namespaceIDs);
+		final Set<Namespace> namespaces = getNamespacesInternal(namespaceIDs);
 		final Map<String, Namespace> idToNS = namespaces.stream()
 				.collect(Collectors.toMap(n -> n.getID().getName(), n -> n));
 		final MinHashImplementation impl = getImplementation(namespaces);
@@ -214,8 +228,8 @@ public class AssemblyHomology {
 		}
 		
 		// return query id?
-		return new SequenceMatches(
-				namespaces, impl.getImplementationInformation(), distNMeta, distret.warnings);
+		return new SequenceMatches(toNamespaceView(namespaces),
+				impl.getImplementationInformation(), distNMeta, distret.warnings);
 	}
 
 	private Map<Namespace, Map<String, SequenceMetadata>> getSequenceMetadata(
@@ -309,13 +323,7 @@ public class AssemblyHomology {
 		String auth = null;
 		for (final Namespace ns: namespaces) {
 			if (ns.getFilterID().isPresent()) {
-				if (!filters.containsKey(ns.getFilterID().get())) {
-					throw new IllegalStateException(String.format(
-							"Application is misconfigured. Namespace %s requires filter %s but " +
-							"it is not configured.",
-							ns.getID().getName(), ns.getFilterID().get().getName()));
-				}
-				final MinHashDistanceFilterFactory fac = filters.get(ns.getFilterID().get());
+				final MinHashDistanceFilterFactory fac = getFilter(ns);
 				if (fac.getAuthSource().isPresent()) {
 					if (auth == null) {
 						auth = fac.getAuthSource().get();
@@ -334,6 +342,16 @@ public class AssemblyHomology {
 			}
 		}
 		return dbs;
+	}
+
+	private MinHashDistanceFilterFactory getFilter(final Namespace ns) {
+		if (!filters.containsKey(ns.getFilterID().get())) {
+			throw new IllegalStateException(String.format(
+					"Application is misconfigured. Namespace %s requires filter %s but " +
+					"it is not configured.",
+					ns.getID().getName(), ns.getFilterID().get().getName()));
+		}
+		return filters.get(ns.getFilterID().get());
 	}
 
 	private MinHashSketchDatabase getQueryDB(final Path sketchDB, final MinHashImplementation impl)
