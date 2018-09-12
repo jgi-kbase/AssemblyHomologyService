@@ -37,6 +37,7 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.UpdateOptions;
 
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
@@ -335,6 +336,8 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		final MinHashSketchDatabase sketchDB = namespace.getSketchDatabase();
 		final Document ns = new Document()
 				.append(Fields.NAMESPACE_LOAD_ID, namespace.getLoadID().getName())
+				.append(Fields.NAMESPACE_FILTER_ID, namespace.getFilterID().isPresent() ?
+						namespace.getFilterID().get().getName() : null)
 				.append(Fields.NAMESPACE_DATASOURCE_ID, namespace.getSourceID().getName())
 				.append(Fields.NAMESPACE_MODIFICATION_DATE, Date.from(namespace.getModification()))
 				.append(Fields.NAMESPACE_DATABASE_ID, namespace.getSourceDatabaseID())
@@ -396,6 +399,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 
 	private Namespace toNamespace(final Document ns) throws AssemblyHomologyStorageException {
 		try {
+			final String fid = ns.getString(Fields.NAMESPACE_FILTER_ID);
 			return Namespace.getBuilder(
 					new NamespaceID(ns.getString(Fields.NAMESPACE_ID)),
 					new MinHashSketchDatabase(
@@ -408,6 +412,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 							ns.getInteger(Fields.NAMESPACE_SEQUENCE_COUNT)),
 					new LoadID(ns.getString(Fields.NAMESPACE_LOAD_ID)),
 					ns.getDate(Fields.NAMESPACE_MODIFICATION_DATE).toInstant())
+					.withNullableFilterID(fid == null ? null : new FilterID(fid))
 					.withNullableSourceDatabaseID(ns.getString(Fields.NAMESPACE_DATABASE_ID))
 					.withNullableDescription(ns.getString(Fields.NAMESPACE_DESCRIPTION))
 					.withNullableDataSourceID(new DataSourceID(

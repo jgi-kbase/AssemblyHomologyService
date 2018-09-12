@@ -30,6 +30,7 @@ import org.junit.Test;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
@@ -129,6 +130,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("fid"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -148,6 +150,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("fid"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -171,6 +174,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("whee"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -188,6 +192,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						32),
 				new LoadID("baz"),
 				Instant.ofEpochMilli(20000))
+				.withNullableFilterID(new FilterID("whoo"))
 				.withNullableDataSourceID(new DataSourceID("fairy godmother"))
 				.withNullableSourceDatabaseID("here you are, dear")
 				.withNullableDescription("oh thank you mother")
@@ -207,6 +212,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						32),
 				new LoadID("baz"),
 				Instant.ofEpochMilli(20000))
+				.withNullableFilterID(new FilterID("whoo"))
 				.withNullableDataSourceID(new DataSourceID("fairy godmother"))
 				.withNullableSourceDatabaseID("here you are, dear")
 				.withNullableDescription("oh thank you mother")
@@ -230,6 +236,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("fids"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -264,6 +271,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("fids"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")

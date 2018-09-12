@@ -44,6 +44,7 @@ import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
+import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
@@ -314,7 +315,8 @@ public class NamespacesTest {
 								),
 						Collections.emptySet()));
 		
-		final Map<String, Object> ret = ns.searchNamespaces(req, "  foo ,   \tbaz  ", null, null);
+		final Map<String, Object> ret = ns.searchNamespaces(
+				req, null, "  foo ,   \tbaz  ", null, null);
 		
 		final Map<String, Object> expected = ImmutableMap.of(
 				"impl", "mash",
@@ -351,6 +353,7 @@ public class NamespacesTest {
 	
 	@Test
 	public void searchWithExtensionMaxWarningsNotStrict() throws Exception {
+		// also tests a whitespace only token
 		final AssemblyHomology ah = mock(AssemblyHomology.class);
 		final HttpServletRequest req = mock(HttpServletRequest.class);
 		final Namespaces ns = getNamespaceInstance(ah);
@@ -400,7 +403,8 @@ public class NamespacesTest {
 								),
 						set("warn1", "warn2")));
 		
-		final Map<String, Object> ret = ns.searchNamespaces(req, "  foo ,   \tbaz  ", "", "7");
+		final Map<String, Object> ret = ns.searchNamespaces(
+				req, "   \t   ", "  foo ,   \tbaz  ", "", "7");
 		
 		final Map<String, Object> expected = ImmutableMap.of(
 				"impl", "mash",
@@ -428,6 +432,61 @@ public class NamespacesTest {
 								.with("sciname", "sci name")
 								.with("namespaceid", "foo")
 								.with("dist", 0.3)
+								.with("relatedids", Collections.emptyMap())
+								.build()
+						));
+		
+		assertThat("incorrect distances", ret, is(expected));
+	}
+	
+	@Test
+	public void searchWithToken() throws Exception {
+		// keep this simple otherwise
+		final AssemblyHomology ah = mock(AssemblyHomology.class);
+		final HttpServletRequest req = mock(HttpServletRequest.class);
+		final Namespaces ns = getNamespaceInstance(ah);
+		
+		when(ah.getNamespaces(set(new NamespaceID("foo")))).thenReturn(set(NS1));
+		when(ah.getExpectedFileExtension(new MinHashImplementationName("mash")))
+				.thenReturn(Optional.of(Paths.get("msh")));
+		
+		when(req.getInputStream())
+				.thenReturn(new ByteArrayServletInputStream("file content".getBytes()));
+		
+		when(ah.measureDistance(
+				eq(set(new NamespaceID("foo"))),
+				argThat(new TempFileMatcher(".tmp.msh", "file content")),
+				eq(7),
+				eq(false),
+				eq(new Token("livetoken"))))
+				.thenReturn(new SequenceMatches(
+						set(NS1),
+						new MinHashImplementationInformation(
+								new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
+						Arrays.asList(
+								new SequenceDistanceAndMetadata(
+										new NamespaceID("foo"),
+										new MinHashDistance(
+												new MinHashSketchDBName("foo"), "s1", 0.1),
+										SequenceMetadata.getBuilder(
+												"s1", "ss1", Instant.ofEpochMilli(10000)).build())
+								),
+						set("warn1", "warn2")));
+		
+		final Map<String, Object> ret = ns.searchNamespaces(
+				req, "   livetoken   ", "  foo ", "", "7");
+		
+		final Map<String, Object> expected = ImmutableMap.of(
+				"impl", "mash",
+				"implver", "2.0",
+				"warnings", set("warn1", "warn2"),
+				"namespaces", set(EXPECTED_NS1),
+				"distances", Arrays.asList(
+						MapBuilder.<String, Object>newHashMap()
+								.with("sourceid", "ss1")
+								.with("sciname", null)
+								.with("namespaceid", "foo")
+								.with("dist", 0.1)
 								.with("relatedids", Collections.emptyMap())
 								.build()
 						));
@@ -534,7 +593,7 @@ public class NamespacesTest {
 			final String max,
 			final Exception expected) {
 		try {
-			ns.searchNamespaces(req, nsIDs, null, max);
+			ns.searchNamespaces(req, null, nsIDs, null, max);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);

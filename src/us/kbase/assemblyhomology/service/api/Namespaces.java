@@ -1,5 +1,7 @@
 package us.kbase.assemblyhomology.service.api;
 
+import static us.kbase.assemblyhomology.util.Util.isNullOrEmpty;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -30,6 +33,7 @@ import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
+import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
@@ -142,6 +146,7 @@ public class Namespaces {
 	@javax.ws.rs.Path(ServicePaths.NAMESPACE_SEARCH)
 	public Map<String, Object> searchNamespaces(
 			@Context HttpServletRequest request,
+			@HeaderParam("Authentication") final String auth,
 			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespaces,
 			@QueryParam("notstrict") final String notStrict,
 			@QueryParam("max") final String max)
@@ -173,7 +178,7 @@ public class Namespaces {
 			Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
 			res = ah.measureDistance(
 					nss.stream().map(n -> n.getID()).collect(Collectors.toSet()),
-					tempFile, maxReturn, strict, null); //TODO NOW provide token
+					tempFile, maxReturn, strict, getToken(auth));
 		} finally {
 			if (tempFile != null) {
 				Files.delete(tempFile);
@@ -190,6 +195,10 @@ public class Namespaces {
 				.map(d -> fromDistance(d))
 				.collect(Collectors.toList()));
 		return ret;
+	}
+
+	private Token getToken(final String auth) throws MissingParameterException {
+		return isNullOrEmpty(auth) ? null : new Token(auth);
 	}
 
 	private Set<NamespaceID> getNamespaceIDs(final String namespaces)
