@@ -59,10 +59,4 @@ public class FilterIDTest {
 			TestCommon.assertExceptionCorrect(e, exception);
 		}
 	}
-	
-	@Test
-	public void defaultID() throws Exception {
-		assertThat("incorrect default ID", FilterID.DEFAULT, is(new FilterID("default")));
-	}
-
 }

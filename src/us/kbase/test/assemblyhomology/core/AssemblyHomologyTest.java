@@ -1,5 +1,6 @@
 package us.kbase.test.assemblyhomology.core;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
@@ -47,6 +48,7 @@ import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadat
 import us.kbase.assemblyhomology.core.SequenceMetadata;
 import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
@@ -1187,7 +1189,7 @@ public class AssemblyHomologyTest {
 	}
 	
 	@Test
-	public void measureDistanceFailMissingtoken() throws Exception {
+	public void measureDistanceFailMissingToken() throws Exception {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		final MinHashImplementationFactory ifac = mock(MinHashImplementationFactory.class);
 		final MinHashImplementation impl = mock(MinHashImplementation.class);
@@ -1226,6 +1228,73 @@ public class AssemblyHomologyTest {
 		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new NoTokenProvidedException("Namespace ns1 requires reallyneatauthsource " +
 						"authentication, but no token was provided"));
+	}
+	
+	@Test
+	public void measureDistanceFailIncompatibleAuth() throws Exception {
+		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
+		final MinHashImplementationFactory ifac = mock(MinHashImplementationFactory.class);
+		final MinHashImplementation impl = mock(MinHashImplementation.class);
+		when(ifac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
+		
+		final MinHashDistanceFilterFactory ffac1 = mock(MinHashDistanceFilterFactory.class);
+		when(ffac1.getID()).thenReturn(new FilterID("foo"));
+		when(ffac1.getAuthSource()).thenReturn(Optional.of("reallyneatauthsource"));
+		
+		final MinHashDistanceFilterFactory ffac2 = mock(MinHashDistanceFilterFactory.class);
+		when(ffac2.getID()).thenReturn(new FilterID("bar"));
+		when(ffac2.getAuthSource()).thenReturn(Optional.of("otherneatauthsource"));
+		
+		final AssemblyHomology ah = new AssemblyHomology(storage, Arrays.asList(ifac),
+				Arrays.asList(ffac1, ffac2), Paths.get("temp_dir"), 6674);
+		
+		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH),
+				2000);
+		final Namespace ns1 = Namespace.getBuilder(
+				new NamespaceID("ns1"), ref1, new LoadID("load1"), Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("foo"))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns1"))).thenReturn(ns1);
+		
+		final MinHashSketchDatabase ref2 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns2"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				4000);
+		final Namespace ns2 = Namespace.getBuilder(
+				new NamespaceID("ns2"), ref2, new LoadID("load2"), Instant.ofEpochMilli(20000))
+				.withNullableFilterID(new FilterID("bar"))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns2"))).thenReturn(ns2);
+		
+		when(ifac.getImplementation(Paths.get("temp_dir"), 6674)).thenReturn(impl);
+		
+		final MinHashSketchDatabase query = new MinHashSketchDatabase(
+				new MinHashSketchDBName("<query>"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				1);
+		when(impl.getDatabase(
+				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
+				.thenReturn(query);
+		
+		try {
+			ah.measureDistance(set(new NamespaceID("ns1"), new NamespaceID("ns2")),
+					EMPTY_FILE_MSH2, 10, true, new Token("baz"));
+			fail("expected exception");
+		} catch (IncompatibleAuthenticationException e) {
+			final String msg = e.getMessage().toLowerCase();
+			assertThat("incorrect msg", msg,
+					containsString("namespace ns1 requires reallyneatauthsource authentication"));
+			assertThat("incorrect msg", msg,
+					containsString("namespace ns2 requires otherneatauthsource authentication"));
+		}
 	}
 	
 	@Test

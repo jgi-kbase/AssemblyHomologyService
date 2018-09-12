@@ -31,6 +31,7 @@ import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
@@ -133,6 +134,8 @@ public class Namespaces {
 	 * max is not an integer if provided.
 	 * @throws NoTokenProvidedException if a namespace requires authentication but no token
 	 * was provided.
+	 * @throws IncompatibleAuthenticationException if namespaces with different authentication
+	 * sources are requested.
 	 */
 	@POST
 	@Produces(MediaType.APPLICATION_JSON)
@@ -145,7 +148,8 @@ public class Namespaces {
 			throws IOException, NoSuchNamespaceException, IncompatibleSketchesException,
 				MissingParameterException, AssemblyHomologyStorageException,
 				InvalidSketchException, IncompatibleNamespacesException,
-				IllegalParameterException, NoTokenProvidedException { 
+				IllegalParameterException, NoTokenProvidedException,
+				IncompatibleAuthenticationException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
 		final Set<Namespace> nss = ah.getNamespaces(getNamespaceIDs(namespaces));
