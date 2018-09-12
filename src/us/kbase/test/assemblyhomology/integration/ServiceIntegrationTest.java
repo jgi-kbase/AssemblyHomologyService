@@ -7,6 +7,7 @@ import static us.kbase.test.assemblyhomology.TestCommon.set;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -37,6 +38,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.google.common.collect.ImmutableMap;
+import com.mongodb.client.MongoDatabase;
 
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
@@ -50,6 +52,7 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.auth.AuthToken;
 import us.kbase.common.test.RegexMatcher;
 import us.kbase.test.assemblyhomology.MapBuilder;
 import us.kbase.test.assemblyhomology.MongoStorageTestManager;
@@ -57,7 +60,10 @@ import us.kbase.test.assemblyhomology.StandaloneAssemblyHomologyServer;
 import us.kbase.test.assemblyhomology.StandaloneAssemblyHomologyServer.ServerThread;
 import us.kbase.test.assemblyhomology.data.TestDataManager;
 import us.kbase.test.assemblyhomology.service.api.RootTest;
+import us.kbase.test.auth2.authcontroller.AuthController;
+import us.kbase.workspace.WorkspaceClient;
 import us.kbase.test.assemblyhomology.TestCommon;
+import us.kbase.test.assemblyhomology.controllers.workspace.WorkspaceController;
 
 public class ServiceIntegrationTest {
 	
@@ -83,11 +89,17 @@ public class ServiceIntegrationTest {
 	private static final Client CLI = ClientBuilder.newClient();
 	
 	private static MongoStorageTestManager MANAGER = null;
+	private static AuthController AUTH = null;
+	private static WorkspaceController WS = null;
+	private static WorkspaceClient WS_CLI = null;
+	private static MongoDatabase WSDB = null;
 	private static StandaloneAssemblyHomologyServer SERVER = null;
 	private static int PORT = -1;
 	private static String HOST = null;
 	private static Path TEMP_DIR = null;
-	
+
+	private static String TOKEN = null;
+
 	private static final Path QUERY_K31_S1500 = Paths.get("kb_15792_446_1_k31_s1500.msh");
 	private static final Path TARGET_4SEQS = Paths.get("kb_4seqs_k31_s1000.msh");
 	private static final Path TARGET_4SEQS_2 = Paths.get("kb_4seqs_k31_s1000_2.msh");
@@ -133,6 +145,35 @@ public class ServiceIntegrationTest {
 		}
 		
 		MANAGER = new MongoStorageTestManager(DB_NAME);
+
+		// set up auth
+		AUTH = new AuthController(
+				TestCommon.getJarsDir(),
+				"localhost:" + MANAGER.mongo.getServerPort(),
+				"AssemblyHomologyServiceIntgrationTestAuth",
+				TEMP_DIR);
+		final URL authURL = new URL("http://localhost:" + AUTH.getServerPort() + "/testmode");
+		System.out.println("started auth server at " + authURL);
+		TestCommon.createAuthUser(authURL, "user1", "display1");
+		TOKEN = TestCommon.createLoginToken(authURL, "user1");
+
+		// set up Workspace
+		WS = new WorkspaceController(
+				TestCommon.getJarsDir(),
+				"localhost:" + MANAGER.mongo.getServerPort(),
+				"AssemblyHomologyServiceIntegTestWSDB",
+				"fakeadmin",
+				authURL,
+				TEMP_DIR);
+		WSDB  = MANAGER.mc.getDatabase("IndexerIntegTestWSDB");
+
+		final URL wsUrl = new URL("http://localhost:" + WS.getServerPort());
+		WS_CLI = new WorkspaceClient(wsUrl, new AuthToken(TOKEN, "user1"));
+		WS_CLI.setIsInsecureHttpConnectionAllowed(true);
+		System.out.println(String.format("Started workspace service %s at %s",
+				WS_CLI.ver(), wsUrl));
+
+		// set up the AH server
 		final Path cfgfile = generateTempConfigFile(MANAGER, DB_NAME, serviceTempDir);
 		TestCommon.getenv().put("ASSEMBLY_HOMOLOGY_CONFIG", cfgfile.toString());
 		SERVER = new StandaloneAssemblyHomologyServer();
@@ -166,13 +207,19 @@ public class ServiceIntegrationTest {
 	
 	@AfterClass
 	public static void afterClass() throws Exception {
+		final boolean deleteTempFiles = TestCommon.isDeleteTempFiles();
 		if (SERVER != null) {
 			SERVER.stop();
+		}
+		if (WS != null) {
+			WS.destroy(deleteTempFiles);
+		}
+		if (AUTH != null) {
+			AUTH.destroy(deleteTempFiles);
 		}
 		if (MANAGER != null) {
 			MANAGER.destroy();
 		}
-		final boolean deleteTempFiles = TestCommon.isDeleteTempFiles();
 		if (TEMP_DIR != null && Files.exists(TEMP_DIR) && deleteTempFiles) {
 			FileUtils.deleteQuietly(TEMP_DIR.toFile());
 		}
@@ -181,6 +228,7 @@ public class ServiceIntegrationTest {
 	@Before
 	public void clean() {
 		TestCommon.destroyDB(MANAGER.db);
+		TestCommon.destroyDB(WSDB);
 	}
 	
 	private void loadNamespaces() throws Exception {
