@@ -522,7 +522,7 @@ public class ServiceIntegrationTest {
 				.withGlobalread("r"));
 		
 		final MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
-				ImmutableMap.of("url", WS_URL.toString()));
+				ImmutableMap.of("workspace-url", WS_URL.toString()));
 		
 		final MinHashDistanceCollector col = new DefaultDistanceCollector(10);
 		KBaseAuthenticatedFilter kbf = (KBaseAuthenticatedFilter) fac.getFilter(
@@ -546,13 +546,13 @@ public class ServiceIntegrationTest {
 
 		// default
 		MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
-				ImmutableMap.of("url", WS_URL.toString()));
+				ImmutableMap.of("workspace-url", WS_URL.toString()));
 		assertThat("incorrect filter ID", fac.getID(), is(new FilterID("kbaseprod")));
 		assertThat("incorrect auth source", fac.getAuthSource(), is(Optional.of("kbaseprod")));
 		
 		for (final String env: Arrays.asList("prod", "appdev", "next", "ci")) {
 			fac = new KBaseAuthenticatedFilterFactory(ImmutableMap.of(
-					"url", WS_URL.toString(),
+					"workspace-url", WS_URL.toString(),
 					"env", env));
 			assertThat("incorrect filter ID", fac.getID(), is(new FilterID("kbase" + env)));
 			assertThat("incorrect auth source", fac.getAuthSource(),
@@ -567,7 +567,7 @@ public class ServiceIntegrationTest {
 	
 	@Test
 	public void kbaseFilterConstructFailBadEnv() {
-		kbaseFilterFailConstruct(ImmutableMap.of("url", WS_URL.toString(), "env", "foo"),
+		kbaseFilterFailConstruct(ImmutableMap.of("workspace-url", WS_URL.toString(), "env", "foo"),
 				new MinHashFilterFactoryInitializationException(
 						"Illegal KBase filter environment value: foo"));
 	}
@@ -575,19 +575,19 @@ public class ServiceIntegrationTest {
 	@Test
 	public void kbaseFilterConstructFailBadUrl() {
 		final Map<String, String> config = new HashMap<>();
-		config.put("url", null);
+		config.put("workspace-url", null);
 		kbaseFilterFailConstruct(config, new MinHashFilterFactoryInitializationException(
-				"KBase filter requires key 'url' in config"));
-		kbaseFilterFailConstruct(ImmutableMap.of("url", "    \t    \n  "),
+				"KBase filter requires key 'workspace-url' in config"));
+		kbaseFilterFailConstruct(ImmutableMap.of("workspace-url", "    \t    \n  "),
 				new MinHashFilterFactoryInitializationException(
-						"KBase filter requires key 'url' in config"));
+						"KBase filter requires key 'workspace-url' in config"));
 		
-		kbaseFilterFailConstruct(ImmutableMap.of("url", "htps://thisisabadurl.com"),
+		kbaseFilterFailConstruct(ImmutableMap.of("workspace-url", "htps://thisisabadurl.com"),
 				new MinHashFilterFactoryInitializationException(
 						"KBase filter url malformed: htps://thisisabadurl.com"));
 		
 		kbaseFilterFailConstruct(ImmutableMap.of(
-				"url", "http://ihopethisisanonexistenturlorthistestwillfailforsure.com"),
+				"workspace-url", "http://ihopethisisanonexistenturlorthistestwillfailforsure.com"),
 				new MinHashFilterFactoryInitializationException(
 						"KBase filter failed contacting workspace at url " +
 						"http://ihopethisisanonexistenturlorthistestwillfailforsure.com: " +
@@ -608,7 +608,7 @@ public class ServiceIntegrationTest {
 	@Test
 	public void kbaseFilterBuildFailUnauthorized() throws Exception {
 		final MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
-				ImmutableMap.of("url", WS_URL.toString()));
+				ImmutableMap.of("workspace-url", WS_URL.toString()));
 		
 		try {
 			fac.getFilter(new DefaultDistanceCollector(10), new Token("bustedasstoken"));
@@ -622,7 +622,7 @@ public class ServiceIntegrationTest {
 	@Test
 	public void validateID() throws Exception {
 		final MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
-				ImmutableMap.of("url", WS_URL.toString()));
+				ImmutableMap.of("workspace-url", WS_URL.toString()));
 		
 		assertThat("bad validation", fac.validateID(""), is(false));
 		assertThat("bad validation", fac.validateID("foo"), is(false));

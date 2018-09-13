@@ -4,13 +4,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.ini4j.Ini;
 import org.productivity.java.syslog4j.SyslogIF;
 
 import com.google.common.base.Optional;
 
+import us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory;
 import us.kbase.assemblyhomology.service.SLF4JAutoLogger;
 import us.kbase.assemblyhomology.util.FileOpener;
 import us.kbase.common.service.JsonServerSyslog;
@@ -26,6 +31,9 @@ import us.kbase.common.service.JsonServerSyslog.SyslogOutput;
  * mongo-user
  * mongo-pwd
  * temp-dir
+ * filters
+ * filter-<name>-factory-class
+ * filter-<name>-init-<key>
  * dont-trust-x-ip-headers
  * </pre>
  * 
@@ -55,6 +63,11 @@ public class AssemblyHomologyConfig {
 	private static final String KEY_MINHASH_TIMEOUT = "minhash-timeout";
 	private static final String KEY_IGNORE_IP_HEADERS = "dont-trust-x-ip-headers";
 	
+	private static final String KEY_FILTERS = "filters";
+	private static final String KEY_FILTERS_PREFIX = "filter-";
+	private static final String KEY_FILTERS_SUFFIX_FACTORY = "-factory-class";
+	private static final String KEY_FILTERS_SUFFIX_CONFIG = "-init-";
+	
 	// in seconds
 	private static final int DEFAULT_MINHASH_TIMEOUT = 30;
 	private static final int MINIMUM_MINHASH_TIMEOUT = 1;
@@ -69,6 +82,7 @@ public class AssemblyHomologyConfig {
 	private final int minhashTimeoutSec;
 	private final SLF4JAutoLogger logger;
 	private final boolean ignoreIPHeaders;
+	private final Set<FilterConfiguration> filterConfigs;
 
 	/** Create a new configuration.
 	 * 
@@ -134,6 +148,7 @@ public class AssemblyHomologyConfig {
 		mongoPwd = mongop.isPresent() ?
 				Optional.of(mongop.get().toCharArray()) : Optional.absent();
 		mongop = null; //GC
+		filterConfigs = Collections.unmodifiableSet(getFilterConfigs(cfg));
 	}
 	
 	private int getInt(
@@ -186,6 +201,35 @@ public class AssemblyHomologyConfig {
 		} else {
 			return null;
 		}
+	}
+	
+	private Set<FilterConfiguration> getFilterConfigs(final Map<String, String> config)
+			throws AssemblyHomologyConfigurationException {
+		final String filters = getString(KEY_FILTERS, config);
+		final Set<FilterConfiguration> ret = new HashSet<>();
+		if (filters == null) {
+			return ret;
+		}
+		
+		for (String f: filters.split(",")) {
+			f = f.trim();
+			if (f.isEmpty()) {
+				continue;
+			}
+			final String pre = KEY_FILTERS_PREFIX + f;
+			final String factoryClass = getString(pre + KEY_FILTERS_SUFFIX_FACTORY, config, true);
+			final String preconfig = pre + KEY_FILTERS_SUFFIX_CONFIG;
+			final Map<String, String> filterconfig = new HashMap<>();
+			for (final String key: config.keySet()) {
+				if (key.startsWith(preconfig)) {
+					final String configkey = key.replace(preconfig, "");
+					filterconfig.put(configkey, config.get(key));
+				}
+			}
+			ret.add(new FilterConfiguration(factoryClass, filterconfig));
+		}
+		
+		return ret;
 	}
 
 	private static Path getConfigPathFromEnv()
@@ -332,5 +376,12 @@ public class AssemblyHomologyConfig {
 	 */
 	public boolean isIgnoreIPHeaders() {
 		return ignoreIPHeaders;
+	}
+	
+	/** Get the {@link MinHashDistanceFilterFactory} configurations.
+	 * @return the configurations.
+	 */
+	public Set<FilterConfiguration> getFilterConfigurations() {
+		return filterConfigs;
 	}
 }

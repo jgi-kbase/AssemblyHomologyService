@@ -56,7 +56,7 @@ public class KBaseAuthenticatedFilterFactory implements MinHashDistanceFilterFac
 			"prod", "appdev", "next", "ci"));
 	
 	private static final String CONFIG_ENV = "env";
-	private static final String CONFIG_URL = "url";
+	private static final String CONFIG_WS_URL = "workspace-url";
 	
 	private final FilterID id;
 	private final URL url;
@@ -90,7 +90,7 @@ public class KBaseAuthenticatedFilterFactory implements MinHashDistanceFilterFac
 		} catch (MissingParameterException | IllegalParameterException e) {
 			throw new RuntimeException("This should be impossible", e);
 		}
-		url = getURL(config);
+		url = validateWorkspaceURL(config.get(CONFIG_WS_URL));
 		if (!url.getProtocol().equals("https")) {
 			insecure = true;
 			// logging is checked manually. Check that logging occurs if you make changes here
@@ -103,19 +103,18 @@ public class KBaseAuthenticatedFilterFactory implements MinHashDistanceFilterFac
 		}
 	}
 
-	private URL getURL(final Map<String, String> config)
+	private URL validateWorkspaceURL(final String putativeURL)
 			throws MinHashFilterFactoryInitializationException {
-		final String surl = config.get(CONFIG_URL);
-		if (isNullOrEmpty(surl)) {
-			throw new MinHashFilterFactoryInitializationException(
-					"KBase filter requires key 'url' in config");
+		if (isNullOrEmpty(putativeURL)) {
+			throw new MinHashFilterFactoryInitializationException(String.format(
+					"KBase filter requires key '%s' in config", CONFIG_WS_URL));
 		}
 		final URL u;
 		try {
-			u = new URL(surl);
+			u = new URL(putativeURL);
 		} catch (MalformedURLException e) {
 			throw new MinHashFilterFactoryInitializationException(
-					"KBase filter url malformed: " + surl);
+					"KBase filter url malformed: " + putativeURL);
 		}
 		final String ver;
 		try {

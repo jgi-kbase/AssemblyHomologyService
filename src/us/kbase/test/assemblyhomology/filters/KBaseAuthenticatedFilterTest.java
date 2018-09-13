@@ -5,6 +5,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static us.kbase.test.assemblyhomology.TestCommon.set;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import org.junit.Test;
@@ -195,6 +196,26 @@ public class KBaseAuthenticatedFilterTest {
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);
+		}
+	}
+	
+	@Test
+	public void immutable() {
+		final Set<Long> wsids = new HashSet<>();
+		wsids.add(3L);
+		final KBaseAuthenticatedFilter f = new KBaseAuthenticatedFilter(wsids,
+				new DefaultDistanceCollector(10));
+		
+		assertThat("incorrect wsids", f.getWorkspaceIDs(), is(set(3L)));
+		wsids.add(6L);
+		assertThat("incorrect wsids", f.getWorkspaceIDs(), is(set(3L)));
+		
+		
+		try {
+			f.getWorkspaceIDs().add(6L);
+			fail("expected exception");
+		} catch (UnsupportedOperationException got) {
+			// test passed.
 		}
 	}
 }
