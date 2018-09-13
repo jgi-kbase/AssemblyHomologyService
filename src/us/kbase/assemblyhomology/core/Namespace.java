@@ -22,7 +22,7 @@ import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
  */
 public class Namespace {
 	
-	//TODO NOW load filter ID w/ namespace
+	//TODO NOW load filter ID w/ namespace & check filter accepts mash IDs
 	//TODO NOW integration tests with authenticated & unauthenticated filters
 	
 	private final NamespaceID id;

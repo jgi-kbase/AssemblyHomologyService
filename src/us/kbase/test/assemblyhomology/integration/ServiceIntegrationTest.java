@@ -618,4 +618,31 @@ public class ServiceIntegrationTest {
 					new MinHashDistanceFilterAuthenticationException("Invalid token"));
 		}
 	}
+	
+	@Test
+	public void validateID() throws Exception {
+		final MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
+				ImmutableMap.of("url", WS_URL.toString()));
+		
+		assertThat("bad validation", fac.validateID(""), is(false));
+		assertThat("bad validation", fac.validateID("foo"), is(false));
+		assertThat("bad validation", fac.validateID("1/2/3"), is(false));
+		assertThat("bad validation", fac.validateID("1_2"), is(false));
+		assertThat("bad validation", fac.validateID("1_2_X"), is(false));
+		assertThat("bad validation", fac.validateID("1_X_2"), is(false));
+		assertThat("bad validation", fac.validateID("X_1_2"), is(false));
+		assertThat("bad validation", fac.validateID("1_2_0"), is(false));
+		assertThat("bad validation", fac.validateID("1_0_2"), is(false));
+		assertThat("bad validation", fac.validateID("0_1_2"), is(false));
+		assertThat("bad validation", fac.validateID("0_ 1_2"), is(false));
+		assertThat("bad validation", fac.validateID("0_1_ 2"), is(false));
+		assertThat("bad validation", fac.validateID("1_1_1"), is(true));
+		
+		try {
+			fac.validateID(null);
+			fail("expected exception");
+		} catch (NullPointerException e) {
+			assertThat("incorrect exception message", e.getMessage(), is("id"));
+		}
+	}
 }

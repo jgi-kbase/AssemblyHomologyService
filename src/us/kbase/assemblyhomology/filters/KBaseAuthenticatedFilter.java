@@ -10,6 +10,7 @@ import java.util.Set;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 
 /** A filter for KBase sequence differences. The filter inspects the sequence IDs in the
  * provided {@link MinHashDistance} instances and determines if the sequence exists in the set of
@@ -26,8 +27,6 @@ import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
  */
 public class KBaseAuthenticatedFilter implements MinHashDistanceFilter {
 
-	//TODO NOW TEST
-	
 	private Set<Long> workspaceIDs;
 	private MinHashDistanceCollector collector;
 	
@@ -46,9 +45,44 @@ public class KBaseAuthenticatedFilter implements MinHashDistanceFilter {
 	}
 
 	@Override
-	public void accept(MinHashDistance dist) {
-		//TODO NOW check against ws id set
-		collector.accept(dist);
+	public void accept(final MinHashDistance dist) throws MinHashDistanceFilterException {
+		checkNotNull(dist, "dist");
+		final long wsid = validateUPA(dist.getSequenceID());
+		if (workspaceIDs.contains(wsid)) {
+			collector.accept(dist);
+		}
+	}
+
+	/** Validate a workspace UPA in the format X_Y_Z and return the workspace ID embedded in the
+	 * UPA.
+	 * @param upa the UPA to validate.
+	 * @return the workspace ID embedded in the UPA.
+	 * @throws MinHashDistanceFilterException if the UPA is invalid.
+	 */
+	public static long validateUPA(final String upa) throws MinHashDistanceFilterException {
+		checkNotNull(upa, "upa");
+		final String[] upasplt = upa.split("_", -1);
+		if (upasplt.length != 3) {
+			throw new MinHashDistanceFilterException("Invalid workspace UPA: " + upa);
+		}
+		toLong(upasplt[2], upa, "version");
+		toLong(upasplt[1], upa, "object id");
+		return toLong(upasplt[0], upa, "workspace id");
+	}
+
+	private static long toLong(final String long_, final String upa, final String name)
+			throws MinHashDistanceFilterException {
+		try {
+			final long l = Long.parseLong(long_);
+			if (l < 1) {
+				throw new MinHashDistanceFilterException(String.format(
+						"In workspace UPA %s, %s must be > 0", upa, name));
+			}
+			return l;
+		} catch (NumberFormatException e) {
+			throw new MinHashDistanceFilterException(String.format(
+					"In workspace UPA %s, %s is not an integer", upa, name));
+		}
 	}
 
 	@Override
