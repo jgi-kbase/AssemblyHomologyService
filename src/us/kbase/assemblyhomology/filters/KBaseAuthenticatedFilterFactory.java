@@ -72,6 +72,8 @@ public class KBaseAuthenticatedFilterFactory implements MinHashDistanceFilterFac
 	 */
 	public KBaseAuthenticatedFilterFactory(final Map<String, String> config)
 			throws MinHashFilterFactoryInitializationException {
+		// might need a validation mode for cases where there's no need to contact the workspace
+		// e.g. id validation. For now don't worry about it.
 		checkNotNull(config, "config");
 		final String env;
 		if (config.containsKey(CONFIG_ENV)) {
@@ -184,8 +186,13 @@ public class KBaseAuthenticatedFilterFactory implements MinHashDistanceFilterFac
 
 	@Override
 	public boolean validateID(final String id) {
-		//TODO NOW validate id
-		return false;
+		checkNotNull(id, "id");
+		try {
+			KBaseAuthenticatedFilter.validateUPA(id);
+			return true;
+		} catch (MinHashDistanceFilterException e) {
+			return false;
+		}
 	}
 
 }
