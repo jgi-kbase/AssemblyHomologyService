@@ -5,6 +5,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
@@ -49,6 +50,8 @@ import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
 import us.kbase.assemblyhomology.core.Token;
+import us.kbase.assemblyhomology.core.exceptions.AuthenticationException;
+import us.kbase.assemblyhomology.core.exceptions.ErrorType;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
@@ -69,10 +72,12 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterAuthenticationException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
 import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
+import us.kbase.common.test.TestException;
 import us.kbase.test.assemblyhomology.TestCommon;
 import us.kbase.test.assemblyhomology.TestCommon.LogEvent;
 
@@ -466,7 +471,11 @@ public class AssemblyHomologyTest {
 			for (final MinHashSketchDatabase db: toCollect.keySet()) {
 				final MinHashDistanceFilter filter = arg.get(db);
 				for (final MinHashDistance d: toCollect.get(db)) {
-					filter.accept(d);
+					try {
+						filter.accept(d);
+					} catch (Exception e) {
+						throw new TestException(e.getMessage(), e);
+					}
 				}
 			}
 			return true;
@@ -1382,6 +1391,63 @@ public class AssemblyHomologyTest {
 	}
 	
 	@Test
+	public void measureDistanceFailBuildFilterAuth() throws Exception {
+		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
+		final MinHashImplementationFactory ifac = mock(MinHashImplementationFactory.class);
+		final MinHashImplementation impl = mock(MinHashImplementation.class);
+		when(ifac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
+		
+		final MinHashDistanceFilterFactory ffac = mock(MinHashDistanceFilterFactory.class);
+		when(ffac.getID()).thenReturn(new FilterID("foo"));
+		when(ffac.getAuthSource()).thenReturn(Optional.of("reallyneatauthsource"));
+		
+		final AssemblyHomology ah = new AssemblyHomology(storage, Arrays.asList(ifac),
+				Arrays.asList(ffac), Paths.get("temp_dir"), 6674);
+		
+		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH),
+				2000);
+		final Namespace ns1 = Namespace.getBuilder(
+				new NamespaceID("ns1"), ref1, new LoadID("load1"), Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("foo"))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns1"))).thenReturn(ns1);
+		
+		final MinHashSketchDatabase ref2 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns2"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				4000);
+		final Namespace ns2 = Namespace.getBuilder(
+				new NamespaceID("ns2"), ref2, new LoadID("load2"), Instant.ofEpochMilli(20000))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns2"))).thenReturn(ns2);
+		
+		when(ifac.getImplementation(Paths.get("temp_dir"), 6674)).thenReturn(impl);
+		
+		final MinHashSketchDatabase query = new MinHashSketchDatabase(
+				new MinHashSketchDBName("<query>"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				1);
+		when(impl.getDatabase(
+				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
+				.thenReturn(query);
+		
+		when(ffac.getFilter(any(MinHashDistanceCollector.class), eq(new Token("baz"))))
+				.thenThrow(new MinHashDistanceFilterAuthenticationException("bad auth"));
+		
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true,
+				new Token("baz"),
+				new AuthenticationException(ErrorType.AUTHENTICATION_FAILED, "bad auth"));
+	}
+	
+	@Test
 	public void measureDistanceFailIncompatibleAuth() throws Exception {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		final MinHashImplementationFactory ifac = mock(MinHashImplementationFactory.class);
@@ -1494,6 +1560,54 @@ public class AssemblyHomologyTest {
 		
 		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
 				new IllegalStateException("Unexpected error running MinHash implementation mash"));
+	}
+	
+	@Test
+	public void measureDistanceFailFilterAuth() throws Exception {
+		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
+		final MinHashImplementationFactory fac = mock(MinHashImplementationFactory.class);
+		final MinHashImplementation impl = mock(MinHashImplementation.class);
+		
+		when(fac.getImplementationName()).thenReturn(new MinHashImplementationName("mash"));
+		
+		final AssemblyHomology ah = new AssemblyHomology(
+				storage, Arrays.asList(fac), MTFAC, Paths.get("temp_dir"), 6674);
+		
+		final MinHashSketchDatabase ref1 = new MinHashSketchDatabase(
+				new MinHashSketchDBName("ns1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH),
+				2000);
+		final Namespace ns1 = Namespace.getBuilder(
+				new NamespaceID("ns1"), ref1, new LoadID("load1"), Instant.ofEpochMilli(10000))
+				.build();
+		when(storage.getNamespace(new NamespaceID("ns1"))).thenReturn(ns1);
+		
+		when(fac.getImplementation(Paths.get("temp_dir"), 6674)).thenReturn(impl);
+		
+		final MinHashSketchDatabase query = new MinHashSketchDatabase(
+				new MinHashSketchDBName("<query>"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+				new MinHashDBLocation(EMPTY_FILE_MSH2),
+				1);
+		when(impl.getDatabase(
+				new MinHashSketchDBName("<query>"), new MinHashDBLocation(EMPTY_FILE_MSH2)))
+				.thenReturn(query);
+		
+		final DistFilterArgMatch matcher = new DistFilterArgMatch(
+				ImmutableMap.of(ref1, DefaultDistanceFilter.class),
+				ImmutableMap.of(ref1, Collections.emptyList()));
+		
+		when(impl.computeDistance(eq(query), argThat(matcher), eq(true)))
+				.thenThrow(new MinHashDistanceFilterAuthenticationException("it just says aarg"));
+		
+		when(impl.getImplementationInformation()).thenReturn(new MinHashImplementationInformation(
+				new MinHashImplementationName("mash"), "2.0", Paths.get("msh")));
+		
+		failMeasureDistance(ah, set(new NamespaceID("ns1")), EMPTY_FILE_MSH2, true, null,
+				new AuthenticationException(ErrorType.AUTHENTICATION_FAILED, "it just says aarg"));
 	}
 	
 	@Test

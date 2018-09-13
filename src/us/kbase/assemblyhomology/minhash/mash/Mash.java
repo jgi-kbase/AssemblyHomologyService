@@ -33,6 +33,7 @@ import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
@@ -216,16 +217,20 @@ public class Mash implements MinHashImplementation {
 		checkNotNull(db, "db");
 		checkFileExtension(db.getLocation());
 		final List<String> ids = new LinkedList<>();
-		processMashOutput(
-				//TODO CODE make less brittle
-				l -> ids.add(l.split("\\s+")[2].trim()),
-				true,
-				"info", "-t", db.getLocation().getPathToFile().get().toString());
+		try {
+			processMashOutput(
+					//TODO CODE make less brittle
+					l -> ids.add(l.split("\\s+")[2].trim()),
+					true,
+					"info", "-t", db.getLocation().getPathToFile().get().toString());
+		} catch (MinHashDistanceFilterException e) {
+			throw new RuntimeException("Congrats, this should be impossible", e);
+		}
 		return ids;
 	}
 	
 	private interface LineCollector {
-		void collect(String line);
+		void collect(String line) throws MinHashDistanceFilterException;
 	}
 	
 	// use for large output, creates a temp file
@@ -233,7 +238,7 @@ public class Mash implements MinHashImplementation {
 			final LineCollector lineCollector,
 			final boolean skipHeader,
 			final String... command)
-			throws MinHashException {
+			throws MinHashException, MinHashDistanceFilterException {
 		Path tempFile = null;
 		try {
 			tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
@@ -275,7 +280,7 @@ public class Mash implements MinHashImplementation {
 		}
 
 		@Override
-		public void collect(final String line) {
+		public void collect(final String line) throws MinHashDistanceFilterException {
 			//TODO CODE nasty & brittle
 			final String[] sl = line.trim().split("\\s+");
 			final String id = sl[0].trim();
@@ -289,7 +294,8 @@ public class Mash implements MinHashImplementation {
 			final MinHashSketchDatabase query,
 			final Map<MinHashSketchDatabase, MinHashDistanceFilter> references,
 			final boolean strict)
-			throws MinHashException, NotASketchException, IncompatibleSketchesException {
+			throws MinHashException, NotASketchException, IncompatibleSketchesException,
+				MinHashDistanceFilterException {
 		checkNotNull(query, "query");
 		checkNoNulls(references);
 		if (query.getSequenceCount() != 1) {

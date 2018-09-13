@@ -11,4 +11,11 @@ public class AuthenticationException extends AssemblyHomologyException {
 	public AuthenticationException(final ErrorType err, final String message) {
 		super(err, message);
 	}
+	
+	public AuthenticationException(
+			final ErrorType err,
+			final String message,
+			final Throwable cause) {
+		super(err, message, cause);
+	}
 }
