@@ -40,18 +40,22 @@ filters=
 # filter-<name>-init-<key>=<value>
 #
 # Where:
-# <name> is the name of the filter as given in the filters list above.
+# <name> is the name of the filter as given in the filters list above. This name has no meaning
+#     outside of this file - it simply groups the filter parameters together.
 # <class> is the factory class for the filter
 # <key> and <value> are key value pairs that are passed to the filter at initialization. Any
 #     number of pairs are allowed.
 
-# The filter class for the kbase filter.
-#filter-kbase-factory-class=us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilterFactory
+# -------------------------------------
+# KBase authenticated filter settings
 
-# The kbase workspace url for the KBase environment from where the data the filter will operate on
+# The filter class for the KBase filter.
+filter-kbase-factory-class=us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilterFactory
+
+# The KBase workspace url for the KBase environment from where the data the filter will operate on
 # was extracted.
-#filter-kbase-init-workspace-url=https://kbase.us/services/ws
+filter-kbase-init-workspace-url=https://kbase.us/services/ws
 
 # The KBase environment (prod, appdev, next, or ci) from where the data was extracted. Only one
 # filter per environment may be configured. If omitted, prod is set as the default.
-#filter-kbase-init-env=prod
+filter-kbase-init-env=prod

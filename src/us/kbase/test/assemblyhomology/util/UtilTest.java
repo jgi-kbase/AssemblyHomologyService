@@ -242,7 +242,7 @@ public class UtilTest {
 				null,
 				new AssemblyHomologyConfigurationException(
 						// crappy that java doesn't provide any more info with the instantiation
-						// exception, but this is a pathogenic case, so ok for now
+						// exception, but this is a pathological case, so ok for now
 						"Module us.kbase.test.assemblyhomology.util." +
 						"LoadClassTestAbstractClass could not be instantiated: null"));
 	}
