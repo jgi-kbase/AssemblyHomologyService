@@ -49,6 +49,8 @@ import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
 import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.core.exceptions.AssemblyHomologyException;
+import us.kbase.assemblyhomology.core.exceptions.AuthenticationException;
+import us.kbase.assemblyhomology.core.exceptions.ErrorType;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.MinHashFilterFactoryInitializationException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
@@ -73,6 +75,7 @@ import us.kbase.test.assemblyhomology.data.TestDataManager;
 import us.kbase.test.assemblyhomology.service.api.RootTest;
 import us.kbase.test.auth2.authcontroller.AuthController;
 import us.kbase.workspace.CreateWorkspaceParams;
+import us.kbase.workspace.SetPermissionsParams;
 import us.kbase.workspace.WorkspaceClient;
 import us.kbase.test.assemblyhomology.TestCommon;
 import us.kbase.test.assemblyhomology.controllers.workspace.WorkspaceController;
@@ -119,8 +122,8 @@ public class ServiceIntegrationTest {
 	private static final Path QUERY_K31_S1500 = Paths.get("kb_15792_446_1_k31_s1500.msh");
 	private static final Path TARGET_4SEQS = Paths.get("kb_4seqs_k31_s1000.msh");
 	private static final Path TARGET_4SEQS_2 = Paths.get("kb_4seqs_k31_s1000_2.msh");
+	private static final Path TARGET_4SEQS_WS = Paths.get("kb_4seqsLowWSNums_k31_s1000.msh");
 	
-	//TODO NOW test with filters with an authsource
 	private static final Map<String, Object> EXPECTED_NS1 = MapBuilder.<String, Object>newHashMap()
 			.with("id", "id1")
 			.with("impl", "mash")
@@ -149,6 +152,20 @@ public class ServiceIntegrationTest {
 			.with("authsource", null)
 			.build();
 	
+	private static final Map<String, Object> EXP_NSFILTER = MapBuilder.<String, Object>newHashMap()
+			.with("id", "kbasefilter")
+			.with("impl", "mash")
+			.with("scaling", null)
+			.with("database", "default")
+			.with("datasource", "KBase")
+			.with("seqcount", 6)
+			.with("kmersize", Arrays.asList(31))
+			.with("sketchsize", 1000)
+			.with("desc", "desc3")
+			.with("lastmod", 500000)
+			.with("authsource", "kbaseappdev")
+			.build();
+	
 	@BeforeClass
 	public static void beforeClass() throws Exception {
 		TestCommon.stfuLoggers();
@@ -156,7 +173,8 @@ public class ServiceIntegrationTest {
 					UUID.randomUUID().toString());
 		final Path serviceTempDir = TEMP_DIR.resolve("temp_files");
 		Files.createDirectories(serviceTempDir);
-		for (final Path f: Arrays.asList(QUERY_K31_S1500, TARGET_4SEQS, TARGET_4SEQS_2)) {
+		for (final Path f: Arrays.asList(QUERY_K31_S1500, TARGET_4SEQS, TARGET_4SEQS_2,
+				TARGET_4SEQS_WS)) {
 			TestDataManager.install(f, TEMP_DIR.resolve(f));
 		}
 		
@@ -183,7 +201,7 @@ public class ServiceIntegrationTest {
 				"fakeadmin",
 				authURL,
 				TEMP_DIR);
-		WSDB = MANAGER.mc.getDatabase("IndexerIntegTestWSDB");
+		WSDB = MANAGER.mc.getDatabase("AssemblyHomologyServiceIntegTestWSDB");
 
 		WS_URL = new URL("http://localhost:" + WS.getServerPort());
 		WS_CLI1 = new WorkspaceClient(WS_URL, new AuthToken(TOKEN1, "user1"));
@@ -217,6 +235,10 @@ public class ServiceIntegrationTest {
 		sec.add("mongo-host", "localhost:" + manager.mongo.getServerPort());
 		sec.add("mongo-db", dbName);
 		sec.add("temp-dir", tempDir.toString());
+		sec.add("filters", "kbase");
+		sec.add("filter-kbase-factory-class", KBaseAuthenticatedFilterFactory.class.getName());
+		sec.add("filter-kbase-init-workspace-url", WS_URL.toString());
+		sec.add("filter-kbase-init-env", "appdev");
 		
 		final Path deploy = Files.createTempFile(TEMP_DIR, "cli_test_deploy", ".cfg");
 		ini.store(deploy.toFile());
@@ -276,6 +298,20 @@ public class ServiceIntegrationTest {
 				new LoadID("foo"),
 				Instant.ofEpochMilli(300000))
 				.withNullableDescription("desc2")
+				.build());
+		
+		MANAGER.storage.createOrReplaceNamespace(Namespace.getBuilder(
+				new NamespaceID("kbasefilter"),
+				new MinHashSketchDatabase(
+						new MinHashSketchDBName("kbasefilter"),
+						new MinHashImplementationName("mash"),
+						MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
+						new MinHashDBLocation(TEMP_DIR.resolve(TARGET_4SEQS_WS)),
+						6),
+				new LoadID("load2"),
+				Instant.ofEpochMilli(500000))
+				.withNullableFilterID(new FilterID("kbaseappdev"))
+				.withNullableDescription("desc3")
 				.build());
 	}
 	
@@ -383,7 +419,7 @@ public class ServiceIntegrationTest {
 		final List<?> response = res.readEntity(List.class);
 		
 		assertThat("incorrect namespaces", new HashSet<>(response),
-				is(set(EXPECTED_NS1, EXPECTED_NS2)));
+				is(set(EXPECTED_NS1, EXPECTED_NS2, EXP_NSFILTER)));
 	}
 	
 	@Test
@@ -482,7 +518,121 @@ public class ServiceIntegrationTest {
 	}
 	
 	@Test
-	public void searchNamespaceFail() throws Exception {
+	public void searchNamespacesWithFilter() throws Exception {
+		/* mash output for the sequence file used for this test:
+		 
+		mash dist kb_4seqsLowWSNums_k31_s1000.msh kb_15792_446_1_k31_s1000.msh
+		1_341_2   15792_446_1  0.00921302  0            602/1000   out private
+		2_3029_1  15792_446_1  1           1            0/1000     out distance
+		2_446_1   15792_446_1  0           0            1000/1000  in, owned
+		2_506_1   15792_446_1  0.200503    4.70033e-10  1/1000     out limit
+		3_431_1   15792_446_1  0.00236402  0            868/1000   in, public
+		4_509_1   15792_446_1  0.178176    1.10824e-19  2/1000     in, readable
+		 */
+		loadNamespaces();
+		
+		// tests with public, private, readable, and owned workspaces.
+		WS_CLI2.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo1"));
+		WS_CLI1.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo2"));
+		WS_CLI2.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo3")
+				.withGlobalread("r"));
+		WS_CLI2.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo4"));
+		WS_CLI2.setPermissions(new SetPermissionsParams().withId(4L)
+				.withNewPermission("r").withUsers(Arrays.asList("user1")));
+		
+		final Instant now = Instant.ofEpochMilli(10000);
+		
+		MANAGER.storage.saveSequenceMetadata(
+				new NamespaceID("kbasefilter"),
+				new LoadID("load2"),
+				Arrays.asList(
+						SequenceMetadata.getBuilder("2_446_1", "2/446/1", now)
+								.withNullableScientificName("sci name")
+								.withRelatedID("foo", "bar")
+								.build(),
+						SequenceMetadata.getBuilder("3_431_1", "3/431/1", now).build(),
+						SequenceMetadata.getBuilder("2_3029_1", "2/3029/1", now).build(),
+						SequenceMetadata.getBuilder("2_506_1", "2/506/1", now).build(),
+						SequenceMetadata.getBuilder("4_509_1", "4/509/1", now).build(),
+						SequenceMetadata.getBuilder("1_341_2", "1/341/2", now).build()));
+
+		final URI target = UriBuilder.fromUri(HOST).path("/namespace/kbasefilter/search")
+				.queryParam("notstrict", "foo")
+				.queryParam("max", 3)
+				.build();
+		
+		final WebTarget wt = CLI.target(target);
+		
+		// with token
+		Builder req = wt.request().header("Authorization", TOKEN1);
+		List<Map<String, Object>> distances = Arrays.asList(
+				MapBuilder.<String, Object>newHashMap()
+				.with("sourceid", "2/446/1")
+				.with("namespaceid", "kbasefilter")
+				.with("sciname", "sci name")
+				.with("dist", 0.0)
+				.with("relatedids", ImmutableMap.of("foo", "bar"))
+				.build(),
+				MapBuilder.<String, Object>newHashMap()
+				.with("sourceid", "3/431/1")
+				.with("namespaceid", "kbasefilter")
+				.with("sciname", null)
+				.with("dist", 0.00236402)
+				.with("relatedids", Collections.emptyMap())
+				.build(),
+				MapBuilder.<String, Object>newHashMap()
+				.with("sourceid", "4/509/1")
+				.with("namespaceid", "kbasefilter")
+				.with("sciname", null)
+				.with("dist", 0.178176)
+				.with("relatedids", Collections.emptyMap())
+				.build()
+				);
+
+		checkSearchNamespaceWithFilterResult(req, distances);
+		
+		// without token
+		req = wt.request();
+		distances = Arrays.asList(
+				MapBuilder.<String, Object>newHashMap()
+				.with("sourceid", "3/431/1")
+				.with("namespaceid", "kbasefilter")
+				.with("sciname", null)
+				.with("dist", 0.00236402)
+				.with("relatedids", Collections.emptyMap())
+				.build()
+				);
+
+		checkSearchNamespaceWithFilterResult(req, distances);
+	}
+
+	private void checkSearchNamespaceWithFilterResult(
+			final Builder req,
+			final List<Map<String, Object>> expecteDistances)
+			throws IOException {
+		final Response res = req.post(Entity.entity(
+				Files.newInputStream(TEMP_DIR.resolve(QUERY_K31_S1500)),
+				MediaType.APPLICATION_OCTET_STREAM));
+		
+		assertThat("incorrect response code", res.getStatus(), is(200));
+
+		@SuppressWarnings("unchecked")
+		final Map<String, Object> response = res.readEntity(Map.class);
+		
+		final Map<String, Object> expected = ImmutableMap.of(
+				"impl", "mash",
+				"implver", "2.0",
+				"namespaces", Arrays.asList(EXP_NSFILTER),
+				"warnings", Arrays.asList("Namespace kbasefilter: Query sketch size 1500 is " +
+						"larger than target sketch size 1000"),
+				"distances", expecteDistances
+				);
+		
+		assertThat("incorrect response", response, is(expected));
+	}
+	
+	@Test
+	public void searchNamespaceFailSketchSize() throws Exception {
 		loadNamespaces();
 		
 		final URI target = UriBuilder.fromUri(HOST).path("/namespace/id1/search")
@@ -501,6 +651,25 @@ public class ServiceIntegrationTest {
 				"Query sketch size 1500 does not match target 1000"));
 	}
 	
+	@Test
+	public void searchNamespaceFailBadToken() throws Exception {
+		loadNamespaces();
+		
+		final URI target = UriBuilder.fromUri(HOST).path("/namespace/kbasefilter/search")
+				.queryParam("notstrict", "")
+				.build();
+		
+		final WebTarget wt = CLI.target(target);
+		final Builder req = wt.request().header("Authorization", "badnaughtytokenneedsaspanking");
+
+		final Response res = req.post(Entity.entity(
+				Files.newInputStream(TEMP_DIR.resolve(QUERY_K31_S1500)),
+				MediaType.APPLICATION_OCTET_STREAM));
+		
+		failRequestJSON(res, 401, "Unauthorized", new AuthenticationException(
+				ErrorType.AUTHENTICATION_FAILED, "Invalid token"));
+	}
+	
 	/* ******************************************
 	 * KBase authenticated filter tests
 	 * 
@@ -514,7 +683,7 @@ public class ServiceIntegrationTest {
 	
 	@Test
 	public void kbaseFilterBuildFilterWithWorkspaces() throws Exception {
-		// tests with public, private, and inaccessible workspaces.
+		// tests with public, private, and owned workspaces.
 		WS_CLI1.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo1"));
 		WS_CLI2.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo2"));
 		WS_CLI1.createWorkspace(new CreateWorkspaceParams().withWorkspace("foo3"));
@@ -620,7 +789,7 @@ public class ServiceIntegrationTest {
 	}
 	
 	@Test
-	public void validateID() throws Exception {
+	public void kbaseFilterValidateID() throws Exception {
 		final MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
 				ImmutableMap.of("workspace-url", WS_URL.toString()));
 		

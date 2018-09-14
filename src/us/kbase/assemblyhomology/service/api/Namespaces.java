@@ -146,7 +146,7 @@ public class Namespaces {
 	@javax.ws.rs.Path(ServicePaths.NAMESPACE_SEARCH)
 	public Map<String, Object> searchNamespaces(
 			@Context HttpServletRequest request,
-			@HeaderParam("Authentication") final String auth,
+			@HeaderParam("Authorization") final String auth,
 			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespaces,
 			@QueryParam("notstrict") final String notStrict,
 			@QueryParam("max") final String max)

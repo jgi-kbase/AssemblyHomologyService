@@ -117,7 +117,7 @@ public class AssemblyHomologyCLI {
 				load(loadArgs, cfg);
 			} catch (AssemblyHomologyStorageException | MissingParameterException |
 					IllegalParameterException | MinHashException | IOException |
-					LoadInputParseException e) {
+					LoadInputParseException | AssemblyHomologyConfigurationException e) {
 				printError(e, globalArgs.verbose);
 				return 1;
 			}
@@ -128,7 +128,7 @@ public class AssemblyHomologyCLI {
 	private void load(final LoadArgs loadArgs, final AssemblyHomologyConfig cfg)
 			throws AssemblyHomologyStorageException, MissingParameterException,
 				IllegalParameterException, MinHashInitException, MinHashException, IOException,
-				LoadInputParseException {
+				LoadInputParseException, AssemblyHomologyConfigurationException {
 		if (!MASH.equals(loadArgs.implementation)) {
 			throw new MinHashException("Unsupported implementation: " + loadArgs.implementation);
 		}
