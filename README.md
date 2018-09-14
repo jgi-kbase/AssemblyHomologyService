@@ -243,7 +243,6 @@ Anything else is mapped to 500.
 
 * Search namespaces (no free text search)
 * HTTP2 support
-* Private data (KBase, JGI)
 * (Semi-?) realtime data updates
   * May be scheduled batch updates rather than near instantaneous
 * Other implementations (SourMash, FastANI)

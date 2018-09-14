@@ -49,6 +49,8 @@ import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
 import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.core.exceptions.AssemblyHomologyException;
+import us.kbase.assemblyhomology.core.exceptions.AuthenticationException;
+import us.kbase.assemblyhomology.core.exceptions.ErrorType;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.MinHashFilterFactoryInitializationException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
@@ -630,7 +632,7 @@ public class ServiceIntegrationTest {
 	}
 	
 	@Test
-	public void searchNamespaceFail() throws Exception {
+	public void searchNamespaceFailSketchSize() throws Exception {
 		loadNamespaces();
 		
 		final URI target = UriBuilder.fromUri(HOST).path("/namespace/id1/search")
@@ -647,6 +649,25 @@ public class ServiceIntegrationTest {
 		failRequestJSON(res, 400, "Bad Request", new IncompatibleSketchesException(
 				"Unable to query namespace id1 with input sketch: " +
 				"Query sketch size 1500 does not match target 1000"));
+	}
+	
+	@Test
+	public void searchNamespaceFailBadToken() throws Exception {
+		loadNamespaces();
+		
+		final URI target = UriBuilder.fromUri(HOST).path("/namespace/kbasefilter/search")
+				.queryParam("notstrict", "")
+				.build();
+		
+		final WebTarget wt = CLI.target(target);
+		final Builder req = wt.request().header("Authorization", "badnaughtytokenneedsaspanking");
+
+		final Response res = req.post(Entity.entity(
+				Files.newInputStream(TEMP_DIR.resolve(QUERY_K31_S1500)),
+				MediaType.APPLICATION_OCTET_STREAM));
+		
+		failRequestJSON(res, 401, "Unauthorized", new AuthenticationException(
+				ErrorType.AUTHENTICATION_FAILED, "Invalid token"));
 	}
 	
 	/* ******************************************
@@ -768,7 +789,7 @@ public class ServiceIntegrationTest {
 	}
 	
 	@Test
-	public void validateID() throws Exception {
+	public void kbaseFilterValidateID() throws Exception {
 		final MinHashDistanceFilterFactory fac = new KBaseAuthenticatedFilterFactory(
 				ImmutableMap.of("workspace-url", WS_URL.toString()));
 		
