@@ -46,6 +46,7 @@ import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
+import us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilterFactory;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
@@ -61,6 +62,11 @@ public class CLIIntegrationTest {
 	/* These tests also act as unit tests for the CLI. */
 	
 	private static final boolean PRINT_STREAMS = false;
+	/* To avoid starting the workspace in these tests, we just use the CI workspace.
+	 * All that is required is that it's accessible and ver is > 0.8.0. The only call is a
+	 * ver() call when the KBase filter is started.
+	 */
+	private static final String WS_URL = "https://ci.kbase.us/services/ws";
 	
 	private static final ObjectMapper MAPPER = new ObjectMapper();
 	private static final String DB_NAME = "test_assyhomol_cli";
@@ -72,6 +78,7 @@ public class CLIIntegrationTest {
 	private static final Path QUERY_K31_S1500 = Paths.get("kb_15792_446_1_k31_s1500.msh");
 	private static final Path TARGET_4SEQS = Paths.get("kb_4seqs_k31_s1000.msh");
 	private static final Path TARGET_4SEQS_2 = Paths.get("kb_4seqs_k31_s1000_2.msh");
+	private static final Path TARGET_2SEQS_BAD_KB_ID = Paths.get("kb_2seqsBadKBID_k31_s1000.msh");
 
 	@BeforeClass
 	public static void beforeClass() throws Exception {
@@ -80,7 +87,8 @@ public class CLIIntegrationTest {
 					UUID.randomUUID().toString());
 		final Path serviceTempDir = TEMP_DIR.resolve("temp_files");
 		Files.createDirectories(serviceTempDir);
-		for (final Path f: Arrays.asList(QUERY_K31_S1500, TARGET_4SEQS, TARGET_4SEQS_2)) {
+		for (final Path f: Arrays.asList(QUERY_K31_S1500, TARGET_4SEQS, TARGET_4SEQS_2,
+				TARGET_2SEQS_BAD_KB_ID)) {
 			TestDataManager.install(f, TEMP_DIR.resolve(f));
 		}
 		
@@ -100,6 +108,10 @@ public class CLIIntegrationTest {
 		sec.add("mongo-host", "localhost:" + manager.mongo.getServerPort());
 		sec.add("mongo-db", dbName);
 		sec.add("temp-dir", tempDir.toString());
+		sec.add("filters", "kbase");
+		sec.add("filter-kbase-factory-class", KBaseAuthenticatedFilterFactory.class.getName());
+		sec.add("filter-kbase-init-workspace-url", WS_URL.toString());
+		sec.add("filter-kbase-init-env", "next");
 		
 		final Path deploy = Files.createTempFile(TEMP_DIR, "cli_test_deploy", ".cfg");
 		ini.store(deploy.toFile());
@@ -295,6 +307,38 @@ public class CLIIntegrationTest {
 				"-k", TEMP_DIR.toString(),
 				"-n", nsInfo.toString(),
 				"-s", seqInfo.toString());
+	}
+	
+	@Test
+	public void badSequenceID() throws Exception {
+		// enough verbose testing
+		final Path nsInfo = TEMP_DIR.resolve("namespace.yaml");
+		final Path seqInfo = TEMP_DIR.resolve("seqmeta.jsonlines");
+		try (final BufferedWriter nsWriter = Files.newBufferedWriter(
+				nsInfo, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+			nsWriter.write("id: id1\ndatasource: JGI\nsourcedatabase: IMG\nfilterid: kbasenext");
+		}
+		final List<Map<String, Object>> seqmeta = Arrays.asList(
+				ImmutableMap.of(
+						"id", "1_341_2",
+						"sourceid", "1/341/2"),
+				ImmutableMap.of(
+						"id", "foo_431_1",
+						"sourceid", "foo/431/1")
+				);
+		try (final BufferedWriter seqWriter = Files.newBufferedWriter(
+				seqInfo, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)) {
+			for (final Map<String, Object> seqm: seqmeta) {
+				seqWriter.write(MAPPER.writeValueAsString(seqm) + "\n");
+			}
+		}
+		testCLI(1, "", "Error: Filter kbasenext reports that sequence ID foo_431_1 is not valid\n",
+				"-c", CONFIG_FILE.toString(),
+				"load",
+				"--load-id", "loadid",
+				"--sketch-db", TEMP_DIR.resolve(TARGET_2SEQS_BAD_KB_ID).toString(),
+				"--namespace-yaml", nsInfo.toString(),
+				"--sequence-metadata", seqInfo.toString());
 	}
 
 	private void checkNamespaceAndSeqs(final Path sketchDB, final List<Map<String, Object>> seqmeta,
