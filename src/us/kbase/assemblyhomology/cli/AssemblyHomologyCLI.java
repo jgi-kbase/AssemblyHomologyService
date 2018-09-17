@@ -138,6 +138,7 @@ public class AssemblyHomologyCLI {
 					getLoadID(loadArgs),
 					new Mash(cfg.getPathToTemporaryFileDirectory(), cfg.getMinhashTimeoutSec()),
 					new MinHashDBLocation(Paths.get(loadArgs.sketchDBPath)),
+					builder.getFilterFactories(),
 					new PathRestreamable(Paths.get(loadArgs.namespaceYAML), new FileOpener()),
 					new PathRestreamable(Paths.get(loadArgs.sequeneceMetadataPath),
 							new FileOpener()));

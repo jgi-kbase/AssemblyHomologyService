@@ -15,6 +15,7 @@ import com.google.common.base.Optional;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
@@ -39,7 +40,8 @@ public class NamespaceLoadInfoTest {
 			"id: mynamespace\n" +
 			"datasource: KBase\n" +
 			"sourcedatabase: CI Refdata\n" +
-			"description: some reference data\n";
+			"description: some reference data\n" +
+			"filterid: somefilter";
 	
 	private static InputStream toStr(final String input) {
 		return new ByteArrayInputStream(input.getBytes());
@@ -55,9 +57,10 @@ public class NamespaceLoadInfoTest {
 		final NamespaceLoadInfo ns = new NamespaceLoadInfo(toStr(NS_MIN), "s");
 		
 		assertThat("incorrect id", ns.getId(), is(new NamespaceID("mynamespace")));
-		assertThat("incorrect id", ns.getDataSourceID(), is(new DataSourceID("KBase")));
-		assertThat("incorrect id", ns.getDescription(), is(Optional.absent()));
-		assertThat("incorrect id", ns.getSourceDatabaseID(), is(Optional.absent()));
+		assertThat("incorrect data source", ns.getDataSourceID(), is(new DataSourceID("KBase")));
+		assertThat("incorrect desc", ns.getDescription(), is(Optional.absent()));
+		assertThat("incorrect source db id", ns.getSourceDatabaseID(), is(Optional.absent()));
+		assertThat("incorrect filter id", ns.getFilterID(), is(Optional.absent()));
 	}
 	
 	@Test
@@ -65,9 +68,12 @@ public class NamespaceLoadInfoTest {
 		final NamespaceLoadInfo ns = new NamespaceLoadInfo(toStr(NS_MAX), "s");
 		
 		assertThat("incorrect id", ns.getId(), is(new NamespaceID("mynamespace")));
-		assertThat("incorrect id", ns.getDataSourceID(), is(new DataSourceID("KBase")));
-		assertThat("incorrect id", ns.getDescription(), is(Optional.of("some reference data")));
-		assertThat("incorrect id", ns.getSourceDatabaseID(), is(Optional.of("CI Refdata")));
+		assertThat("incorrect data source", ns.getDataSourceID(), is(new DataSourceID("KBase")));
+		assertThat("incorrect desc", ns.getDescription(), is(Optional.of("some reference data")));
+		assertThat("incorrect source db id", ns.getSourceDatabaseID(),
+				is(Optional.of("CI Refdata")));
+		assertThat("incorrect filter id", ns.getFilterID(),
+				is(Optional.of(new FilterID("somefilter"))));
 	}
 	
 	@Test
@@ -95,6 +101,10 @@ public class NamespaceLoadInfoTest {
 		failConstruct(
 				toStr("id: foo\ndatasource: " + longStr), "mysource",
 				new LoadInputParseException("Illegal data source ID: " + longStr));
+		
+		failConstruct(toStr("id: foo\ndatasource: KBase\nfilterid: barA"), "mysource",
+				new LoadInputParseException("Illegal filter ID: barA"));
+		
 	}
 	
 	private void failConstruct(
@@ -124,19 +134,20 @@ public class NamespaceLoadInfoTest {
 				new LoadID("load 1"),
 				Instant.ofEpochMilli(10000));
 		
-		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
-		assertThat("incorrect", ns.getDescription(), is(Optional.absent()));
-		assertThat("incorrect", ns.getID(), is(new NamespaceID("mynamespace")));
-		assertThat("incorrect", ns.getLoadID(), is(new LoadID("load 1")));
-		assertThat("incorrect", ns.getSketchDatabase(),
+		assertThat("incorrect mod date", ns.getModification(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect desc", ns.getDescription(), is(Optional.absent()));
+		assertThat("incorrect id", ns.getID(), is(new NamespaceID("mynamespace")));
+		assertThat("incorrect load id", ns.getLoadID(), is(new LoadID("load 1")));
+		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("mynamespace"),
 					new MinHashImplementationName("mash"),
 					MinHashParameters.getBuilder(3).withScaling(4).build(),
 					loc,
 					42)));
-		assertThat("incorrect", ns.getSourceDatabaseID(), is("default"));
-		assertThat("incorrect", ns.getSourceID(), is(new DataSourceID("KBase")));
+		assertThat("incorrect source db id", ns.getSourceDatabaseID(), is("default"));
+		assertThat("incorrect source id", ns.getSourceID(), is(new DataSourceID("KBase")));
+		assertThat("incorrect filter id", ns.getFilterID(), is(Optional.absent()));
 	}
 	
 	@Test
@@ -154,19 +165,21 @@ public class NamespaceLoadInfoTest {
 				new LoadID("load 1"),
 				Instant.ofEpochMilli(10000));
 		
-		assertThat("incorrect", ns.getModification(), is(Instant.ofEpochMilli(10000)));
-		assertThat("incorrect", ns.getDescription(), is(Optional.of("some reference data")));
-		assertThat("incorrect", ns.getID(), is(new NamespaceID("mynamespace")));
-		assertThat("incorrect", ns.getLoadID(), is(new LoadID("load 1")));
-		assertThat("incorrect", ns.getSketchDatabase(),
+		assertThat("incorrect mod date", ns.getModification(), is(Instant.ofEpochMilli(10000)));
+		assertThat("incorrect desc", ns.getDescription(), is(Optional.of("some reference data")));
+		assertThat("incorrect id", ns.getID(), is(new NamespaceID("mynamespace")));
+		assertThat("incorrect load id", ns.getLoadID(), is(new LoadID("load 1")));
+		assertThat("incorrect sketch db", ns.getSketchDatabase(),
 				is(new MinHashSketchDatabase(
 					new MinHashSketchDBName("mynamespace"),
 					new MinHashImplementationName("mash"),
 					MinHashParameters.getBuilder(3).withScaling(4).build(),
 					loc,
 					42)));
-		assertThat("incorrect", ns.getSourceDatabaseID(), is("CI Refdata"));
-		assertThat("incorrect", ns.getSourceID(), is(new DataSourceID("KBase")));
+		assertThat("incorrect source db id", ns.getSourceDatabaseID(), is("CI Refdata"));
+		assertThat("incorrect source id", ns.getSourceID(), is(new DataSourceID("KBase")));
+		assertThat("incorrect filter id", ns.getFilterID(),
+				is(Optional.of(new FilterID("somefilter"))));
 	}
 	
 	@Test
