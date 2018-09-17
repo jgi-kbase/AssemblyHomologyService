@@ -105,7 +105,7 @@ public class Mash implements MinHashImplementation {
 				pb.redirectOutput(outputPath.toFile());
 			}
 			final Process mash = pb.start();
-			if (!mash.waitFor(30L, TimeUnit.SECONDS)) {
+			if (!mash.waitFor(60L, TimeUnit.SECONDS)) {
 				throw new MashException(String.format(
 						"Timed out waiting for %s to run", MASH.getName()));
 			}
