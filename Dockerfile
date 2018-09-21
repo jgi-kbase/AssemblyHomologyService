@@ -21,11 +21,17 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
 
 WORKDIR /kb/deployment/jettybase
 ENV ASSEMBLY_HOMOLOGY_CONFIG=/kb/deployment/conf/deployment.cfg
+ENV PATH=/bin:/usr/bin:/kb/deployment/bin
+
+RUN wget https://github.com/marbl/Mash/releases/download/v2.0/mash-Linux64-v2.0.tar && \
+    tar xf mash-Linux64-v2.0.tar && \
+    cp mash-Linux64-v2.0/mash /usr/bin/mash
+
+RUN chmod -R a+rwx /kb/deployment/conf /kb/deployment/jettybase/
 
 ENTRYPOINT [ "/kb/deployment/bin/dockerize" ]
 
 # Here are some default params passed to dockerize. They would typically
 # be overidden by docker-compose at startup
 CMD [  "-template", "/kb/deployment/conf/.templates/deployment.cfg.templ:/kb/deployment/conf/deployment.cfg", \
-       "java", "-DSTOP.PORT=8079", "-DSTOP.KEY=foo", "-Djetty.home=$JETTY_HOME", \
-       "-jar", "$JETTY_HOME/start.jar" ]
+       "java", "-Djetty.home=/usr/local/jetty", "-jar", "/usr/local/jetty/start.jar" ]

@@ -170,7 +170,7 @@ filter implementation, whether to pass them on to the rest of the system for fur
 eventual presentation to the user.
 
 If a user provides an authentication token to the service when requesting a Minhash search
-(see API below), the token is passed to the any filters attached to namespaces involved in that
+(see API below), the token is passed to any filters attached to namespaces involved in that
 search. Filters that make use of the token are expected to provide a name for their
 authentication source. For a single search, all the filters activated in the search must share
 the same authentication source. It is permissible to mix filters that have no authentication
