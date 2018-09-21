@@ -22,7 +22,6 @@ LABEL org.label-schema.build-date=$BUILD_DATE \
 WORKDIR /kb/deployment/jettybase
 ENV ASSEMBLY_HOMOLOGY_CONFIG=/kb/deployment/conf/deployment.cfg
 ENV PATH=/bin:/usr/bin:/kb/deployment/bin
-ENV JETTY_HOME=/usr/local/jetty
 
 RUN wget https://github.com/marbl/Mash/releases/download/v2.0/mash-Linux64-v2.0.tar && \
     tar xf mash-Linux64-v2.0.tar && \
