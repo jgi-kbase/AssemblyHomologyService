@@ -1,12 +1,13 @@
 [assemblyhomology]
 mongo-host={{ default .Env.mongo_host "ci-mongo" }}
-mongo-db={{ default .Env.mongo_db "auth2" }}
+mongo-db={{ default .Env.mongo_db "assemblyhomology" }}
 mongo-user={{ default .Env.mongo_user "" }}
 mongo-pwd={{ default .Env.mongo_pwd "" }}
-temp-dir={{default .Env.temp_dir "./tmp_ah" }}
+temp-dir={{ default .Env.temp_dir "./tmp_ah" }}
+minhash-timeout={{ default .Env.minhash_timeout "60" }}
 
-filters={{default .Env.filters "" }}
+filters={{ default .Env.filters "" }}
 
 filter-kbase-factory-class=us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilterFactory
-filter-kbase-init-workspace-url={{default .Env.ws_url "https://kbase.us/services/ws" }}
-filter-kbase-init-env={{default .Env.kbase_env "prod" }}
+filter-kbase-init-workspace-url={{ default .Env.ws_url "https://kbase.us/services/ws" }}
+filter-kbase-init-env={{ default .Env.kbase_env "prod" }}
