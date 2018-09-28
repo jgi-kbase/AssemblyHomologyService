@@ -37,7 +37,7 @@ Apache Ant (http://ant.apache.org/)
 MongoDB 2.6+ (https://www.mongodb.com/)  
 Jetty 9.3+ (http://www.eclipse.org/jetty/download.html)
     (see jetty-config.md for version used for testing)  
-This repo (git clone https://github.com/kbaseIncubator/AssemblyHomologyService)  
+This repo (git clone https://github.com/jgi-kbase/AssemblyHomologyService)  
 The jars repo (git clone https://github.com/kbase/jars)  
 The two repos above need to be in the same parent folder.
 

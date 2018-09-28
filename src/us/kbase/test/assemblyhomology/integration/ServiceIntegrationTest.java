@@ -122,6 +122,7 @@ public class ServiceIntegrationTest {
 	private static final Path QUERY_K31_S1500 = Paths.get("kb_15792_446_1_k31_s1500.msh");
 	private static final Path TARGET_4SEQS = Paths.get("kb_4seqs_k31_s1000.msh");
 	private static final Path TARGET_4SEQS_2 = Paths.get("kb_4seqs_k31_s1000_2.msh");
+	// actually 6 seqs. rename file & vars at some point
 	private static final Path TARGET_4SEQS_WS = Paths.get("kb_4seqsLowWSNums_k31_s1000.msh");
 	
 	private static final Map<String, Object> EXPECTED_NS1 = MapBuilder.<String, Object>newHashMap()
