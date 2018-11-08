@@ -26,7 +26,7 @@ public class Root {
 	//TODO ZLATER ROOT add configurable contact email or link
 	//TODO ZLATER swagger
 	
-	private static final String VERSION = "0.1.1-dev3";
+	private static final String VERSION = "0.1.1";
 	private static final String SERVER_NAME = "Assembly Homology service";
 	
 	/** Return the root information.
