@@ -2,8 +2,15 @@ package us.kbase.assemblyhomology.util;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
+import us.kbase.assemblyhomology.config.AssemblyHomologyConfigurationException;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 
@@ -32,6 +39,21 @@ public class Util {
 	 */
 	public static boolean isNullOrEmpty(final String s) {
 		return s == null || s.trim().isEmpty();
+	}
+	
+	/** Check that a string is non-null and has at least one non-whitespace character.
+	 * @param s the string to check.
+	 * @param name the name of the string to use in any error messages.
+	 * @throws MissingParameterException if the string fails the check.
+	 */
+	public static void checkString(final String s, final String name)
+			throws MissingParameterException {
+		try {
+			checkString(s, name, -1);
+		} catch (IllegalParameterException e) {
+			throw new RuntimeException("Programming error: " +
+					e.getMessage(), e);
+		}
 	}
 	
 	/** Check that a string is non-null, has at least one non-whitespace character, and is below
@@ -88,6 +110,54 @@ public class Util {
 				throw new IllegalArgumentException(
 						"Null or whitespace only string in collection " + name);
 			}
+		}
+	}
+	
+	
+	/** Load and instantiate a class with a given interface. Expects a constructor that takes
+	 * a single Map<String, String> argument.
+	 * @param <T> the class that will be instantiated.
+	 * @param className the fully qualified class name.
+	 * @param interfce the required interface.
+	 * @param constructorArg the argument to be provided to the constructor.
+	 * @return an instance of the class typed as the interface.
+	 * @throws AssemblyHomologyConfigurationException if the instance could not be created.
+	 */
+	public static <T> T loadClassWithInterface(
+			final String className,
+			final Class<T> interfce,
+			final Map<String, String> constructorArg)
+			throws AssemblyHomologyConfigurationException {
+		final Class<?> cls;
+		try {
+			cls = Class.forName(className);
+		} catch (ClassNotFoundException e) {
+			throw new AssemblyHomologyConfigurationException(String.format(
+					"Cannot load class %s: %s", className, e.getMessage()), e);
+		}
+		final Set<Class<?>> interfaces = new HashSet<>(Arrays.asList(cls.getInterfaces()));
+		if (!interfaces.contains(interfce)) {
+			throw new AssemblyHomologyConfigurationException(String.format(
+					"Module %s must implement %s interface",
+					className, interfce.getName()));
+		}
+		@SuppressWarnings("unchecked")
+		final Class<T> inter = (Class<T>) cls;
+		try {
+			final Constructor<T> cons = inter.getConstructor(Map.class);
+			return cons.newInstance(constructorArg);
+		} catch (IllegalAccessException | InstantiationException | SecurityException e) {
+			// dunno how to trigger a security exception here, probably not possible
+			throw new AssemblyHomologyConfigurationException(String.format(
+					"Module %s could not be instantiated: %s", className, e.getMessage()), e);
+		} catch (InvocationTargetException e) {
+			final Throwable c = e.getCause();
+			throw new AssemblyHomologyConfigurationException(String.format(
+					"Module %s could not be instantiated: %s", className, c.getMessage()), c);
+		} catch (NoSuchMethodException e) {
+			throw new AssemblyHomologyConfigurationException(String.format(
+					"Module %s could not be instantiated due to missing or " +
+					"inaccessible constructor: %s", className, e.getMessage()), e);
 		}
 	}
 }

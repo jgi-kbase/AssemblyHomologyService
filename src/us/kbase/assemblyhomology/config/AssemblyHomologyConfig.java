@@ -4,13 +4,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.ini4j.Ini;
 import org.productivity.java.syslog4j.SyslogIF;
 
 import com.google.common.base.Optional;
 
+import us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory;
 import us.kbase.assemblyhomology.service.SLF4JAutoLogger;
 import us.kbase.assemblyhomology.util.FileOpener;
 import us.kbase.common.service.JsonServerSyslog;
@@ -26,6 +31,9 @@ import us.kbase.common.service.JsonServerSyslog.SyslogOutput;
  * mongo-user
  * mongo-pwd
  * temp-dir
+ * filters
+ * filter-<name>-factory-class
+ * filter-<name>-init-<key>
  * dont-trust-x-ip-headers
  * </pre>
  * 
@@ -52,7 +60,17 @@ public class AssemblyHomologyConfig {
 	private static final String KEY_MONGO_USER = "mongo-user";
 	private static final String KEY_MONGO_PWD = "mongo-pwd";
 	private static final String KEY_TEMP_DIR = "temp-dir";
+	private static final String KEY_MINHASH_TIMEOUT = "minhash-timeout";
 	private static final String KEY_IGNORE_IP_HEADERS = "dont-trust-x-ip-headers";
+	
+	private static final String KEY_FILTERS = "filters";
+	private static final String KEY_FILTERS_PREFIX = "filter-";
+	private static final String KEY_FILTERS_SUFFIX_FACTORY = "-factory-class";
+	private static final String KEY_FILTERS_SUFFIX_CONFIG = "-init-";
+	
+	// in seconds
+	private static final int DEFAULT_MINHASH_TIMEOUT = 30;
+	private static final int MINIMUM_MINHASH_TIMEOUT = 1;
 	
 	public static final String TRUE = "true";
 	
@@ -61,8 +79,10 @@ public class AssemblyHomologyConfig {
 	private final Optional<String> mongoUser;
 	private final Optional<char[]> mongoPwd;
 	private final Path tempDir;
+	private final int minhashTimeoutSec;
 	private final SLF4JAutoLogger logger;
 	private final boolean ignoreIPHeaders;
+	private final Set<FilterConfiguration> filterConfigs;
 
 	/** Create a new configuration.
 	 * 
@@ -111,6 +131,8 @@ public class AssemblyHomologyConfig {
 		}
 		final Map<String, String> cfg = getConfig(filepath, fileOpener);
 		ignoreIPHeaders = TRUE.equals(getString(KEY_IGNORE_IP_HEADERS, cfg));
+		minhashTimeoutSec = getInt(KEY_MINHASH_TIMEOUT, cfg, DEFAULT_MINHASH_TIMEOUT,
+				MINIMUM_MINHASH_TIMEOUT);
 		tempDir = Paths.get(getString(KEY_TEMP_DIR, cfg, true));
 		mongoHost = getString(KEY_MONGO_HOST, cfg, true);
 		mongoDB = getString(KEY_MONGO_DB, cfg, true);
@@ -126,8 +148,36 @@ public class AssemblyHomologyConfig {
 		mongoPwd = mongop.isPresent() ?
 				Optional.of(mongop.get().toCharArray()) : Optional.absent();
 		mongop = null; //GC
+		filterConfigs = Collections.unmodifiableSet(getFilterConfigs(cfg));
 	}
 	
+	private int getInt(
+			final String paramName,
+			final Map<String, String> cfg,
+			final int default_,
+			int minimum)
+			throws AssemblyHomologyConfigurationException {
+		final String putative = getString(paramName, cfg);
+		if (putative == null) {
+			return default_;
+		}
+		try {
+			int val = Integer.parseInt(putative);
+			if (val < minimum) {
+				throw new AssemblyHomologyConfigurationException(String.format(
+						"Parameter %s in configuration file %s, section %s, " +
+						"must have a minimum value of %s, was %s",
+						paramName, cfg.get(TEMP_KEY_CFG_FILE), CFG_LOC, minimum, putative));
+			}
+			return val;
+		} catch (NumberFormatException e) {
+			throw new AssemblyHomologyConfigurationException(String.format(
+					"Parameter %s in configuration file %s, section %s, " +
+					"must be an integer, was %s",
+					paramName, cfg.get(TEMP_KEY_CFG_FILE), CFG_LOC, putative));
+		}
+	}
+
 	// returns null if no string
 	private String getString(
 			final String paramName,
@@ -151,6 +201,35 @@ public class AssemblyHomologyConfig {
 		} else {
 			return null;
 		}
+	}
+	
+	private Set<FilterConfiguration> getFilterConfigs(final Map<String, String> config)
+			throws AssemblyHomologyConfigurationException {
+		final String filters = getString(KEY_FILTERS, config);
+		final Set<FilterConfiguration> ret = new HashSet<>();
+		if (filters == null) {
+			return ret;
+		}
+		
+		for (String f: filters.split(",")) {
+			f = f.trim();
+			if (f.isEmpty()) {
+				continue;
+			}
+			final String pre = KEY_FILTERS_PREFIX + f;
+			final String factoryClass = getString(pre + KEY_FILTERS_SUFFIX_FACTORY, config, true);
+			final String preconfig = pre + KEY_FILTERS_SUFFIX_CONFIG;
+			final Map<String, String> filterconfig = new HashMap<>();
+			for (final String key: config.keySet()) {
+				if (key.startsWith(preconfig)) {
+					final String configkey = key.replace(preconfig, "");
+					filterconfig.put(configkey, config.get(key));
+				}
+			}
+			ret.add(new FilterConfiguration(factoryClass, filterconfig));
+		}
+		
+		return ret;
 	}
 
 	private static Path getConfigPathFromEnv()
@@ -269,6 +348,13 @@ public class AssemblyHomologyConfig {
 		return mongoPwd;
 	}
 	
+	/** Get the timeout to use for any minhash processes.
+	 * @return the timeout in seconds.
+	 */
+	public int getMinhashTimeoutSec() {
+		return minhashTimeoutSec;
+	}
+	
 	/** Get a path to directory in which to store temporary files. The directory may not exist.
 	 * @return a temporary file directory.
 	 */
@@ -290,5 +376,12 @@ public class AssemblyHomologyConfig {
 	 */
 	public boolean isIgnoreIPHeaders() {
 		return ignoreIPHeaders;
+	}
+	
+	/** Get the {@link MinHashDistanceFilterFactory} configurations.
+	 * @return the configurations.
+	 */
+	public Set<FilterConfiguration> getFilterConfigurations() {
+		return filterConfigs;
 	}
 }

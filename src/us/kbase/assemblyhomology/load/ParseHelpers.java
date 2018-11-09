@@ -76,7 +76,7 @@ public class ParseHelpers {
 	 * @param sourceInfo information about the source of the map, usually a file name.
 	 * @param optional if true, a null or whitespace only value is acceptable. If false, an
 	 * exception will be thrown.
-	 * @return the String.
+	 * @return the string.
 	 * @throws LoadInputParseException if the value is not a string or is null or whitespace only
 	 * with optional set to false.
 	 */

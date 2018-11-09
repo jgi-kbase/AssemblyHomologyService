@@ -13,6 +13,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.JsonMappingException;
 
 import us.kbase.assemblyhomology.core.exceptions.AssemblyHomologyException;
+import us.kbase.assemblyhomology.core.exceptions.AuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.NoDataException;
 
 /** An error message to be returned to the server client. Expected to be serialized to JSON.
@@ -58,13 +59,12 @@ public class ErrorMessage {
 			final AssemblyHomologyException ae = (AssemblyHomologyException) ex;
 			appcode = ae.getErr().getErrorCode();
 			apperror = ae.getErr().getError();
-			// may need these later
-//			if (ae instanceof AuthenticationException) {
-//				status = Response.Status.UNAUTHORIZED;
+			if (ae instanceof AuthenticationException) {
+				status = Response.Status.UNAUTHORIZED;
+			// may need this later
 //			} else if (ae instanceof UnauthorizedException) {
 //				status = Response.Status.FORBIDDEN;
-//			} else
-			if (ae instanceof NoDataException) {
+			} else if (ae instanceof NoDataException) {
 				status = Response.Status.NOT_FOUND;
 			} else {
 				status = Response.Status.BAD_REQUEST;
@@ -72,8 +72,7 @@ public class ErrorMessage {
 		} else if (ex instanceof WebApplicationException) {
 			appcode = null;
 			apperror = null;
-			status = ((WebApplicationException) ex).getResponse()
-					.getStatusInfo();
+			status = ((WebApplicationException) ex).getResponse().getStatusInfo();
 		} else if (ex instanceof JsonMappingException) {
 			/* we assume that any json exceptions are because the client sent bad JSON data.
 			 * This may not 100% accurate, but if we're attempting to return unserializable data
@@ -92,49 +91,49 @@ public class ErrorMessage {
 	}
 
 	/** Get the HTTP code for the error message.
-	 * @return
+	 * @return the HTTP code.
 	 */
 	public int getHttpcode() {
 		return httpcode;
 	}
 
 	/** Get the HTTP status string for the error message.
-	 * @return
+	 * @return the HTTP status.
 	 */
 	public String getHttpstatus() {
 		return httpstatus;
 	}
 
 	/** Get the application code for the error message.
-	 * @return
+	 * @return the application code.
 	 */
 	public Integer getAppcode() {
 		return appcode;
 	}
 
 	/** Get the application error string for the error message
-	 * @return
+	 * @return the application error.
 	 */
 	public String getApperror() {
 		return apperror;
 	}
 
 	/** Get the error message.
-	 * @return
+	 * @return the error message.
 	 */
 	public String getMessage() {
 		return message;
 	}
 
 	/** Get the call ID under which the error occurred.
-	 * @return
+	 * @return the call ID.
 	 */
 	public String getCallid() {
 		return callid;
 	}
 
 	/** Get the time the error occurred.
-	 * @return
+	 * @return the error time.
 	 */
 	public long getTime() {
 		return time;

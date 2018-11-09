@@ -81,7 +81,7 @@ public class AssemblyHomologyCLI {
 	}
 	
 	/** Execute the command.
-	 * @return
+	 * @return the return code.
 	 */
 	public int execute() {
 		final GlobalArgs globalArgs = new GlobalArgs();
@@ -117,7 +117,7 @@ public class AssemblyHomologyCLI {
 				load(loadArgs, cfg);
 			} catch (AssemblyHomologyStorageException | MissingParameterException |
 					IllegalParameterException | MinHashException | IOException |
-					LoadInputParseException e) {
+					LoadInputParseException | AssemblyHomologyConfigurationException e) {
 				printError(e, globalArgs.verbose);
 				return 1;
 			}
@@ -128,7 +128,7 @@ public class AssemblyHomologyCLI {
 	private void load(final LoadArgs loadArgs, final AssemblyHomologyConfig cfg)
 			throws AssemblyHomologyStorageException, MissingParameterException,
 				IllegalParameterException, MinHashInitException, MinHashException, IOException,
-				LoadInputParseException {
+				LoadInputParseException, AssemblyHomologyConfigurationException {
 		if (!MASH.equals(loadArgs.implementation)) {
 			throw new MinHashException("Unsupported implementation: " + loadArgs.implementation);
 		}
@@ -136,8 +136,9 @@ public class AssemblyHomologyCLI {
 		try (final MongoClient mc = builder.getMongoClient()) {
 			new Loader(builder.getStorage()).load(
 					getLoadID(loadArgs),
-					new Mash(cfg.getPathToTemporaryFileDirectory()),
+					new Mash(cfg.getPathToTemporaryFileDirectory(), cfg.getMinhashTimeoutSec()),
 					new MinHashDBLocation(Paths.get(loadArgs.sketchDBPath)),
+					builder.getFilterFactories(),
 					new PathRestreamable(Paths.get(loadArgs.namespaceYAML), new FileOpener()),
 					new PathRestreamable(Paths.get(loadArgs.sequeneceMetadataPath),
 							new FileOpener()));

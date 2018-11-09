@@ -19,19 +19,27 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
+import us.kbase.assemblyhomology.core.exceptions.AuthenticationException;
+import us.kbase.assemblyhomology.core.exceptions.ErrorType;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchSequenceException;
+import us.kbase.assemblyhomology.minhash.DefaultDistanceCollector;
+import us.kbase.assemblyhomology.minhash.DefaultDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterAuthenticationException;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
@@ -51,23 +59,35 @@ public class AssemblyHomology {
 	
 	private final AssemblyHomologyStorage storage;
 	private final Map<String, MinHashImplementationFactory> impls = new HashMap<>();
+	private final Map<FilterID, MinHashDistanceFilterFactory> filters = new HashMap<>();
 	private final Path tempFileDirectory;
+	private final int minhashTimeoutSec;
 	
 	/** Create a new AssemblyHomology class.
 	 * @param storage the storage system to be used by the class.
 	 * @param implementationFactories the factories for the various MinHash implementations to
 	 * be used by the class.
+	 * @param filterFactories the factories for the filters required by the namespaces in storage.
 	 * @param tempFileDirectory a directory for storing temporary files.
+	 * @param minhashTimeoutSec the timeout for any minhash processes in seconds.
 	 */
 	public AssemblyHomology(
 			final AssemblyHomologyStorage storage,
 			final Collection<MinHashImplementationFactory> implementationFactories,
-			final Path tempFileDirectory) {
+			final Collection<MinHashDistanceFilterFactory> filterFactories,
+			final Path tempFileDirectory,
+			final int minhashTimeoutSec) {
+		// probably needs a builder
 		checkNotNull(storage, "storage");
 		checkNoNullsInCollection(implementationFactories, "implementationFactories");
+		checkNoNullsInCollection(filterFactories, "filterFactories");
 		checkNotNull(tempFileDirectory, "tempFileDirectory");
+		if (minhashTimeoutSec < 1) {
+			throw new IllegalArgumentException("minhashTimeout must be > 0");
+		}
 		this.storage = storage;
 		this.tempFileDirectory = tempFileDirectory;
+		this.minhashTimeoutSec = minhashTimeoutSec;
 		for (final MinHashImplementationFactory fac: implementationFactories) {
 			final String impl = fac.getImplementationName().getName().toLowerCase();
 			if (impls.containsKey(impl)) {
@@ -75,19 +95,35 @@ public class AssemblyHomology {
 			}
 			impls.put(impl, fac);
 		}
+		for (final MinHashDistanceFilterFactory fac: filterFactories) {
+			if (filters.containsKey(fac.getID())) {
+				throw new IllegalArgumentException("Duplicate filter: " + fac.getID().getName());
+			}
+			filters.put(fac.getID(), fac);
+		}
 	}
 	
-	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
 	/** Get all the namespaces available.
 	 * @return the namespaces.
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
 	 */
-	public Set<Namespace> getNamespaces() throws AssemblyHomologyStorageException {
-		return storage.getNamespaces();
+	public Set<NamespaceView> getNamespaces() throws AssemblyHomologyStorageException {
+		return toNamespaceView(storage.getNamespaces());
 	}
 	
-	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
+	private Set<NamespaceView> toNamespaceView(final Set<Namespace> namespaces) {
+		return namespaces.stream().map(ns -> toNamespaceView(ns)).collect(Collectors.toSet());
+	}
+	
+	private NamespaceView toNamespaceView(final Namespace namespace) {
+		if (namespace.getFilterID().isPresent()) {
+			return new NamespaceView(namespace, getFilter(namespace));
+		} else {
+			return new NamespaceView(namespace);
+		}
+	}
+
 	/** Get a set of namespaces.
 	 * @param ids the IDs of the namespaces to get.
 	 * @return the namespaces.
@@ -95,8 +131,13 @@ public class AssemblyHomology {
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
 	 */
-	public Set<Namespace> getNamespaces(final Set<NamespaceID> ids)
+	public Set<NamespaceView> getNamespaces(final Set<NamespaceID> ids)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
+		return toNamespaceView(getNamespacesInternal(ids));
+	}
+
+	private Set<Namespace> getNamespacesInternal(final Set<NamespaceID> ids)
+			throws AssemblyHomologyStorageException, NoSuchNamespaceException {
 		checkNoNullsInCollection(ids, "ids");
 		final Set<Namespace> namespaces = new HashSet<>();
 		for (final NamespaceID id: ids) {
@@ -106,7 +147,6 @@ public class AssemblyHomology {
 		return namespaces;
 	}
 	
-	// should this not expose some of the stuff in the namespace class? Load ID, sketch DB path
 	/** Get a namespace.
 	 * @param namespaceID the ID of the namespace to get.
 	 * @return the namespace.
@@ -114,10 +154,10 @@ public class AssemblyHomology {
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
 	 */
-	public Namespace getNamespace(final NamespaceID namespaceID)
+	public NamespaceView getNamespace(final NamespaceID namespaceID)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException {
 		checkNotNull(namespaceID, "namespaceID");
-		return storage.getNamespace(namespaceID);
+		return toNamespaceView(storage.getNamespace(namespaceID));
 	}
 	
 	/** Get the file extension expected by a particular implementation.
@@ -142,7 +182,10 @@ public class AssemblyHomology {
 	 * will be returned.
 	 * @param strict true to enforce an exact match between sketch parameters. If false, 
 	 * differences in the parameters will be ignored if the MinHash implementation allows it.
-	 * @return
+	 * @param token a token to use for namespaces that accept or require authentication. Pass null
+	 * if no token is available. If a namespace requires authentication, an error will be thrown
+	 * in this case.
+	 * @return the sequence matches.
 	 * @throws NoSuchNamespaceException if one of the namespace IDs doesn't exist in the system.
 	 * @throws AssemblyHomologyStorageException if an error occurred contacting the storage
 	 * system.
@@ -151,15 +194,22 @@ public class AssemblyHomology {
 	 * MinHash implementations.
 	 * @throws IncompatibleSketchesException if the input sketch's parameters are not
 	 * compatible with any of the selected namespaces' sketch databases.
+	 * @throws IncompatibleAuthenticationException if namespaces with different authentication
+	 * sources are requested.
+	 * @throws MinHashDistanceFilterException if a filter exception occurs.
+	 * @throws AuthenticationException if an authentication error occurs.
 	 */
 	public SequenceMatches measureDistance(
 			final Set<NamespaceID> namespaceIDs,
 			final Path sketchDB,
 			int returnCount,
-			boolean strict)
+			final boolean strict,
+			final Token token)
 			throws NoSuchNamespaceException, AssemblyHomologyStorageException,
 				InvalidSketchException, IncompatibleNamespacesException,
-				IncompatibleSketchesException {
+				IncompatibleSketchesException, IncompatibleAuthenticationException,
+				AuthenticationException, MinHashDistanceFilterException {
+		// may need a builder here, only 1st 2 arguments are always required
 		checkNoNullsInCollection(namespaceIDs, "namespaceIDs");
 		checkNotNull(sketchDB, "sketchDB");
 		if (namespaceIDs.isEmpty()) {
@@ -169,12 +219,12 @@ public class AssemblyHomology {
 			returnCount = DEFAULT_RETURN;
 		}
 		
-		final Set<Namespace> namespaces = getNamespaces(namespaceIDs);
+		final Set<Namespace> namespaces = getNamespacesInternal(namespaceIDs);
 		final Map<String, Namespace> idToNS = namespaces.stream()
 				.collect(Collectors.toMap(n -> n.getID().getName(), n -> n));
 		final MinHashImplementation impl = getImplementation(namespaces);
 		final DistReturn distret = getDistances(
-				namespaces, sketchDB, impl, returnCount, strict);
+				namespaces, sketchDB, impl, returnCount, strict, token);
 		final Map<Namespace, Map<String, SequenceMetadata>> idToSeq = 
 				getSequenceMetadata(idToNS, distret.dists);
 		final List<SequenceDistanceAndMetadata> distNMeta = new LinkedList<>();
@@ -185,8 +235,8 @@ public class AssemblyHomology {
 		}
 		
 		// return query id?
-		return new SequenceMatches(
-				namespaces, impl.getImplementationInformation(), distNMeta, distret.warnings);
+		return new SequenceMatches(toNamespaceView(namespaces),
+				impl.getImplementationInformation(), distNMeta, distret.warnings);
 	}
 
 	private Map<Namespace, Map<String, SequenceMetadata>> getSequenceMetadata(
@@ -233,8 +283,10 @@ public class AssemblyHomology {
 			final Path sketchDB,
 			final MinHashImplementation impl,
 			int returnCount,
-			final boolean strict)
-			throws InvalidSketchException, IncompatibleSketchesException {
+			final boolean strict,
+			final Token token)
+			throws InvalidSketchException, IncompatibleSketchesException,
+				AuthenticationException, MinHashDistanceFilterException {
 		final MinHashSketchDatabase query = getQueryDB(sketchDB, impl);
 		final Set<String> warnings = new HashSet<>();
 		for (final Namespace ns: namespaces) {
@@ -249,11 +301,12 @@ public class AssemblyHomology {
 						ns.getID().getName(), e.getMessage()), e);
 			}
 		}
-		final Set<MinHashSketchDatabase> dbs = namespaces.stream()
-				.map(n -> n.getSketchDatabase()).collect(Collectors.toSet());
-		final MinHashDistanceSet dists;
+		final MinHashDistanceCollector distCol = new DefaultDistanceCollector(returnCount);
 		try {
-			dists = impl.computeDistance(query, dbs, returnCount, strict);
+			final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs =
+					setUpDistanceFilters(namespaces, distCol, token);
+			// ignore returned warnings since we gather them above
+			impl.computeDistance(query, dbs, strict);
 		} catch (MinHashException e) {
 			/* At this point minhash should work, and the user input should be ok.
 			 * Hard to know how to respond to exceptions. For now just bail.
@@ -262,9 +315,52 @@ public class AssemblyHomology {
 			 */
 			throw new IllegalStateException("Unexpected error running MinHash implementation " +
 					impl.getImplementationInformation().getImplementationName().getName(), e);
+		} catch (MinHashDistanceFilterAuthenticationException e) {
+			throw new AuthenticationException(ErrorType.AUTHENTICATION_FAILED, e.getMessage(), e);
 		}
-		// ignore warnings since we gather them above
-		return new DistReturn(dists.getDistances(), warnings);
+		return new DistReturn(distCol.getDistances(), warnings);
+	}
+
+	private Map<MinHashSketchDatabase, MinHashDistanceFilter> setUpDistanceFilters(
+			final Set<Namespace> namespaces,
+			final MinHashDistanceCollector distCol,
+			final Token token)
+			throws MinHashDistanceFilterException, IncompatibleAuthenticationException {
+		final MinHashDistanceFilter defaultFilter = new DefaultDistanceFilter(distCol);
+		final Map<MinHashSketchDatabase, MinHashDistanceFilter> dbs = new HashMap<>();
+		NamespaceID authns = null;
+		String auth = null;
+		for (final Namespace ns: namespaces) {
+			if (ns.getFilterID().isPresent()) {
+				final MinHashDistanceFilterFactory fac = getFilter(ns);
+				if (fac.getAuthSource().isPresent()) {
+					if (auth == null) {
+						auth = fac.getAuthSource().get();
+						authns = ns.getID();
+					} else if (!auth.equals(fac.getAuthSource().get())) {
+							throw new IncompatibleAuthenticationException(String.format(
+									"Namespace %s requires %s authentication, " +
+									"namespace %s requires %s authentication",
+									authns.getName(), auth,
+									ns.getID().getName(), fac.getAuthSource().get()));
+					}
+				}
+				dbs.put(ns.getSketchDatabase(), fac.getFilter(distCol, token));
+			} else {
+				dbs.put(ns.getSketchDatabase(), defaultFilter);
+			}
+		}
+		return dbs;
+	}
+
+	private MinHashDistanceFilterFactory getFilter(final Namespace ns) {
+		if (!filters.containsKey(ns.getFilterID().get())) {
+			throw new IllegalStateException(String.format(
+					"Application is misconfigured. Namespace %s requires filter %s but " +
+					"it is not configured.",
+					ns.getID().getName(), ns.getFilterID().get().getName()));
+		}
+		return filters.get(ns.getFilterID().get());
 	}
 
 	private MinHashSketchDatabase getQueryDB(final Path sketchDB, final MinHashImplementation impl)
@@ -301,7 +397,7 @@ public class AssemblyHomology {
 				.collect(Collectors.toSet());
 		if (implnames.size() != 1) {
 			throw new IncompatibleNamespacesException(
-					"The selected namespaces must share the same implementation");
+					"The selected namespaces must share the same Minhash implementation");
 		}
 		final String impl = implnames.iterator().next().getName().toLowerCase();
 		if (!impls.containsKey(impl)) {
@@ -310,7 +406,7 @@ public class AssemblyHomology {
 					"not available.", impl));
 		}
 		try {
-			return impls.get(impl).getImplementation(tempFileDirectory);
+			return impls.get(impl).getImplementation(tempFileDirectory, minhashTimeoutSec);
 		} catch (MinHashInitException e) {
 			throw new IllegalStateException(String.format("Application is misconfigured. " +
 					"Error attempting to build the %s MinHash implementation.", impl), e);

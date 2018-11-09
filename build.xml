@@ -30,6 +30,9 @@
     <include name="jcommander/jcommander-1.72.jar"/>
     <include name="mongo/mongo-java-driver-3.4.2.jar"/>
     <include name="snakeyaml/snakeyaml-1.18.jar"/>
+    <include name="kbase/workspace/WorkspaceClient-0.8.0.jar"/>
+    <include name="kbase/auth/kbase-auth-0.4.4.jar"/>
+    <include name="jsemver/java-semver-0.9.0.jar"/>
   </fileset>
 
   <fileset dir="${jardir}" id="logging">
@@ -90,7 +93,7 @@
     <include name="jetty/jetty-all-9.3.11.v20160721-uber.jar"/>
     <include name="jacoco/jacocoant.jar"/>
     <include name="apache_commons/commons-lang3-3.5.jar"/>
-    <include name="jsemver/java-semver-0.9.0.jar"/>
+    <include name="kbase/auth2/kbase-auth2test-0.2.4.jar"/>
     <!-- mockito and dependencies -->
     <include name="mockito/mockito-core-2.7.10.jar"/>
     <include name="bytebuddy/byte-buddy-1.6.8.jar"/>
@@ -146,6 +149,7 @@
         <patternset>
           <include name="**/*.msh"/>
           <include name="**/*.txt"/>
+          <include name="**/wsjars"/>
         </patternset>
       </fileset>
     </copy>
@@ -260,23 +264,29 @@
         <formatter type="plain" usefile="false" />
         <sysproperty key="ASSEMHOMOL_TEST_CONFIG" value="${testcfg}"/>
         <test name="us.kbase.test.assemblyhomology.config.AssemblyHomologyConfigTest"/>
+        <test name="us.kbase.test.assemblyhomology.config.FilterConfigurationTest"/>
         <test name="us.kbase.test.assemblyhomology.core.AssemblyHomologyTest"/>
+        <test name="us.kbase.test.assemblyhomology.core.FilterIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.DataSourceIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.LoadIDTest"/>
         <test name="us.kbase.test.assemblyhomology.core.NameTest"/>
         <test name="us.kbase.test.assemblyhomology.core.NamespaceTest"/>
         <test name="us.kbase.test.assemblyhomology.core.NamespaceIDTest"/>
+        <test name="us.kbase.test.assemblyhomology.core.NamespaceViewTest"/>
         <test name="us.kbase.test.assemblyhomology.core.SequenceMatchesTest"/>
         <test name="us.kbase.test.assemblyhomology.core.SequenceMetadataTest"/>
+        <test name="us.kbase.test.assemblyhomology.core.TokenTest"/>
+        <test name="us.kbase.test.assemblyhomology.filters.KBaseAuthenticatedFilterTest"/>
         <test name="us.kbase.test.assemblyhomology.integration.CLIIntegrationTest"/>
         <test name="us.kbase.test.assemblyhomology.integration.ServiceIntegrationTest"/>
         <test name="us.kbase.test.assemblyhomology.load.LoaderTest"/>
         <test name="us.kbase.test.assemblyhomology.load.NamespaceLoadInfoTest"/>
         <test name="us.kbase.test.assemblyhomology.load.ParseHelpersTest"/>
         <test name="us.kbase.test.assemblyhomology.load.SeqMetaLoadInfoTest"/>
+        <test name="us.kbase.test.assemblyhomology.minhash.DefaultDistanceCollectorTest"/>
+        <test name="us.kbase.test.assemblyhomology.minhash.DefaultDistanceFilterTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDBLocationTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashDistanceTest"/>
-        <test name="us.kbase.test.assemblyhomology.minhash.MinHashDistanceSetTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashImplementationInformationTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashImplementationNameTest"/>
         <test name="us.kbase.test.assemblyhomology.minhash.MinHashParametersTest"/>

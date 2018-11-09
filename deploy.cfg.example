@@ -1,4 +1,6 @@
 ## Settings for the assembly homology service and CLI.
+# Make a copy, fill in as required, and set ASSEMBLY_HOMOLOGY_CONFIG to point to the
+# new file before starting the server.
 
 [assemblyhomology]
 
@@ -11,8 +13,49 @@ mongo-pwd=
 # A directory to use for temporary files:
 temp-dir=./assemblyhomology_temp
 
+# The timeout, in seconds, of the minhash process. The default is 30 seconds.
+#minhash-timeout=60
+
 # If "true", make the server ignore the X-Forwarded-For and X-Real-IP headers. Otherwise
 # (the default behavior), the logged IP address for a request, in order of precedence, is
 # 1) the first address in X-Forwarded-For, 2) X-Real-IP, and 3) the address of the client.
 dont-trust-x-ip-headers=false
 
+#########################################
+# Filter settings
+#
+# The remainder of the settings configure filters for the sequence data
+# returned from the Minhash implementation. If namespaces requiring filters are loaded into the
+# storage system those filters must be configured here. Any number of filters may be specified
+# and the filtering system is extensible. Namespaces that do not specify a filter undergo no
+# filtering. A KBase filter that filters out data to which the user does not have access
+# is supplied.
+
+# The list of enabled filters:
+filters=
+#filters=kbase
+
+# The configuration variables for each filter are:
+# filter-<name>-factory-class=<class>
+# filter-<name>-init-<key>=<value>
+#
+# Where:
+# <name> is the name of the filter as given in the filters list above. This name has no meaning
+#     outside of this file - it simply groups the filter parameters together.
+# <class> is the factory class for the filter
+# <key> and <value> are key value pairs that are passed to the filter at initialization. Any
+#     number of pairs are allowed.
+
+# -------------------------------------
+# KBase authenticated filter settings
+
+# The filter class for the KBase filter.
+filter-kbase-factory-class=us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilterFactory
+
+# The KBase workspace url for the KBase environment from where the data the filter will operate on
+# was extracted.
+filter-kbase-init-workspace-url=https://kbase.us/services/ws
+
+# The KBase environment (prod, appdev, next, or ci) from where the data was extracted. Only one
+# filter per environment may be configured. If omitted, prod is set as the default.
+filter-kbase-init-env=prod

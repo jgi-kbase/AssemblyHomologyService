@@ -3,11 +3,16 @@ package us.kbase.test.assemblyhomology.storage;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.when;
+import static us.kbase.test.assemblyhomology.TestCommon.assertLogEventsCorrect;
 import static us.kbase.test.assemblyhomology.TestCommon.set;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -22,7 +27,10 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
@@ -38,15 +46,18 @@ import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageExcep
 import us.kbase.assemblyhomology.storage.mongo.MongoAssemblyHomologyStorage;
 import us.kbase.test.assemblyhomology.MongoStorageTestManager;
 import us.kbase.test.assemblyhomology.TestCommon;
+import us.kbase.test.assemblyhomology.TestCommon.LogEvent;
 
 public class MongoAssemblyHomologyStorageOpsTest {
 
 	private static MongoStorageTestManager manager;
+	private static List<ILoggingEvent> logEvents;
 	private static Path TEMP_DIR;
 	private static Path EMPTY_FILE_MSH;
 	
 	@BeforeClass
 	public static void setUp() throws Exception {
+		logEvents = TestCommon.setUpSLF4JTestLoggerAppender("us.kbase.assemblyhomology");
 		manager = new MongoStorageTestManager("test_mongoahstorage");
 		TEMP_DIR = TestCommon.getTempDir().resolve("StorageTest_" + UUID.randomUUID().toString());
 		Files.createDirectories(TEMP_DIR);
@@ -66,8 +77,9 @@ public class MongoAssemblyHomologyStorageOpsTest {
 	}
 	
 	@Before
-	public void clearDB() throws Exception {
+	public void before() throws Exception {
 		manager.reset();
+		logEvents.clear();
 	}
 	
 	@Test
@@ -118,6 +130,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("fid"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -137,6 +150,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("fid"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -160,6 +174,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("whee"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -177,6 +192,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						32),
 				new LoadID("baz"),
 				Instant.ofEpochMilli(20000))
+				.withNullableFilterID(new FilterID("whoo"))
 				.withNullableDataSourceID(new DataSourceID("fairy godmother"))
 				.withNullableSourceDatabaseID("here you are, dear")
 				.withNullableDescription("oh thank you mother")
@@ -196,6 +212,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						32),
 				new LoadID("baz"),
 				Instant.ofEpochMilli(20000))
+				.withNullableFilterID(new FilterID("whoo"))
 				.withNullableDataSourceID(new DataSourceID("fairy godmother"))
 				.withNullableSourceDatabaseID("here you are, dear")
 				.withNullableDescription("oh thank you mother")
@@ -219,6 +236,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("fids"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -253,6 +271,7 @@ public class MongoAssemblyHomologyStorageOpsTest {
 						16),
 				new LoadID("bar"),
 				Instant.ofEpochMilli(10000))
+				.withNullableFilterID(new FilterID("fids"))
 				.withNullableDataSourceID(new DataSourceID("wugga"))
 				.withNullableSourceDatabaseID("some source db")
 				.withNullableDescription("some description")
@@ -640,5 +659,195 @@ public class MongoAssemblyHomologyStorageOpsTest {
 		}
 	}
 	
+	@Test
+	public void deleteNamespaceFail() {
+		try {
+			manager.storage.deleteNamespace(new NamespaceID("foo"));
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, new UnsupportedOperationException());
+		}
+	}
 	
+	@Test
+	public void removeInactiveData() throws Exception {
+		final MongoAssemblyHomologyStorage s = manager.storage;
+		
+		final NamespaceID ns1 = new NamespaceID("id1");
+		final LoadID ld1 = new LoadID("load1");
+		s.createOrReplaceNamespace(Namespace.getBuilder(
+				ns1,
+				new MinHashSketchDatabase(
+						new MinHashSketchDBName("id1"),
+						new MinHashImplementationName("mash"),
+						MinHashParameters.getBuilder(31).withScaling(2500).build(),
+						new MinHashDBLocation(EMPTY_FILE_MSH),
+						16),
+				ld1,
+				Instant.ofEpochMilli(10000))
+				.build());
+		
+		final NamespaceID ns2 = new NamespaceID("id2");
+		final LoadID ld2 = new LoadID("load2");
+		s.createOrReplaceNamespace(Namespace.getBuilder(
+				ns2,
+				new MinHashSketchDatabase(
+						new MinHashSketchDBName("id2"),
+						new MinHashImplementationName("mash"),
+						MinHashParameters.getBuilder(31).withScaling(2500).build(),
+						new MinHashDBLocation(EMPTY_FILE_MSH),
+						16),
+				ld2,
+				Instant.ofEpochMilli(10000))
+				.build());
+		
+		final SequenceMetadata noNS_100 = SequenceMetadata.getBuilder(
+				"noNS_100", "sid1", Instant.ofEpochMilli(100000)).build();
+		final SequenceMetadata noNS_200 = SequenceMetadata.getBuilder(
+				"noNS_200", "sid2", Instant.ofEpochMilli(200000)).build();
+		final SequenceMetadata noNS_300 = SequenceMetadata.getBuilder(
+				"noNS_300", "sid3", Instant.ofEpochMilli(300000)).build();
+		
+		final NamespaceID nons = new NamespaceID("noNS");
+		// use the same load id as extant namespace in case it's just checking load ids
+		s.saveSequenceMetadata(nons, ld1, set(noNS_100, noNS_200, noNS_300));
+		
+		final SequenceMetadata id1_safe = SequenceMetadata.getBuilder(
+				"id1", "sid1", Instant.ofEpochMilli(10000)).build();
+		
+		s.saveSequenceMetadata(ns1, ld1, set(id1_safe));
+		
+		final SequenceMetadata id2_safe = SequenceMetadata.getBuilder(
+				"id2", "sid2", Instant.ofEpochMilli(20000)).build();
+		
+		s.saveSequenceMetadata(ns2, ld2, set(id2_safe));
+		
+		final SequenceMetadata id1_100 = SequenceMetadata.getBuilder(
+				"id1_100", "sid1", Instant.ofEpochMilli(100000)).build();
+		final SequenceMetadata id1_200 = SequenceMetadata.getBuilder(
+				"id1_200", "sid2", Instant.ofEpochMilli(200000)).build();
+		final SequenceMetadata id1_300 = SequenceMetadata.getBuilder(
+				"id1_300", "sid3", Instant.ofEpochMilli(300000)).build();
+		
+		final LoadID nold1 = new LoadID("noload1"); // extant ns, old load id
+		s.saveSequenceMetadata(ns1, nold1, set(id1_100, id1_200, id1_300));
+		
+		final SequenceMetadata id2_200 = SequenceMetadata.getBuilder(
+				"id2_200", "sid1", Instant.ofEpochMilli(200000)).build();
+		final SequenceMetadata id2_300 = SequenceMetadata.getBuilder(
+				"id2_300", "sid2", Instant.ofEpochMilli(300000)).build();
+		final SequenceMetadata id2_400 = SequenceMetadata.getBuilder(
+				"id2_400", "sid3", Instant.ofEpochMilli(400000)).build();
+		
+		final LoadID nold2 = new LoadID("noload2"); // extant ns, old load id
+		s.saveSequenceMetadata(ns2, nold2, set(id2_200, id2_300, id2_400));
+		
+		assertThat("incorrect seqmeta", s.getSequenceMetadata(), is(set(
+				id1_safe, id2_safe,
+				noNS_100, noNS_200, noNS_300,
+				id1_100, id1_200, id1_300,
+				id2_200, id2_300, id2_400)));
+		
+		when(manager.clockMock.instant()).thenReturn(Instant.ofEpochMilli(500000));
+		
+		s.removeInactiveData(Duration.of(450000, ChronoUnit.MILLIS));
+		
+		assertThat("incorrect seqmeta", s.getSequenceMetadata(), is(set(
+				id1_safe, id2_safe,
+				noNS_100, noNS_200, noNS_300,
+				id1_100, id1_200, id1_300,
+				id2_200, id2_300, id2_400)));
+		
+		s.removeInactiveData(Duration.of(350000, ChronoUnit.MILLIS));
+		
+		assertThat("incorrect seqmeta", s.getSequenceMetadata(), is(set(
+				id1_safe, id2_safe,
+				noNS_200, noNS_300,
+				id1_200, id1_300,
+				id2_200, id2_300, id2_400)));
+		
+		s.removeInactiveData(Duration.of(250000, ChronoUnit.MILLIS));
+		
+		assertThat("incorrect seqmeta", s.getSequenceMetadata(), is(set(
+				id1_safe, id2_safe,
+				noNS_300,
+				id1_300,
+				id2_300, id2_400)));
+		
+		s.removeInactiveData(Duration.of(150000, ChronoUnit.MILLIS));
+		
+		assertThat("incorrect seqmeta", s.getSequenceMetadata(), is(set(
+				id1_safe, id2_safe,
+				id2_400)));
+		
+		s.removeInactiveData(Duration.of(50000, ChronoUnit.MILLIS));
+		
+		assertThat("incorrect seqmeta", s.getSequenceMetadata(), is(set(id1_safe, id2_safe)));
+	}
+	
+	@Test
+	public void removeInactiveDataFail() {
+		try {
+			manager.storage.removeInactiveData(null);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, new NullPointerException("olderThan"));
+		}
+	}
+	
+	@Test
+	public void reapOrphanData() throws Exception {
+		// also tests that stopping the reaper multiple times in succession has no effect.
+		final MongoAssemblyHomologyStorage s = manager.storage;
+		final Clock clock = manager.clockMock;
+		final Instant now = Instant.ofEpochMilli(700000000);
+		when(clock.instant()).thenReturn(now);
+		assertThat("incorrect reaper running", s.isReaperRunning(), is(true));
+		s.stopReaper(); // stop the default reaper
+		assertThat("incorrect reaper running", s.isReaperRunning(), is(false));
+		s.stopReaper();
+		assertThat("incorrect reaper running", s.isReaperRunning(), is(false));
+		// data to be deleted
+		final SequenceMetadata sm1 = SequenceMetadata.getBuilder(
+				"id1", "sid1", now.minus(Duration.ofDays(7)).minus(Duration.ofSeconds(1))).build();
+		// safe data
+		final SequenceMetadata sm2 = SequenceMetadata.getBuilder(
+				"id2", "sid2", now.minus(Duration.ofDays(7))).build();
+		s.saveSequenceMetadata(new NamespaceID("ns"), new LoadID("lid"), set(sm1, sm2));
+		
+		s.startReaper(1);
+		assertThat("incorrect reaper running", s.isReaperRunning(), is(true));
+		assertThat("incorrect meta", s.getSequenceMetadata(), is(set(sm1, sm2)));
+		Thread.sleep(500);
+		assertThat("incorrect meta", s.getSequenceMetadata(), is(set(sm1, sm2)));
+		Thread.sleep(600);
+		assertThat("incorrect meta", s.getSequenceMetadata(), is(set(sm2)));
+		
+		assertLogEventsCorrect(logEvents, new LogEvent(Level.INFO,
+				"Running data reaper", MongoAssemblyHomologyStorage.class.getName() + "$Reaper"));
+	}
+	
+	@Test
+	public void startReaperFail() {
+		final MongoAssemblyHomologyStorage s = manager.storage;
+		failStartReaper(s, 1, new IllegalArgumentException("The reaper is already running"));
+		
+		s.stopReaper();
+		failStartReaper(s, 0, new IllegalArgumentException("periodInSeconds must be > 0"));
+		
+		s.startReaper(1000);
+		failStartReaper(s, 1, new IllegalArgumentException("The reaper is already running"));
+	}
+	
+	private void failStartReaper(
+			final MongoAssemblyHomologyStorage storage,
+			final long period, 
+			final Exception expected) {
+		try {
+			storage.startReaper(period);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, expected);
+		}
+	}
 }

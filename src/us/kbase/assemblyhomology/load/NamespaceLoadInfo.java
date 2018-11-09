@@ -11,6 +11,7 @@ import java.util.Map;
 import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
@@ -28,6 +29,7 @@ import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
  * datasource: KBase
  * sourcedatabase: CI Refdata
  * description: some reference data
+ * filterid: myfilter
  * <pre>
  * 
  * @author gaprice@lbl.gov
@@ -39,6 +41,7 @@ public class NamespaceLoadInfo {
 	private final DataSourceID dataSourceID;
 	private final Optional<String> sourceDatabaseID;
 	private final Optional<String> description;
+	private final Optional<FilterID> filterID;
 
 	/** Generate load information for a namespace.
 	 * @param input the input to parse.
@@ -56,6 +59,7 @@ public class NamespaceLoadInfo {
 		final Map<String, Object> data = (Map<String, Object>) predata;
 		id = getID(data, "id", sourceInfo);
 		dataSourceID = getDataSourceID(data, "datasource", sourceInfo);
+		filterID = getFilterID(data, "filterid", sourceInfo);
 		sourceDatabaseID = Optional.fromNullable(
 				getString(data, "sourcedatabase", sourceInfo, true));
 		description = Optional.fromNullable(getString(data, "description", sourceInfo, true));
@@ -88,11 +92,19 @@ public class NamespaceLoadInfo {
 	public Optional<String> getDescription() {
 		return description;
 	}
+	
+	/** Get the ID of the filter to be used with the namespace.
+	 * @return the filter ID, or absent if absent.
+	 */
+	public Optional<FilterID> getFilterID() {
+		return filterID;
+	}
 
 	private NamespaceID getID(
 			final Map<String, Object> data,
 			final String key,
-			final String sourceInfo) throws LoadInputParseException {
+			final String sourceInfo)
+			throws LoadInputParseException {
 		final String nsid = getString(data, key, sourceInfo, false);
 		try {
 			return new NamespaceID(nsid);
@@ -103,10 +115,29 @@ public class NamespaceLoadInfo {
 		}
 	}
 	
+	private Optional<FilterID> getFilterID(
+			final Map<String, Object> data,
+			final String key,
+			final String sourceInfo)
+			throws LoadInputParseException {
+		final String fid = getString(data, key, sourceInfo, true);
+		if (fid == null) {
+			return Optional.absent();
+		}
+		try {
+			return Optional.of(new FilterID(fid));
+		} catch (IllegalParameterException e) {
+			throw new LoadInputParseException("Illegal filter ID: " + fid, e);
+		} catch (MissingParameterException e) {
+			throw new RuntimeException("this should be impossible", e);
+		}
+	}
+	
 	private DataSourceID getDataSourceID(
 			final Map<String, Object> data,
 			final String key,
-			final String sourceInfo) throws LoadInputParseException {
+			final String sourceInfo)
+			throws LoadInputParseException {
 		final String dsid = getString(data, key, sourceInfo, false);
 		try {
 			return new DataSourceID(dsid);
@@ -134,6 +165,7 @@ public class NamespaceLoadInfo {
 				.withNullableDataSourceID(dataSourceID)
 				.withNullableSourceDatabaseID(sourceDatabaseID.orNull())
 				.withNullableDescription(description.orNull())
+				.withNullableFilterID(filterID.orNull())
 				.build();
 	}
 	
@@ -143,6 +175,7 @@ public class NamespaceLoadInfo {
 		int result = 1;
 		result = prime * result + ((dataSourceID == null) ? 0 : dataSourceID.hashCode());
 		result = prime * result + ((description == null) ? 0 : description.hashCode());
+		result = prime * result + ((filterID == null) ? 0 : filterID.hashCode());
 		result = prime * result + ((id == null) ? 0 : id.hashCode());
 		result = prime * result + ((sourceDatabaseID == null) ? 0 : sourceDatabaseID.hashCode());
 		return result;
@@ -172,6 +205,13 @@ public class NamespaceLoadInfo {
 				return false;
 			}
 		} else if (!description.equals(other.description)) {
+			return false;
+		}
+		if (filterID == null) {
+			if (other.filterID != null) {
+				return false;
+			}
+		} else if (!filterID.equals(other.filterID)) {
 			return false;
 		}
 		if (id == null) {

@@ -20,6 +20,7 @@ import nl.jqno.equalsverifier.EqualsVerifier;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
+import us.kbase.assemblyhomology.core.NamespaceView;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
@@ -91,7 +92,7 @@ public class SequenceMatchesTest {
 		final MinHashDBLocation loc = mock(MinHashDBLocation.class);
 		final SequenceMatches sm = new SequenceMatches(
 				new HashSet<>(Arrays.asList(
-						Namespace.getBuilder(new NamespaceID("foo"),
+						new NamespaceView(Namespace.getBuilder(new NamespaceID("foo"),
 								new MinHashSketchDatabase(
 										new MinHashSketchDBName("foo"),
 										new MinHashImplementationName("mash"),
@@ -100,8 +101,8 @@ public class SequenceMatchesTest {
 										42),
 								new LoadID("baz"),
 								Instant.ofEpochMilli(10000))
-								.build(),
-						Namespace.getBuilder(new NamespaceID("bar"),
+								.build()),
+						new NamespaceView(Namespace.getBuilder(new NamespaceID("bar"),
 								new MinHashSketchDatabase(
 										new MinHashSketchDBName("bar"),
 										new MinHashImplementationName("mash"),
@@ -110,7 +111,7 @@ public class SequenceMatchesTest {
 										42),
 								new LoadID("bat"),
 								Instant.ofEpochMilli(20000))
-								.build()
+								.build())
 						)),
 				new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
@@ -128,8 +129,8 @@ public class SequenceMatchesTest {
 						),
 				set("warn1", "warn2"));
 		
-		final Set<Namespace> expectedNS = new HashSet<>(Arrays.asList(
-				Namespace.getBuilder(new NamespaceID("foo"),
+		final Set<NamespaceView> expectedNS = new HashSet<>(Arrays.asList(
+				new NamespaceView(Namespace.getBuilder(new NamespaceID("foo"),
 						new MinHashSketchDatabase(
 								new MinHashSketchDBName("foo"),
 								new MinHashImplementationName("mash"),
@@ -138,8 +139,8 @@ public class SequenceMatchesTest {
 								42),
 						new LoadID("baz"),
 						Instant.ofEpochMilli(10000))
-						.build(),
-				Namespace.getBuilder(new NamespaceID("bar"),
+						.build()),
+				new NamespaceView(Namespace.getBuilder(new NamespaceID("bar"),
 						new MinHashSketchDatabase(
 								new MinHashSketchDBName("bar"),
 								new MinHashImplementationName("mash"),
@@ -148,7 +149,7 @@ public class SequenceMatchesTest {
 								42),
 						new LoadID("bat"),
 						Instant.ofEpochMilli(20000))
-						.build()
+						.build())
 				));
 		
 		final List<SequenceDistanceAndMetadata> expectedDist = Arrays.asList(
@@ -174,7 +175,7 @@ public class SequenceMatchesTest {
 	
 	@Test
 	public void seqMatchConstructFail() throws Exception {
-		final Namespace ns = Namespace.getBuilder(new NamespaceID("foo"),
+		final NamespaceView ns = new NamespaceView(Namespace.getBuilder(new NamespaceID("foo"),
 				new MinHashSketchDatabase(
 						new MinHashSketchDBName("foo"),
 						new MinHashImplementationName("mash"),
@@ -183,7 +184,7 @@ public class SequenceMatchesTest {
 						42),
 				new LoadID("baz"),
 				Instant.ofEpochMilli(10000))
-				.build();
+				.build());
 		
 		final SequenceDistanceAndMetadata sm = new SequenceDistanceAndMetadata(
 				new NamespaceID("foo"),
@@ -191,7 +192,7 @@ public class SequenceMatchesTest {
 				SequenceMetadata.getBuilder(
 						"sid", "source", Instant.ofEpochMilli(10000)).build());
 		
-		final Set<Namespace> nss = new HashSet<>(Arrays.asList(ns));
+		final Set<NamespaceView> nss = new HashSet<>(Arrays.asList(ns));
 		final MinHashImplementationInformation ii = new MinHashImplementationInformation(
 				new MinHashImplementationName("mash"), "2.0", Paths.get("msh"));
 		final List<SequenceDistanceAndMetadata> d = Arrays.asList(sm);
@@ -215,7 +216,7 @@ public class SequenceMatchesTest {
 	}
 	
 	private void failSeqMatchConstruct(
-			final Set<Namespace> namespaces,
+			final Set<NamespaceView> namespaces,
 			final MinHashImplementationInformation implementationInformation,
 			final List<SequenceDistanceAndMetadata> distances,
 			final Set<String> warnings,
@@ -231,7 +232,7 @@ public class SequenceMatchesTest {
 	@Test
 	public void immutableInput() throws Exception {
 		final MinHashDBLocation loc = mock(MinHashDBLocation.class);
-		final Namespace ns1 = Namespace.getBuilder(new NamespaceID("foo"),
+		final NamespaceView ns1 = new NamespaceView(Namespace.getBuilder(new NamespaceID("foo"),
 				new MinHashSketchDatabase(
 						new MinHashSketchDBName("foo"),
 						new MinHashImplementationName("mash"),
@@ -240,9 +241,9 @@ public class SequenceMatchesTest {
 						42),
 				new LoadID("baz"),
 				Instant.ofEpochMilli(10000))
-				.build();
-		final HashSet<Namespace> namespaces = new HashSet<>(Arrays.asList(ns1));
-		final Namespace ns2 = Namespace.getBuilder(new NamespaceID("bar"),
+				.build());
+		final HashSet<NamespaceView> namespaces = new HashSet<>(Arrays.asList(ns1));
+		final NamespaceView ns2 = new NamespaceView(Namespace.getBuilder(new NamespaceID("bar"),
 				new MinHashSketchDatabase(
 						new MinHashSketchDBName("bar"),
 						new MinHashImplementationName("mash"),
@@ -251,7 +252,7 @@ public class SequenceMatchesTest {
 						42),
 				new LoadID("bat"),
 				Instant.ofEpochMilli(20000))
-				.build();
+				.build());
 		
 		final List<SequenceDistanceAndMetadata> dists = new LinkedList<>();
 		final SequenceDistanceAndMetadata dist1 = new SequenceDistanceAndMetadata(
@@ -295,7 +296,7 @@ public class SequenceMatchesTest {
 		
 		final SequenceMatches sm = new SequenceMatches(
 				new HashSet<>(Arrays.asList(
-						Namespace.getBuilder(new NamespaceID("foo"),
+						new NamespaceView(Namespace.getBuilder(new NamespaceID("foo"),
 								new MinHashSketchDatabase(
 										new MinHashSketchDBName("foo"),
 										new MinHashImplementationName("mash"),
@@ -304,7 +305,7 @@ public class SequenceMatchesTest {
 										42),
 								new LoadID("baz"),
 								Instant.ofEpochMilli(10000))
-								.build())),
+								.build()))),
 				new MinHashImplementationInformation(
 						new MinHashImplementationName("mash"), "2.0", Paths.get("msh")),
 				Arrays.asList(
@@ -317,7 +318,7 @@ public class SequenceMatchesTest {
 		
 		try {
 			sm.getNamespaces().add(
-					Namespace.getBuilder(
+					new NamespaceView(Namespace.getBuilder(
 							new NamespaceID("bar"),
 							new MinHashSketchDatabase(
 									new MinHashSketchDBName("bar"),
@@ -327,7 +328,7 @@ public class SequenceMatchesTest {
 									42),
 							new LoadID("bat"),
 							Instant.ofEpochMilli(20000))
-							.build());
+							.build()));
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, new UnsupportedOperationException());

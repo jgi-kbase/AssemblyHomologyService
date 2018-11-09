@@ -1,15 +1,22 @@
 package us.kbase.test.assemblyhomology.util;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Map;
 
 import org.junit.Test;
 
+import com.google.common.collect.ImmutableMap;
+
+import us.kbase.assemblyhomology.config.AssemblyHomologyConfigurationException;
+import us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.util.Util;
@@ -45,6 +52,7 @@ public class UtilTest {
 	
 	@Test
 	public void checkString() throws Exception {
+		Util.checkString("foo", "bar");
 		Util.checkString(TestCommon.LONG1001, "name", 0);
 		Util.checkString("ok", "name", 2);
 		Util.checkString(" \n  ok   \t", "name", 2);
@@ -52,6 +60,8 @@ public class UtilTest {
 	
 	@Test
 	public void checkStringFailMissingString() throws Exception {
+		failCheckString(null, "foo", new MissingParameterException("foo"));
+		failCheckString("    \n \t  ", "foo", new MissingParameterException("foo"));
 		failCheckString(null, "foo", 10, new MissingParameterException("foo"));
 		failCheckString("    \n \t  ", "foo", 10, new MissingParameterException("foo"));
 	}
@@ -69,6 +79,18 @@ public class UtilTest {
 		Util.checkString(s, "foo", 4);
 		failCheckString(s, "foo", 3,
 				new IllegalParameterException("foo size greater than limit 3"));
+	}
+	
+	private void failCheckString(
+			final String s,
+			final String name,
+			final Exception e) {
+		try {
+			Util.checkString(s, name);
+			fail("check string failed");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, e);
+		}
 	}
 	
 	private void failCheckString(
@@ -143,6 +165,112 @@ public class UtilTest {
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);
+		}
+	}
+	
+	@Test
+	public void loadClassWithInterface() throws Exception {
+		MinHashDistanceFilterFactory fac = Util.loadClassWithInterface(
+				LoadClassTestClass.class.getName(),
+				MinHashDistanceFilterFactory.class,
+				null);
+		assertThat("incorrect class loaded", fac, instanceOf(LoadClassTestClass.class));
+		assertThat("incorrect args", ((LoadClassTestClass)fac).config, nullValue());
+		
+		fac = Util.loadClassWithInterface(
+				LoadClassTestClass.class.getName(),
+				MinHashDistanceFilterFactory.class,
+				ImmutableMap.of("foo", "bar"));
+		
+		assertThat("incorrect class loaded", fac, instanceOf(LoadClassTestClass.class));
+		assertThat("incorrect args", ((LoadClassTestClass)fac).config,
+				is(ImmutableMap.of("foo", "bar")));
+	}
+	
+	@Test
+	public void loadClassWithInterfaceFailNoSuchClass() throws Exception {
+		failLoadClassWithInterface(
+				LoadClassTestClass.class.getName() + "a",
+				MinHashDistanceFilterFactory.class,
+				null,
+				new AssemblyHomologyConfigurationException("Cannot load class " +
+						"us.kbase.test.assemblyhomology.util.LoadClassTestClassa: " +
+						"us.kbase.test.assemblyhomology.util.LoadClassTestClassa"));
+	}
+	
+	@Test
+	public void loadClassWithInterfaceFailIncorrectInterface() throws Exception {
+		failLoadClassWithInterface(
+				Map.class.getName(),
+				MinHashDistanceFilterFactory.class,
+				null,
+				new AssemblyHomologyConfigurationException(
+						"Module java.util.Map must implement " +
+						"us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory interface"));
+	}
+	
+	@Test
+	public void loadClassWithInterfaceFailMissingConstructor() throws Exception {
+		failLoadClassWithInterface(
+				LoadClassTestClassMissingConstructor.class.getName(),
+				MinHashDistanceFilterFactory.class,
+				null,
+				new AssemblyHomologyConfigurationException(
+						"Module us.kbase.test.assemblyhomology.util." +
+						"LoadClassTestClassMissingConstructor could not be instantiated due to " +
+						"missing or inaccessible constructor: us.kbase.test.assemblyhomology." +
+						"util.LoadClassTestClassMissingConstructor.<init>(java.util.Map)"));
+	}
+	
+	@Test
+	public void loadClassWithInterfaceFailIncorrectGeneric() throws Exception {
+		failLoadClassWithInterface(
+				LoadClassTestClassIllegalConstructor.class.getName(),
+				MinHashDistanceFilterFactory.class,
+				ImmutableMap.of("foo", "bar"),
+				new AssemblyHomologyConfigurationException(
+						"Module us.kbase.test.assemblyhomology.util." +
+						"LoadClassTestClassIllegalConstructor could not be instantiated: " +
+						"java.lang.String cannot be cast to java.lang.Long"));
+	}
+	
+	@Test
+	public void loadClassWithInterfaceFailAbstractClass() throws Exception {
+		failLoadClassWithInterface(
+				LoadClassTestAbstractClass.class.getName(),
+				MinHashDistanceFilterFactory.class,
+				null,
+				new AssemblyHomologyConfigurationException(
+						// crappy that java doesn't provide any more info with the instantiation
+						// exception, but this is a pathological case, so ok for now
+						"Module us.kbase.test.assemblyhomology.util." +
+						"LoadClassTestAbstractClass could not be instantiated: null"));
+	}
+	
+	@Test
+	public void loadClassWithInterfaceFailPrivateConstructor() throws Exception {
+		failLoadClassWithInterface(
+				LoadClassTestClassPrivateConstructor.class.getName(),
+				MinHashDistanceFilterFactory.class,
+				null,
+				new AssemblyHomologyConfigurationException(
+						"Module us.kbase.test.assemblyhomology.util." +
+						"LoadClassTestClassPrivateConstructor could not be instantiated due to " +
+						"missing or inaccessible constructor: us.kbase.test.assemblyhomology." +
+						"util.LoadClassTestClassPrivateConstructor.<init>(java.util.Map)"));
+	}
+	
+	private void failLoadClassWithInterface(
+			final String className,
+			final Class<?> interfce,
+			final Map<String, String> arg,
+			final Exception e)
+			throws Exception {
+		try {
+			Util.loadClassWithInterface(className, interfce, arg);
+			fail("expected exception");
+		} catch (Exception got) {
+			TestCommon.assertExceptionCorrect(got, e);
 		}
 	}
 }

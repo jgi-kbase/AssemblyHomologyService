@@ -104,6 +104,6 @@ public interface AssemblyHomologyStorage {
 	 * 
 	 * @param namespaceID the namespaceID of the namespace to delete.
 	 */
-	void deleteNamespace(NamespaceID namespace);
+	void deleteNamespace(NamespaceID namespaceID);
 	
 }

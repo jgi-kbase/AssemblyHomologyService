@@ -37,7 +37,7 @@ Apache Ant (http://ant.apache.org/)
 MongoDB 2.6+ (https://www.mongodb.com/)  
 Jetty 9.3+ (http://www.eclipse.org/jetty/download.html)
     (see jetty-config.md for version used for testing)  
-This repo (git clone https://github.com/kbaseIncubator/AssemblyHomologyService)  
+This repo (git clone https://github.com/jgi-kbase/AssemblyHomologyService)  
 The jars repo (git clone https://github.com/kbase/jars)  
 The two repos above need to be in the same parent folder.
 
@@ -81,13 +81,14 @@ and fill it in appropriately.
 
 ### Namespace YAML file
 
-The namespace YAML file contains 4 keys in a top level map:
+The namespace YAML file contains up to 5 keys in a top level map:
 
 ```
 id: mynamespace
 datasource: KBase
 sourcedatabase: CI Refdata
 description: some reference data
+filterid: kbaseprod
 ```
 
 `id` is the id of the namespace. This is an arbitrary string consisting of ASCII alphanumeric
@@ -100,6 +101,9 @@ which the sketch database was generated. If `sourcedatabase` is omitted the valu
 is used.
 
 `description` (optional) is a free text description of the namespace.
+
+`filterid` (optional) is the ID of the filter to associate with the namespace. The nature of
+the ID depends on the filter implementation. For more information, see Filters below.
 
 ### Sequence metadata file
 
@@ -154,6 +158,73 @@ The AHS expects that the sketch database will exist at the specified path once t
 complete, so place the sketch database in a permanent location. The other files can be deleted
 once the load is complete (although it may be advisable to retain them for reloads).
 
+## Filters
+
+A filter can be optionally attached to a namespace on load by specifying the filter ID in the
+namespace YAML file. The filter ID depends on the filter implementation - consult the documentation
+of the filter to determine the appropriate ID. The filter must be configured and enabled in
+the `deploy.cfg` file used by the loader and the service.
+
+A filter receives Minhash distances from the Minhash implementation and chooses, based on the
+filter implementation, whether to pass them on to the rest of the system for further processing and
+eventual presentation to the user.
+
+If a user provides an authentication token to the service when requesting a Minhash search
+(see API below), the token is passed to any filters attached to namespaces involved in that
+search. Filters that make use of the token are expected to provide a name for their
+authentication source. For a single search, all the filters activated in the search must share
+the same authentication source. It is permissible to mix filters that have no authentication
+source with filters with an authentication source. If a filter requires a token and no token
+is provided, it will throw an error.
+
+If a filter is specified for a namespace, on load the filter also validates that the sequence IDs
+in the sketch database are acceptable. This validation is again implementation specific.
+
+### KBase Authenticated Filter
+
+The KBase authenticated filter accepts a KBase authentication token and filters out any distances
+for sequences for which the user does not have access. If no token is supplied, it filters out all
+distances except those for public sequences.
+
+The filter expects the sketch database IDs to have the format `W_O_V`, where `W`is the integer
+workspace ID, `O` is the integer object ID, and `V` is the version. The filter checks `W` is
+contained in the set of workspace IDs to which the user has read access (either via public
+workspaces or specific read grants), and if not, does not pass on the distance for that sequence.
+Note that on load, the filter does not contact the workspace to validate the IDs; it validates
+the format only.
+
+The filter ID for the filter is either `kbaseprod`, `kbaseappdev`, `kbasenext`, or `kbaseci`
+depending on how the filter is configured in the `deploy.cfg` file. The authentication source
+for each filter is identical to the filter ID.
+
+Only one filter per KBase environment (prod, appdev, next, or ci) can be configured.
+
+The `deploy.cfg.example` file contains an example configuration for the KBase
+filter, but the filter is not enabled by default.
+
+### Implementing new filters
+
+To add a new filter to the system:
+
+* Implement `us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory`.
+  * See `us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilterFactory` for an
+    example.
+* The factory must have a constructor that accepts a `Map<String, String>` as its only
+  argument. The configuration supplied in the `deploy.cfg` file will be provided to the filter
+  in this map.
+* Be careful when specifying the authsource name. If filters already exist for the
+  authentication source, follow their conventions. Using an incorrect name means that either
+  * Users will encounter errors as their tokens are sent to the wrong authentication
+    source or
+  * Users will be unable to search namespaces from the same authentication source
+    at the same time as their authsource names are different.
+* Provide documentation regarding how to configure the filter, the ID of the filter, and
+  the authsource of the filter.
+
+Note that filters may buffer Minhash distances for batched processing if desired. If so the
+`MinHashDistanceFilter.flush()` method must be implemented and must complete all pending
+processing and either discard or pass on all distances to the collector.
+
 ## Start service
 
 ensure `mash` is available on the system path  
@@ -185,7 +256,12 @@ List all namespaces.
 
 Returns information about a specific namespace.
 
-`POST /namespace/<namespace id,namespace id,...>/search[?notstrict&max=<integer>]`
+```
+HEADER (optional):
+Authorization: <token>
+
+POST /namespace/<namespace id,namespace id,...>/search[?notstrict&max=<integer>]
+```
 
 Performs a search with the sketch database provided in the `POST` body against the sketch
 databases associated with the given namespaces. `curl -T` is useful for this:  
@@ -197,6 +273,18 @@ Query parameters:
   warnings instead. Any other parameter mismatches will result in an error.
 * `max` - defines the maximum number of returned results. If missing, < 1, or > 100, `max` is
   set to 10.
+
+Some namespaces may allow, or require, an authorization token if the filter they're associated
+with allows or requires one. If a token is allowed the `authsource` field in the namespace
+listing will be populated with the name of the authentication source from which a token is
+expected (for example, kbaseprod, kbaseci, jgi, etc.). In this case the user can provide the
+token in the `Authorization` header. To determine whether the token is required or merely
+allowed consult the server administrator or this documentation for filters provided with the
+core system.  
+TODO: add a field noting this in the namespace data structure?
+
+Authorization sources may not be mixed together in a single search, but namespaces without an
+authorization source specified may be searched at the same time as namespaces with one.
 
 ## Developer notes
 
@@ -233,6 +321,7 @@ html escaped or not.
 
 In `us.kbase.assemblyhomology.core.exceptions`:  
 `AssemblyHomologyException` and subclasses other than the below - 400  
+`AuthorizationException` and subclasses - 401  
 `NoDataException` and subclasses - 404  
 
 `JsonMappingException` (from [Jackson](https://github.com/FasterXML/jackson)) - 400  
@@ -241,12 +330,8 @@ Anything else is mapped to 500.
 
 ## TODO
 
-* Reaper thread that finds sequence metadata with a namespace or load id that does not exist,
-  is older than some time period, and deletes it. E.g. cleans up unfinished loads and reloads
-  that overwrite some, but not all, of the prior load's data.
 * Search namespaces (no free text search)
 * HTTP2 support
-* Private data (KBase, JGI)
 * (Semi-?) realtime data updates
   * May be scheduled batch updates rather than near instantaneous
 * Other implementations (SourMash, FastANI)

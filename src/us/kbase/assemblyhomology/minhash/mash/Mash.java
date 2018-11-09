@@ -1,7 +1,6 @@
 package us.kbase.assemblyhomology.minhash.mash;
 
 import static com.google.common.base.Preconditions.checkNotNull;
-import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -15,6 +14,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -24,7 +25,7 @@ import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
 import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashDistance;
-import us.kbase.assemblyhomology.minhash.MinHashDistanceSet;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashImplementation;
@@ -32,10 +33,10 @@ import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
-import us.kbase.assemblyhomology.util.CappedTreeSet;
 
 /** A wrapper for the mash implementation of the MinHash algorithm. Expects the mash binary
  * to be available on the command line.
@@ -72,13 +73,20 @@ public class Mash implements MinHashImplementation {
 	
 	private final MinHashImplementationInformation info;
 	private final Path tempFileDirectory;
+	private final int mashTimeoutSec;
 	
 	/** Create a new mash wrapper.
 	 * @param tempFileDirectory a directory in which temporary files may be stored.
+	 * @param mashTimeoutSec the timeout for the mash process in seconds.
 	 * @throws MinHashInitException if the wrapper could not be initialized.
 	 */
-	public Mash(final Path tempFileDirectory) throws MinHashInitException {
+	public Mash(final Path tempFileDirectory, final int mashTimeoutSec)
+			throws MinHashInitException {
 		checkNotNull(tempFileDirectory, "tempFileDirectory");
+		if (mashTimeoutSec < 1) {
+			throw new IllegalArgumentException("mashTimeout must be > 0");
+		}
+		this.mashTimeoutSec = mashTimeoutSec;
 		this.tempFileDirectory = tempFileDirectory;
 		try {
 			Files.createDirectories(tempFileDirectory);
@@ -96,6 +104,13 @@ public class Mash implements MinHashImplementation {
 		return tempFileDirectory;
 	}
 
+	/** Get the timeout for the mash process.
+	 * @return the timeout in seconds.
+	 */
+	public int getMashTimeoutSec() {
+		return mashTimeoutSec;
+	}
+	
 	private MinHashImplementationInformation getInfo() throws MinHashInitException {
 		try {
 			final String version = getVersion(getMashOutput("-h"));
@@ -126,7 +141,7 @@ public class Mash implements MinHashImplementation {
 				pb.redirectOutput(outputPath.toFile());
 			}
 			final Process mash = pb.start();
-			if (!mash.waitFor(30L, TimeUnit.SECONDS)) {
+			if (!mash.waitFor(mashTimeoutSec, TimeUnit.SECONDS)) {
 				// not sure how to test this
 				throw new MinHashException(String.format(
 						"Timed out waiting for %s to run", MASH.getName()));
@@ -202,16 +217,20 @@ public class Mash implements MinHashImplementation {
 		checkNotNull(db, "db");
 		checkFileExtension(db.getLocation());
 		final List<String> ids = new LinkedList<>();
-		processMashOutput(
-				//TODO CODE make less brittle
-				l -> ids.add(l.split("\\s+")[2].trim()),
-				true,
-				"info", "-t", db.getLocation().getPathToFile().get().toString());
+		try {
+			processMashOutput(
+					//TODO CODE make less brittle
+					l -> ids.add(l.split("\\s+")[2].trim()),
+					true,
+					"info", "-t", db.getLocation().getPathToFile().get().toString());
+		} catch (MinHashDistanceFilterException e) {
+			throw new RuntimeException("Congrats, this should be impossible", e);
+		}
 		return ids;
 	}
 	
 	private interface LineCollector {
-		void collect(String line);
+		void collect(String line) throws MinHashDistanceFilterException;
 	}
 	
 	// use for large output, creates a temp file
@@ -219,7 +238,7 @@ public class Mash implements MinHashImplementation {
 			final LineCollector lineCollector,
 			final boolean skipHeader,
 			final String... command)
-			throws MinHashException {
+			throws MinHashException, MinHashDistanceFilterException {
 		Path tempFile = null;
 		try {
 			tempFile = Files.createTempFile(tempFileDirectory, "mash_output", ".tmp");
@@ -250,48 +269,62 @@ public class Mash implements MinHashImplementation {
 	
 	private static class DistanceCollector implements LineCollector {
 		
-		private final CappedTreeSet<MinHashDistance> dists;
-		private MinHashSketchDBName dbname;
+		private final MinHashDistanceFilter distFilter;
+		private final MinHashSketchDBName dbname;
 		
-		public DistanceCollector(final int size) {
-			dists = new CappedTreeSet<>(size, true);
+		public DistanceCollector(
+				final MinHashDistanceFilter distFilter,
+				final MinHashSketchDBName dbname) {
+			this.distFilter = distFilter;
+			this.dbname = dbname;
 		}
 
 		@Override
-		public void collect(final String line) {
+		public void collect(final String line) throws MinHashDistanceFilterException {
 			//TODO CODE nasty & brittle
 			final String[] sl = line.trim().split("\\s+");
 			final String id = sl[0].trim();
 			final double distance = Double.parseDouble(sl[2].trim());
-			dists.add(new MinHashDistance(dbname, id, distance));
+			distFilter.accept(new MinHashDistance(dbname, id, distance));
 		}
 	}
 	
 	@Override
-	public MinHashDistanceSet computeDistance(
+	public List<String> computeDistance(
 			final MinHashSketchDatabase query,
-			final Collection<MinHashSketchDatabase> references,
-			final int maxReturnCount,
+			final Map<MinHashSketchDatabase, MinHashDistanceFilter> references,
 			final boolean strict)
-			throws MinHashException, NotASketchException, IncompatibleSketchesException {
+			throws MinHashException, NotASketchException, IncompatibleSketchesException,
+				MinHashDistanceFilterException {
 		checkNotNull(query, "query");
-		checkNoNullsInCollection(references, "references");
+		checkNoNulls(references);
 		if (query.getSequenceCount() != 1) {
 			// may want to relax this, but that'll require changing a bunch of stuff
 			throw new IllegalArgumentException("Only 1 query sequence is allowed");
 		}
-		if (maxReturnCount < 1) {
-			throw new IllegalArgumentException("maxReturnCount must be > 0");
-		}
-		final List<String> warnings = checkQueryable(query, references, strict);
-		final DistanceCollector distanceProcessor = new DistanceCollector(maxReturnCount);
-		for (final MinHashSketchDatabase ref: references) {
-			distanceProcessor.dbname = ref.getName();
+		final List<String> warnings = checkQueryable(query, references.keySet(), strict);
+		for (final Entry<MinHashSketchDatabase, MinHashDistanceFilter> r: references.entrySet()) {
+			final MinHashSketchDatabase ref = r.getKey();
+			final DistanceCollector distanceProcessor = new DistanceCollector(
+					r.getValue(), ref.getName());
 			processMashOutput(distanceProcessor, false, "dist", "-d", "0.5",
 						ref.getLocation().getPathToFile().get().toString(),
 						query.getLocation().getPathToFile().get().toString());
+			r.getValue().flush();
 		}
-		return new MinHashDistanceSet(distanceProcessor.dists.toTreeSet(), warnings);
+		return warnings;
+	}
+
+	private void checkNoNulls(final Map<MinHashSketchDatabase, MinHashDistanceFilter> references) {
+		checkNotNull(references, "references");
+		for (final Entry<MinHashSketchDatabase, MinHashDistanceFilter> e: references.entrySet()) {
+			if (e.getKey() == null) {
+				throw new NullPointerException("Null key in references map");
+			}
+			if (e.getValue() == null) {
+				throw new NullPointerException("Null value in references map");
+			}
+		}
 	}
 	
 	private List<String> checkQueryable(

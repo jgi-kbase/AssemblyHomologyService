@@ -9,6 +9,7 @@ import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
+import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 
 /** A namespace containing a MinHash sketch database. A namespace contains the sketch database
@@ -24,8 +25,9 @@ public class Namespace {
 	private final NamespaceID id;
 	private final MinHashSketchDatabase sketchDatabase;
 	private final LoadID loadID;
+	private final Optional<FilterID> filterID;
 	private final DataSourceID dataSourceID;
-	private final Instant creation;
+	private final Instant modification;
 	private final String sourceDatabaseID;
 	private final Optional<String> description;
 
@@ -33,15 +35,17 @@ public class Namespace {
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
+			final Optional<FilterID> filterID,
 			final DataSourceID dataSourceID,
-			final Instant creation,
+			final Instant modification,
 			final String sourceDatabaseID,
 			final String description) {
 		this.id = id;
 		this.sketchDatabase = sketchDatabase;
 		this.loadID = loadID;
+		this.filterID = filterID;
 		this.dataSourceID = dataSourceID;
-		this.creation = creation;
+		this.modification = modification;
 		this.sourceDatabaseID = sourceDatabaseID;
 		this.description = Optional.fromNullable(description);
 	}
@@ -68,6 +72,13 @@ public class Namespace {
 		return loadID;
 	}
 
+	/** Get the id for the {@link MinHashDistanceFilter} associated with this namespace, if any.
+	 * @return the filter ID or absent() if a default filter should be used.
+	 */
+	public Optional<FilterID> getFilterID() {
+		return filterID;
+	}
+	
 	/** Get the ID of the data's source - often an institution like JGI, EMBL, etc.
 	 * @return the data source ID.
 	 */
@@ -75,11 +86,11 @@ public class Namespace {
 		return dataSourceID;
 	}
 
-	/** Get the time this namespace was created.
-	 * @return the creation time.
+	/** Get the time this namespace was last modified.
+	 * @return the modification time.
 	 */
-	public Instant getCreation() {
-		return creation;
+	public Instant getModification() {
+		return modification;
 	}
 
 	/** Get the ID of the database within the data source where the data from which the
@@ -101,11 +112,12 @@ public class Namespace {
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + ((creation == null) ? 0 : creation.hashCode());
+		result = prime * result + ((filterID == null) ? 0 : filterID.hashCode());
 		result = prime * result + ((dataSourceID == null) ? 0 : dataSourceID.hashCode());
 		result = prime * result + ((description == null) ? 0 : description.hashCode());
 		result = prime * result + ((id == null) ? 0 : id.hashCode());
 		result = prime * result + ((loadID == null) ? 0 : loadID.hashCode());
+		result = prime * result + ((modification == null) ? 0 : modification.hashCode());
 		result = prime * result + ((sketchDatabase == null) ? 0 : sketchDatabase.hashCode());
 		result = prime * result + ((sourceDatabaseID == null) ? 0 : sourceDatabaseID.hashCode());
 		return result;
@@ -123,11 +135,11 @@ public class Namespace {
 			return false;
 		}
 		Namespace other = (Namespace) obj;
-		if (creation == null) {
-			if (other.creation != null) {
+		if (filterID == null) {
+			if (other.filterID != null) {
 				return false;
 			}
-		} else if (!creation.equals(other.creation)) {
+		} else if (!filterID.equals(other.filterID)) {
 			return false;
 		}
 		if (dataSourceID == null) {
@@ -158,6 +170,13 @@ public class Namespace {
 		} else if (!loadID.equals(other.loadID)) {
 			return false;
 		}
+		if (modification == null) {
+			if (other.modification != null) {
+				return false;
+			}
+		} else if (!modification.equals(other.modification)) {
+			return false;
+		}
 		if (sketchDatabase == null) {
 			if (other.sketchDatabase != null) {
 				return false;
@@ -179,15 +198,15 @@ public class Namespace {
 	 * @param id the ID of the namespace.
 	 * @param sketchDatabase the sketch database associated with the namespace.
 	 * @param loadID the load ID for the sketch database and associated data.
-	 * @param creation the creation time of the namespace.
+	 * @param modification the last modification time of the namespace.
 	 * @return a {@link Namespace} builder.
 	 */
 	public static Builder getBuilder(
 			final NamespaceID id,
 			final MinHashSketchDatabase sketchDatabase,
 			final LoadID loadID,
-			final Instant creation) {
-		return new Builder(id, sketchDatabase, loadID, creation);
+			final Instant modification) {
+		return new Builder(id, sketchDatabase, loadID, modification);
 	}
 	
 	/** A {@link Namespace} builder.
@@ -209,8 +228,9 @@ public class Namespace {
 		private final NamespaceID id;
 		private final MinHashSketchDatabase sketchDatabase;
 		private final LoadID loadID;
+		private final Instant modification;
+		private Optional<FilterID> filterID = Optional.absent();
 		private DataSourceID dataSourceID = DEFAULT_DS_ID;
-		private Instant creation;
 		private String sourceDatabaseID = DEFAULT;
 		private String description = null;
 
@@ -218,11 +238,11 @@ public class Namespace {
 				final NamespaceID id,
 				final MinHashSketchDatabase sketchDatabase,
 				final LoadID loadID,
-				final Instant creation) {
+				final Instant modification) {
 			checkNotNull(id, "id");
 			checkNotNull(sketchDatabase, "sketchDatabase");
 			checkNotNull(loadID, "loadID");
-			checkNotNull(creation, "creation");
+			checkNotNull(modification, "modification");
 			if (!id.getName().equals(sketchDatabase.getName().getName())) {
 				// code smell here. Think about this later.
 				throw new IllegalArgumentException("Namespace ID must equal sketch DB ID");
@@ -230,7 +250,20 @@ public class Namespace {
 			this.id = id;
 			this.sketchDatabase = sketchDatabase;
 			this.loadID = loadID;
-			this.creation = creation;
+			this.modification = modification;
+		}
+		
+		/** Add a filter ID. If the filter ID is null, the filter ID is removed.
+		 * @param filterID the ID of the filter associated with the namespace.
+		 * @return this builder.
+		 */
+		public Builder withNullableFilterID(final FilterID filterID) {
+			if (filterID != null) {
+				this.filterID = Optional.of(filterID);
+			} else {
+				this.filterID = Optional.absent();
+			}
+			return this;
 		}
 		
 		/** Add a data source ID. If the data source is null, the data source is reset to the
@@ -279,8 +312,8 @@ public class Namespace {
 		 * @return the new {@link Namespace}.
 		 */
 		public Namespace build() {
-			return new Namespace(id, sketchDatabase, loadID, dataSourceID, creation,
-					sourceDatabaseID, description);
+			return new Namespace(id, sketchDatabase, loadID, filterID, dataSourceID,
+					modification, sourceDatabaseID, description);
 		}
 	}
 }

@@ -1,5 +1,7 @@
 package us.kbase.assemblyhomology.service.api;
 
+import static us.kbase.assemblyhomology.util.Util.isNullOrEmpty;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -15,6 +17,7 @@ import java.util.stream.Collectors;
 import javax.inject.Inject;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.GET;
+import javax.ws.rs.HeaderParam;
 import javax.ws.rs.POST;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
@@ -26,11 +29,14 @@ import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
 import us.kbase.assemblyhomology.core.AssemblyHomology;
-import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
+import us.kbase.assemblyhomology.core.NamespaceView;
 import us.kbase.assemblyhomology.core.SequenceMatches;
 import us.kbase.assemblyhomology.core.SequenceMatches.SequenceDistanceAndMetadata;
+import us.kbase.assemblyhomology.core.Token;
+import us.kbase.assemblyhomology.core.exceptions.AuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
+import us.kbase.assemblyhomology.core.exceptions.IncompatibleAuthenticationException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleNamespacesException;
 import us.kbase.assemblyhomology.core.exceptions.IncompatibleSketchesException;
 import us.kbase.assemblyhomology.core.exceptions.InvalidSketchException;
@@ -39,7 +45,7 @@ import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationInformation;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
-import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 import us.kbase.assemblyhomology.service.Fields;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
 
@@ -92,14 +98,15 @@ public class Namespaces {
 		return fromNamespace(ah.getNamespace(new NamespaceID(namespace)));
 	}
 
-	private Map<String, Object> fromNamespace(final Namespace ns) {
-		final MinHashSketchDatabase db = ns.getSketchDatabase();
-		final MinHashParameters params = db.getParameterSet();
+	private Map<String, Object> fromNamespace(final NamespaceView ns) {
 		final Map<String, Object> ret = new HashMap<>();
+		final MinHashParameters params = ns.getParameterSet();
+		ret.put(Fields.NAMESPACE_AUTH_SOURCE, ns.getAuthsource().orNull());
 		ret.put(Fields.NAMESPACE_DESCRIPTION, ns.getDescription().orNull());
 		ret.put(Fields.NAMESPACE_ID, ns.getID().getName());
-		ret.put(Fields.NAMESPACE_IMPLEMENTATION, db.getImplementationName().getName());
-		ret.put(Fields.NAMESPACE_SEQ_COUNT, db.getSequenceCount());
+		ret.put(Fields.NAMESPACE_LASTMOD, ns.getModification().toEpochMilli());
+		ret.put(Fields.NAMESPACE_IMPLEMENTATION, ns.getImplementationName().getName());
+		ret.put(Fields.NAMESPACE_SEQ_COUNT, ns.getSequenceCount());
 		ret.put(Fields.NAMESPACE_KMER_SIZE, Arrays.asList(params.getKmerSize()));
 		ret.put(Fields.NAMESPACE_SCALING, params.getScaling().orNull());
 		ret.put(Fields.NAMESPACE_SKETCH_SIZE, params.getSketchSize().orNull());
@@ -129,24 +136,30 @@ public class Namespaces {
 	 * MinHash implementations.
 	 * @throws IllegalParameterException if one or more of the namespace IDs are illegal, or if
 	 * max is not an integer if provided.
+	 * @throws IncompatibleAuthenticationException if namespaces with different authentication
+	 * sources are requested.
+	 * @throws MinHashDistanceFilterException if a filter exception occurs.
+	 * @throws AuthenticationException if an authentication error occurs.
 	 */
 	@POST
 	@Produces(MediaType.APPLICATION_JSON)
 	@javax.ws.rs.Path(ServicePaths.NAMESPACE_SEARCH)
 	public Map<String, Object> searchNamespaces(
 			@Context HttpServletRequest request,
+			@HeaderParam("Authorization") final String auth,
 			@PathParam(ServicePaths.NAMESPACE_SELECT_PARAM) final String namespaces,
 			@QueryParam("notstrict") final String notStrict,
 			@QueryParam("max") final String max)
 			throws IOException, NoSuchNamespaceException, IncompatibleSketchesException,
 				MissingParameterException, AssemblyHomologyStorageException,
 				InvalidSketchException, IncompatibleNamespacesException,
-				IllegalParameterException { 
+				IllegalParameterException, IncompatibleAuthenticationException,
+				AuthenticationException, MinHashDistanceFilterException { 
 		final int maxReturn = getMaxReturn(max);
 		final boolean strict = notStrict == null;
-		final Set<Namespace> nss = ah.getNamespaces(getNamespaceIDs(namespaces));
+		final Set<NamespaceView> nss = ah.getNamespaces(getNamespaceIDs(namespaces));
 		final Set<MinHashImplementationName> impls = nss.stream().map(
-				n -> n.getSketchDatabase().getImplementationName()).collect(Collectors.toSet());
+				n -> n.getImplementationName()).collect(Collectors.toSet());
 		if (impls.size() != 1) {
 			throw new IncompatibleNamespacesException(
 					"Selected namespaces must have the same MinHash implementation");
@@ -165,7 +178,7 @@ public class Namespaces {
 			Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
 			res = ah.measureDistance(
 					nss.stream().map(n -> n.getID()).collect(Collectors.toSet()),
-					tempFile, maxReturn, strict);
+					tempFile, maxReturn, strict, getToken(auth));
 		} finally {
 			if (tempFile != null) {
 				Files.delete(tempFile);
@@ -182,6 +195,10 @@ public class Namespaces {
 				.map(d -> fromDistance(d))
 				.collect(Collectors.toList()));
 		return ret;
+	}
+
+	private Token getToken(final String auth) throws MissingParameterException {
+		return isNullOrEmpty(auth) ? null : new Token(auth);
 	}
 
 	private Set<NamespaceID> getNamespaceIDs(final String namespaces)

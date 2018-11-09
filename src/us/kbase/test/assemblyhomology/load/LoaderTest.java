@@ -5,6 +5,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static us.kbase.test.assemblyhomology.TestCommon.set;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.Test;
@@ -28,7 +30,9 @@ import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableMap;
 
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
+import us.kbase.assemblyhomology.core.MinHashDistanceFilterFactory;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
 import us.kbase.assemblyhomology.core.SequenceMetadata;
@@ -131,11 +135,11 @@ public class LoaderTest {
 				new NamespaceID("id1"), db, new LoadID("load 1"), Instant.ofEpochMilli(20000))
 				.withNullableDataSourceID(new DataSourceID("JGI"))
 				.build();
-		loadNamespace(nameSpaceYAML, loc, db, ns);
+		loadNamespace(nameSpaceYAML, loc, db, set(), ns);
 	}
 	
 	@Test
-	public void loadMaximallNamespace() throws Exception {
+	public void loadMaximalNamespace() throws Exception {
 		final String nameSpaceYAML =
 				"id: id1\ndatasource: JGI\nsourcedatabase: IMG\ndescription: desc";
 		final MinHashDBLocation loc = mock(MinHashDBLocation.class);
@@ -151,13 +155,43 @@ public class LoaderTest {
 				.withNullableDescription("desc")
 				.withNullableSourceDatabaseID("IMG")
 				.build();
-		loadNamespace(nameSpaceYAML, loc, db, ns);
+		loadNamespace(nameSpaceYAML, loc, db, set(), ns);
+	}
+	
+	@Test
+	public void loadNamespaceWithFilters() throws Exception {
+		final String nameSpaceYAML =
+				"id: id1\ndatasource: JGI\nsourcedatabase: IMG\nfilterid: factwo";
+		final MinHashDBLocation loc = mock(MinHashDBLocation.class);
+		final MinHashSketchDatabase db = new MinHashSketchDatabase(
+				new MinHashSketchDBName("id1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(3).withScaling(4).build(),
+				loc,
+				2);
+		final Namespace ns = Namespace.getBuilder(
+				new NamespaceID("id1"), db, new LoadID("load 1"), Instant.ofEpochMilli(20000))
+				.withNullableDataSourceID(new DataSourceID("JGI"))
+				.withNullableSourceDatabaseID("IMG")
+				.withNullableFilterID(new FilterID("factwo"))
+				.build();
+		
+		final MinHashDistanceFilterFactory fac1 = mock(MinHashDistanceFilterFactory.class);
+		when(fac1.getID()).thenReturn(new FilterID("facone"));
+		
+		final MinHashDistanceFilterFactory fac2 = mock(MinHashDistanceFilterFactory.class);
+		when(fac2.getID()).thenReturn(new FilterID("factwo"));
+		when(fac2.validateID("seq1")).thenReturn(true);
+		when(fac2.validateID("seq2")).thenReturn(true);
+		
+		loadNamespace(nameSpaceYAML, loc, db, set(fac1, fac2), ns);
 	}
 
 	private void loadNamespace(
 			final String nameSpaceYAML,
 			final MinHashDBLocation loc,
 			final MinHashSketchDatabase db,
+			final Set<MinHashDistanceFilterFactory> filters,
 			final Namespace ns)
 			throws Exception {
 		final TestSet ts = getTestClasses();
@@ -175,6 +209,7 @@ public class LoaderTest {
 				new LoadID("load 1"),
 				impl,
 				loc,
+				filters,
 				new StringRestreamable(nameSpaceYAML, "some file"),
 				toRes(Arrays.asList(
 						ImmutableMap.of(
@@ -241,6 +276,7 @@ public class LoaderTest {
 				new LoadID("load 1"),
 				impl,
 				loc,
+				set(),
 				new StringRestreamable("id: id1\ndatasource: JGI", "some file"),
 				toRes(seqIncJson, "some file"));
 		
@@ -295,6 +331,7 @@ public class LoaderTest {
 				new LoadID("load 1"),
 				impl,
 				loc,
+				set(),
 				new StringRestreamable("id: id1\ndatasource: JGI", "some file"),
 				toRes(seqIncJson, "some file"));
 		
@@ -340,14 +377,19 @@ public class LoaderTest {
 		final LoadID i = new LoadID("l");
 		final MinHashImplementation m = mock(MinHashImplementation.class);
 		final MinHashDBLocation d = mock(MinHashDBLocation.class);
+		final MinHashDistanceFilterFactory fac = mock(MinHashDistanceFilterFactory.class);
+		final Set<MinHashDistanceFilterFactory> f = set(fac);
 		final Restreamable n = mock(Restreamable.class);
 		final Restreamable s = mock(Restreamable.class);
 		
-		failLoad(l, null, m, d, n, s, new NullPointerException("loadID"));
-		failLoad(l, i, null, d, n, s, new NullPointerException("minhashImpl"));
-		failLoad(l, i, m, null, n, s, new NullPointerException("sketchDBlocation"));
-		failLoad(l, i, m, d, null, s, new NullPointerException("namespaceYAML"));
-		failLoad(l, i, m, d, n, null, new NullPointerException("sequenceMetaJSONLines"));
+		failLoad(l, null, m, d, f, n, s, new NullPointerException("loadID"));
+		failLoad(l, i, null, d, f, n, s, new NullPointerException("minhashImpl"));
+		failLoad(l, i, m, null, f, n, s, new NullPointerException("sketchDBlocation"));
+		failLoad(l, i, m, d, null, n, s, new NullPointerException("filters"));
+		failLoad(l, i, m, d, set(fac, null), n, s, new NullPointerException(
+				"Null item in collection filters"));
+		failLoad(l, i, m, d, f, null, s, new NullPointerException("namespaceYAML"));
+		failLoad(l, i, m, d, f, n, null, new NullPointerException("sequenceMetaJSONLines"));
 	}
 	
 	@Test
@@ -360,7 +402,7 @@ public class LoaderTest {
 		
 		final Restreamable nsYAML = new StringRestreamable("foo\nid: bar", " some file");
 		
-		failLoad(l, i, m, d, nsYAML, s, new LoadInputParseException(
+		failLoad(l, i, m, d, set(), nsYAML, s, new LoadInputParseException(
 				"Error parsing source  some file: class " +
 				"org.yaml.snakeyaml.scanner.ScannerException mapping values are not " +
 				"allowed here\n in 'reader', line 2, column 3:\n    id: bar\n      ^\n"));
@@ -390,7 +432,7 @@ public class LoaderTest {
 		
 		when(impl.getDatabase(new MinHashSketchDBName("id1"), loc)).thenReturn(db);
 		
-		failLoad(loader, loadID, impl, loc, nsYAML, seqJSON, new LoadInputParseException(
+		failLoad(loader, loadID, impl, loc, set(), nsYAML, seqJSON, new LoadInputParseException(
 				"Missing value at sourceid. Source: some other file line 3"));
 	}
 	
@@ -421,7 +463,7 @@ public class LoaderTest {
 		when(impl.getDatabase(new MinHashSketchDBName("id1"), loc)).thenReturn(db);
 		when(impl.getSketchIDs(db)).thenReturn(Arrays.asList("id2", "id6", "id7", "id8"));
 		
-		failLoad(loader, loadID, impl, loc, nsYAML, seqJSON, new LoadInputParseException(
+		failLoad(loader, loadID, impl, loc, set(), nsYAML, seqJSON, new LoadInputParseException(
 				"IDs in the sketch database and sequence metadata file don't match. " +
 				"For example, some other file has extra IDs [id1, id3, id4]"));
 	}
@@ -472,7 +514,69 @@ public class LoaderTest {
 				"id1", "id2","id5", "id6", "id7", "id8"));
 		when(loc.getPathToFile()).thenReturn(sourceInfo);
 		
-		failLoad(loader, loadID, impl, loc, nsYAML, seqJSON, expected);
+		failLoad(loader, loadID, impl, loc, set(), nsYAML, seqJSON, expected);
+	}
+	
+	@Test
+	public void loadFailMissingFilter() throws Exception {
+		final Loader loader = getTestClasses().loader;
+		final LoadID loadID = new LoadID("l");
+		final MinHashImplementation impl = mock(MinHashImplementation.class);
+		final MinHashDBLocation loc = mock(MinHashDBLocation.class);
+		
+		final MinHashDistanceFilterFactory fac = mock(MinHashDistanceFilterFactory.class);
+		when(fac.getID()).thenReturn(new FilterID("anotherfilter"));
+		
+		final Restreamable nsYAML = new StringRestreamable(
+				"id: id1\ndatasource: baz\nfilterid: afilter", "some file");
+		final Restreamable seqJSON = toRes(Arrays.asList(
+				ImmutableMap.of("id", "id1", "sourceid", "sid1")),
+				"some other file");
+		
+		final MinHashSketchDatabase db = new MinHashSketchDatabase(
+				new MinHashSketchDBName("id1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(3).withScaling(4).build(),
+				loc,
+				2);
+		
+		when(impl.getDatabase(new MinHashSketchDBName("id1"), loc)).thenReturn(db);
+		when(impl.getSketchIDs(db)).thenReturn(Arrays.asList("id1"));
+		
+		failLoad(loader, loadID, impl, loc, set(fac), nsYAML, seqJSON, new LoadInputParseException(
+				"Filter ID afilter is specified, but no filter with that ID is configured"));
+	}
+	
+	@Test
+	public void loadFailInvalidSequenceID() throws Exception {
+		final Loader loader = getTestClasses().loader;
+		final LoadID loadID = new LoadID("l");
+		final MinHashImplementation impl = mock(MinHashImplementation.class);
+		final MinHashDBLocation loc = mock(MinHashDBLocation.class);
+		final MinHashDistanceFilterFactory fac = mock(MinHashDistanceFilterFactory.class);
+		when(fac.getID()).thenReturn(new FilterID("fil"));
+		
+		final Restreamable nsYAML = new StringRestreamable(
+				"id: id1\ndatasource: baz\nfilterid: fil", "some file");
+		final Restreamable seqJSON = toRes(Arrays.asList(
+				ImmutableMap.of("id", "id1", "sourceid", "sid1"),
+				ImmutableMap.of("id", "id2", "sourceid", "sid2")),
+				"some other file");
+		
+		final MinHashSketchDatabase db = new MinHashSketchDatabase(
+				new MinHashSketchDBName("id1"),
+				new MinHashImplementationName("mash"),
+				MinHashParameters.getBuilder(3).withScaling(4).build(),
+				loc,
+				2);
+		
+		when(impl.getDatabase(new MinHashSketchDBName("id1"), loc)).thenReturn(db);
+		when(impl.getSketchIDs(db)).thenReturn(Arrays.asList("id1", "id2"));
+		when(fac.validateID("id1")).thenReturn(true);
+		when(fac.validateID("id2")).thenReturn(false);
+		
+		failLoad(loader, loadID, impl, loc, set(fac), nsYAML, seqJSON, new LoadInputParseException(
+				"Filter fil reports that sequence ID id2 is not valid"));
 	}
 	
 	private void failLoad(
@@ -480,12 +584,13 @@ public class LoaderTest {
 			final LoadID loadID,
 			final MinHashImplementation minhashImpl,
 			final MinHashDBLocation sketchDBlocation,
+			final Set<MinHashDistanceFilterFactory> filters,
 			final Restreamable namespaceYAML,
 			final Restreamable sequenceMetaJSONLines,
 			final Exception expected) {
 		try {
-			loader.load(
-					loadID, minhashImpl, sketchDBlocation, namespaceYAML, sequenceMetaJSONLines);
+			loader.load(loadID, minhashImpl, sketchDBlocation, filters, namespaceYAML,
+					sequenceMetaJSONLines);
 			fail("expected exception");
 		} catch (Exception got) {
 			TestCommon.assertExceptionCorrect(got, expected);

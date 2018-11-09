@@ -22,10 +22,15 @@ public class Fields {
 	public static final String NAMESPACE_ID = "id";
 	/** The load ID for the currently active load in the namespace. */
 	public static final String NAMESPACE_LOAD_ID = "load";
+	/** The ID of the filter to use with the sketch database in the namespace. */
+	public static final String NAMESPACE_FILTER_ID = "filid";
 	/** The ID of the source of the data in the namespace. */
 	public static final String NAMESPACE_DATASOURCE_ID = "dsid";
-	/** The date of creation of the namespace record in mongo. */
-	public static final String NAMESPACE_CREATION_DATE = "create";
+	/**
+	 * The date of last modification of the namespace record in mongo.
+	 * For backwards compatibility reasons the database key is create rather than modified.
+	 */
+	public static final String NAMESPACE_MODIFICATION_DATE = "create";
 	/** The ID of the database at the data source from which the data in the namespace came. */
 	public static final String NAMESPACE_DATABASE_ID = "dbid";
 	/** A free text description of the data in the namespace. */

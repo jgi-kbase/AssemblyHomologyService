@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import nl.jqno.equalsverifier.EqualsVerifier;
 import us.kbase.assemblyhomology.core.exceptions.IllegalParameterException;
 import us.kbase.assemblyhomology.core.exceptions.NoSuchNamespaceException;
+import us.kbase.assemblyhomology.core.exceptions.NoTokenProvidedException;
 import us.kbase.assemblyhomology.service.exceptions.ErrorMessage;
 import us.kbase.test.assemblyhomology.TestCommon;
 
@@ -43,6 +44,23 @@ public class ErrorMessageTest {
 		assertThat("incorrect message", em.getMessage(),
 				is("30001 Illegal input parameter: some message"));
 		assertThat("incorrect time", em.getTime(), is(10000L));
+	}
+	
+	@Test
+	public void constructWithAuthenticationExceptionNoCallID() {
+		final ErrorMessage em = new ErrorMessage(
+				new NoTokenProvidedException("token"),
+				null,
+				Instant.ofEpochMilli(20000));
+		
+		assertThat("incorrect app code", em.getAppcode(), is(10010));
+		assertThat("incorrect app err", em.getApperror(), is("No authentication token"));
+		assertThat("incorrect call id", em.getCallid(), is((String) null));
+		assertThat("incorrect http code", em.getHttpcode(), is(401));
+		assertThat("incorrect http status", em.getHttpstatus(), is("Unauthorized"));
+		assertThat("incorrect message", em.getMessage(),
+				is("10010 No authentication token: token"));
+		assertThat("incorrect time", em.getTime(), is(20000L));
 	}
 	
 	@Test

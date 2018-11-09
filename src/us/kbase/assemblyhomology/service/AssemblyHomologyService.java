@@ -56,7 +56,7 @@ public class AssemblyHomologyService extends ResourceConfig {
 
 	private void buildApp(
 			final AssemblyHomologyConfig c)
-			throws StorageInitException {
+			throws StorageInitException, AssemblyHomologyConfigurationException {
 		final AssemblyHomologyBuilder ab;
 		synchronized(this) {
 			if (mc == null) {

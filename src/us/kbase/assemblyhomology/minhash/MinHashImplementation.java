@@ -1,9 +1,10 @@
 package us.kbase.assemblyhomology.minhash;
 
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
+import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
 
@@ -37,20 +38,21 @@ public interface MinHashImplementation {
 	/** Compute distances between a query sequence and set of reference sequence sketch databases.
 	 * @param query the query sequence. The database must contain exactly one sequence.
 	 * @param references the set of reference databases against which the query will be
-	 * measured.
-	 * @param maxReturnCount the maximum number of distances to return. Must be > 0.
+	 * measured mapped to the filter to use to filter the results of the search against that
+	 * database.
 	 * @param strict if false, allow the query sequence sketch size to be larger than the
 	 * reference databases' sketch size. Otherwise throw an {@link IncompatibleSketchesException}.
-	 * @return the distances.
+	 * @return a list of warnings regarding the minhash query.
 	 * @throws MinHashException if the distances were unable to be calculated.
 	 * @throws IncompatibleSketchesException if the sketches have incompatible parameters.
 	 * @throws NotASketchException if one of the databases is invalid.
+	 * @throws MinHashDistanceFilterException if a filter encounters a problem.
 	 */
-	MinHashDistanceSet computeDistance(
+	List<String> computeDistance(
 			MinHashSketchDatabase query,
-			Collection<MinHashSketchDatabase> references,
-			int maxReturnCount,
+			Map<MinHashSketchDatabase, MinHashDistanceFilter> references,
 			boolean strict)
-			throws MinHashException, IncompatibleSketchesException, NotASketchException;
+			throws MinHashException, IncompatibleSketchesException, NotASketchException,
+				MinHashDistanceFilterException;
 	
 }

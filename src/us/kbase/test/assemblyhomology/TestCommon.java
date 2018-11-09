@@ -6,11 +6,14 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
+import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
+import java.net.HttpURLConnection;
 import java.net.ServerSocket;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -28,6 +31,8 @@ import org.bson.Document;
 import org.ini4j.Ini;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableMap;
 import com.mongodb.client.MongoDatabase;
 
 import ch.qos.logback.classic.Level;
@@ -41,6 +46,8 @@ public class TestCommon {
 
 	public static final String MONGOEXE = "test.mongo.exe";
 	public static final String MONGO_USE_WIRED_TIGER = "test.mongo.wired_tiger";
+	
+	public static final String JARS_PATH = "test.jars.dir";
 	
 	public static final String TEST_TEMP_DIR = "test.temp.dir";
 	public static final String KEEP_TEMP_DIR = "test.temp.dir.keep";
@@ -160,6 +167,10 @@ public class TestCommon {
 		return Paths.get(getTestProperty(MONGOEXE)).toAbsolutePath().normalize();
 	}
 
+	public static Path getJarsDir() {
+		return Paths.get(getTestProperty(JARS_PATH)).toAbsolutePath().normalize();
+	}
+
 	public static Path getTempDir() {
 		return Paths.get(getTestProperty(TEST_TEMP_DIR)).toAbsolutePath().normalize();
 	}
@@ -268,13 +279,20 @@ public class TestCommon {
 		
 		public final Level level;
 		public final String message;
-		public final Class<?> clazz;
+		public final String className;
 		public final Throwable ex;
 		
 		public LogEvent(final Level level, final String message, final Class<?> clazz) {
 			this.level = level;
 			this.message = message;
-			this.clazz = clazz;
+			this.className = clazz.getName();
+			ex = null;
+		}
+
+		public LogEvent(final Level level, final String message, final String className) {
+			this.level = level;
+			this.message = message;
+			this.className = className;
 			ex = null;
 		}
 		
@@ -285,7 +303,18 @@ public class TestCommon {
 				final Throwable ex) {
 			this.level = level;
 			this.message = message;
-			this.clazz = clazz;
+			this.className = clazz.getName();
+			this.ex = ex;
+		}
+		
+		public LogEvent(
+				final Level level,
+				final String message,
+				final String className,
+				final Throwable ex) {
+			this.level = level;
+			this.message = message;
+			this.className = className;
 			this.ex = ex;
 		}
 
@@ -296,8 +325,8 @@ public class TestCommon {
 			builder.append(level);
 			builder.append(", message=");
 			builder.append(message);
-			builder.append(", clazz=");
-			builder.append(clazz);
+			builder.append(", className=");
+			builder.append(className);
 			builder.append(", ex=");
 			builder.append(ex);
 			builder.append("]");
@@ -332,7 +361,7 @@ public class TestCommon {
 		for (final LogEvent le: expectedlogEvents) {
 			final ILoggingEvent e = iter.next();
 			assertThat("incorrect log level", e.getLevel(), is(le.level));
-			assertThat("incorrect originating class", e.getLoggerName(), is(le.clazz.getName()));
+			assertThat("incorrect originating class", e.getLoggerName(), is(le.className));
 			assertThat("incorrect message", e.getFormattedMessage(), is(le.message));
 			final IThrowableProxy err = e.getThrowableProxy();
 			if (err != null) {
@@ -350,5 +379,57 @@ public class TestCommon {
 			}
 		}
 	}
-	
+
+	public static void createAuthUser(
+			final URL authURL,
+			final String userName,
+			final String displayName)
+			throws Exception {
+		final URL target = new URL(authURL.toString() + "/api/V2/testmodeonly/user");
+		final HttpURLConnection conn = (HttpURLConnection) target.openConnection();
+		conn.setRequestMethod("POST");
+		conn.setRequestProperty("content-type", "application/json");
+		conn.setRequestProperty("accept", "application/json");
+		conn.setDoOutput(true);
+
+		final DataOutputStream writer = new DataOutputStream(conn.getOutputStream());
+		writer.writeBytes(new ObjectMapper().writeValueAsString(ImmutableMap.of(
+				"user", userName,
+				"display", displayName)));
+		writer.flush();
+		writer.close();
+
+		if (conn.getResponseCode() != 200) {
+			final String err = IOUtils.toString(conn.getErrorStream()); 
+			System.out.println(err);
+			throw new TestException(err.substring(1, 200));
+		}
+	}
+
+	public static String createLoginToken(final URL authURL, String user) throws Exception {
+		final URL target = new URL(authURL.toString() + "/api/V2/testmodeonly/token");
+		final HttpURLConnection conn = (HttpURLConnection) target.openConnection();
+		conn.setRequestMethod("POST");
+		conn.setRequestProperty("content-type", "application/json");
+		conn.setRequestProperty("accept", "application/json");
+		conn.setDoOutput(true);
+
+		final DataOutputStream writer = new DataOutputStream(conn.getOutputStream());
+		writer.writeBytes(new ObjectMapper().writeValueAsString(ImmutableMap.of(
+				"user", user,
+				"type", "Login")));
+		writer.flush();
+		writer.close();
+
+		if (conn.getResponseCode() != 200) {
+			final String err = IOUtils.toString(conn.getErrorStream()); 
+			System.out.println(err);
+			throw new TestException(err.substring(1, 200));
+		}
+		final String out = IOUtils.toString(conn.getInputStream());
+		@SuppressWarnings("unchecked")
+		final Map<String, Object> resp = new ObjectMapper().readValue(out, Map.class);
+		return (String) resp.get("token");
+	}
+
 }

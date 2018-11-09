@@ -5,19 +5,26 @@ import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 import static us.kbase.assemblyhomology.util.Util.checkNoNullsOrEmpties;
 
 import java.nio.file.Paths;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.bson.Document;
+import org.slf4j.LoggerFactory;
 
 import com.mongodb.ErrorCategory;
 import com.mongodb.MongoException;
@@ -30,6 +37,7 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.UpdateOptions;
 
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
@@ -103,17 +111,89 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		INDEXES.put(COL_CONFIG, cfg);
 	}
 	
+	private static final Duration REAPER_DATA_AGE = Duration.ofDays(7);
+	private static final long REAPER_FREQUENCY_SEC = 24 * 60 * 60;
+	
+	private ScheduledExecutorService executor;
+	private boolean reaperRunning = false;
 	private final MongoDatabase db;
+	private final Clock clock;
 	
 	/** Create MongoDB based storage for the Assembly Homology application.
 	 * @param db the Mongo database the storage system will use.
 	 * @throws StorageInitException if the storage system could not be initialized.
 	 */
 	public MongoAssemblyHomologyStorage(final MongoDatabase db) throws StorageInitException {
+		this(db, Clock.systemDefaultZone());
+	}
+	
+	// for testing
+	private MongoAssemblyHomologyStorage(final MongoDatabase db, final Clock clock) 
+			throws StorageInitException {
 		checkNotNull(db, "db");
+		this.clock = clock;
 		this.db = db;
 		ensureIndexes(); // MUST come before check config;
 		checkConfig();
+		// note that the default reaper settings are too high to test automatically and so are
+		// tested manually by altering the frequency constant and checking for logging.
+		startReaper(REAPER_FREQUENCY_SEC);
+	}
+	
+	/** Schedule the data reaper with the given period between reapings, starting after a delay of
+	 * the given period. The reaper calls {@link #removeInactiveData(Duration)}
+	 * every periodInSeconds with a Duration of 7 days (e.g. any data older than a week which
+	 * meets conditions for deletion will be removed).
+	 * 
+	 * @param periodInSeconds how often the reaper runs.
+	 * @throws IllegalArgumentException if the reaper is already running or the period is less
+	 * than or equal to zero.
+	 */
+	public synchronized void startReaper(long periodInSeconds) {
+		if (reaperRunning) {
+			throw new IllegalArgumentException("The reaper is already running");
+		}
+		if (periodInSeconds <= 0) {
+			throw new IllegalArgumentException("periodInSeconds must be > 0");
+		}
+		reaperRunning = true;
+		executor = Executors.newSingleThreadScheduledExecutor();
+		executor.scheduleAtFixedRate(
+				new Reaper(), periodInSeconds, periodInSeconds, TimeUnit.SECONDS);
+	}
+	
+	/** Returns true if the reaper is running, false otherwise.
+	 * @return true if the reaper is running.
+	 */
+	public synchronized boolean isReaperRunning() {
+		return reaperRunning;
+	}
+	
+	/** Stops the reaper from running again. Call {@link #startReaper(long)} to restart the reaper.
+	 * Calling this method multiple times in succession has no effect.
+	 */
+	public synchronized void stopReaper() {
+		executor.shutdown();
+		reaperRunning = false;
+	}
+	
+	private class Reaper implements Runnable {
+
+		@Override
+		public void run() {
+			try {
+				LoggerFactory.getLogger(getClass()).info("Running data reaper");
+				removeInactiveData(REAPER_DATA_AGE);
+			} catch (Throwable e) {
+				// the only error that can really occur here is losing the connection to mongo,
+				// so we just punt, log, and retry next time.
+				// unfortunately this is really difficult to test in an automated way, so test
+				// manually by shutting down mongo.
+				LoggerFactory.getLogger(getClass())
+						.error("Error removing inactive data: " + e.getMessage(), e);
+			}
+		}
+		
 	}
 	
 	private void checkConfig() throws StorageInitException  {
@@ -256,8 +336,10 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		final MinHashSketchDatabase sketchDB = namespace.getSketchDatabase();
 		final Document ns = new Document()
 				.append(Fields.NAMESPACE_LOAD_ID, namespace.getLoadID().getName())
+				.append(Fields.NAMESPACE_FILTER_ID, namespace.getFilterID().isPresent() ?
+						namespace.getFilterID().get().getName() : null)
 				.append(Fields.NAMESPACE_DATASOURCE_ID, namespace.getSourceID().getName())
-				.append(Fields.NAMESPACE_CREATION_DATE, Date.from(namespace.getCreation()))
+				.append(Fields.NAMESPACE_MODIFICATION_DATE, Date.from(namespace.getModification()))
 				.append(Fields.NAMESPACE_DATABASE_ID, namespace.getSourceDatabaseID())
 				.append(Fields.NAMESPACE_DESCRIPTION, namespace.getDescription().orNull())
 				.append(Fields.NAMESPACE_IMPLEMENTATION,
@@ -317,6 +399,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 
 	private Namespace toNamespace(final Document ns) throws AssemblyHomologyStorageException {
 		try {
+			final String fid = ns.getString(Fields.NAMESPACE_FILTER_ID);
 			return Namespace.getBuilder(
 					new NamespaceID(ns.getString(Fields.NAMESPACE_ID)),
 					new MinHashSketchDatabase(
@@ -328,7 +411,8 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 									Paths.get(ns.getString(Fields.NAMESPACE_SKETCH_DB_PATH))),
 							ns.getInteger(Fields.NAMESPACE_SEQUENCE_COUNT)),
 					new LoadID(ns.getString(Fields.NAMESPACE_LOAD_ID)),
-					ns.getDate(Fields.NAMESPACE_CREATION_DATE).toInstant())
+					ns.getDate(Fields.NAMESPACE_MODIFICATION_DATE).toInstant())
+					.withNullableFilterID(fid == null ? null : new FilterID(fid))
 					.withNullableSourceDatabaseID(ns.getString(Fields.NAMESPACE_DATABASE_ID))
 					.withNullableDescription(ns.getString(Fields.NAMESPACE_DESCRIPTION))
 					.withNullableDataSourceID(new DataSourceID(
@@ -381,8 +465,9 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	
 	@Override
-	public void deleteNamespace(final NamespaceID namespace) {
+	public void deleteNamespace(final NamespaceID namespaceID) {
 		// TODO FEATURE delete namespace and sequence data
+		throw new UnsupportedOperationException();
 		
 	}
 	
@@ -473,5 +558,59 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 			b.withRelatedID(e.getKey(), e.getValue());
 		}
 		return b.build();
+	}
+	
+	/** Removes sequence metadata from the system that a) is not associated with an extant
+	 * namespace and the namespace's current load id and b) is older than the given duration.
+	 * 
+	 * This allows for cleaning up data for which the load never completed or which has been
+	 * made inactive by the namespace being updated with a new load ID.
+	 * 
+	 * The duration should be long enough such that loads in progress will not be affected.
+	 * 
+	 * @param olderThan the minimum age of the data to remove.
+	 * @throws AssemblyHomologyStorageException if an error occurs communicating with MongoDB.
+	 */
+	public void removeInactiveData(final Duration olderThan)
+			throws AssemblyHomologyStorageException {
+		checkNotNull(olderThan, "olderThan");
+		final Date deleteOlderThan = Date.from(clock.instant().minus(olderThan));
+		try {
+			final List<String> nsids = new LinkedList<>();
+			for (final Namespace ns: getNamespaces()) {
+				db.getCollection(COL_SEQUENCE_METADATA).deleteMany(new Document()
+						.append(Fields.SEQMETA_NAMESPACE_ID, ns.getID().getName())
+						.append(Fields.SEQMETA_LOAD_ID,
+								new Document("$ne", ns.getLoadID().getName()))
+						.append(Fields.SEQMETA_CREATION_DATE,
+								new Document("$lt", deleteOlderThan)));
+				nsids.add(ns.getID().getName());
+			}
+			db.getCollection(COL_SEQUENCE_METADATA).deleteMany(new Document()
+					.append(Fields.SEQMETA_NAMESPACE_ID, new Document("$nin", nsids))
+					.append(Fields.SEQMETA_CREATION_DATE, new Document("$lt", deleteOlderThan)));
+		} catch (MongoException e) {
+			throw new AssemblyHomologyStorageException(
+					"Connection to database failed: " + e.getMessage(), e);
+		}
+	}
+	
+	/** Get all the sequence metadata in the system. This is primarily useful for testing
+	 * and exploratory work, not production use.
+	 * @return the sequence metadata.
+	 * @throws AssemblyHomologyStorageException if an error occurs communicating with MongoDB.
+	 */
+	public Set<SequenceMetadata> getSequenceMetadata() throws AssemblyHomologyStorageException {
+		try {
+			final FindIterable<Document> docs = db.getCollection(COL_SEQUENCE_METADATA).find();
+			final Set<SequenceMetadata> seqs = new HashSet<>();
+			for (final Document d: docs) {
+				seqs.add(toSequenceMeta(d));
+			}
+			return seqs;
+		} catch (MongoException e) {
+			throw new AssemblyHomologyStorageException(
+					"Connection to database failed: " + e.getMessage(), e);
+		}
 	}
 }
