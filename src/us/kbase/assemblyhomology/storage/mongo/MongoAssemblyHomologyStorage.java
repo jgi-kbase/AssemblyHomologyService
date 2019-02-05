@@ -5,7 +5,8 @@ import static us.kbase.assemblyhomology.util.Util.checkNoNullsInCollection;
 import static us.kbase.assemblyhomology.util.Util.checkNoNullsOrEmpties;
 
 import java.nio.file.Paths;
-import java.time.Instant;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
@@ -15,15 +16,17 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import org.bson.Document;
+import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Optional;
 import com.mongodb.ErrorCategory;
-import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.FindIterable;
@@ -34,6 +37,7 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.UpdateOptions;
 
 import us.kbase.assemblyhomology.core.DataSourceID;
+import us.kbase.assemblyhomology.core.FilterID;
 import us.kbase.assemblyhomology.core.LoadID;
 import us.kbase.assemblyhomology.core.Namespace;
 import us.kbase.assemblyhomology.core.NamespaceID;
@@ -51,10 +55,11 @@ import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
 import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageException;
 import us.kbase.assemblyhomology.storage.exceptions.StorageInitException;
 
+/** MongoDB storage for the assembly homology application.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
-
-	//TODO JAVADOC
-	//TODO TEST
 
 	/* Don't use mongo built in object mapping to create the returned objects
 	 * since that tightly couples the classes to the storage implementation.
@@ -80,9 +85,9 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	private static final Map<String, Map<List<String>, IndexOptions>> INDEXES;
 	private static final IndexOptions IDX_UNIQ = new IndexOptions().unique(true);
-	private static final IndexOptions IDX_SPARSE = new IndexOptions().sparse(true);
-	private static final IndexOptions IDX_UNIQ_SPARSE =
-			new IndexOptions().unique(true).sparse(true);
+//	private static final IndexOptions IDX_SPARSE = new IndexOptions().sparse(true);
+//	private static final IndexOptions IDX_UNIQ_SPARSE =
+//			new IndexOptions().unique(true).sparse(true);
 	static {
 		//hardcoded indexes
 		INDEXES = new HashMap<String, Map<List<String>, IndexOptions>>();
@@ -106,13 +111,89 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		INDEXES.put(COL_CONFIG, cfg);
 	}
 	
-	private final MongoDatabase db;
+	private static final Duration REAPER_DATA_AGE = Duration.ofDays(7);
+	private static final long REAPER_FREQUENCY_SEC = 24 * 60 * 60;
 	
+	private ScheduledExecutorService executor;
+	private boolean reaperRunning = false;
+	private final MongoDatabase db;
+	private final Clock clock;
+	
+	/** Create MongoDB based storage for the Assembly Homology application.
+	 * @param db the Mongo database the storage system will use.
+	 * @throws StorageInitException if the storage system could not be initialized.
+	 */
 	public MongoAssemblyHomologyStorage(final MongoDatabase db) throws StorageInitException {
+		this(db, Clock.systemDefaultZone());
+	}
+	
+	// for testing
+	private MongoAssemblyHomologyStorage(final MongoDatabase db, final Clock clock) 
+			throws StorageInitException {
 		checkNotNull(db, "db");
+		this.clock = clock;
 		this.db = db;
+		ensureIndexes(); // MUST come before check config;
 		checkConfig();
-		ensureIndexes();
+		// note that the default reaper settings are too high to test automatically and so are
+		// tested manually by altering the frequency constant and checking for logging.
+		startReaper(REAPER_FREQUENCY_SEC);
+	}
+	
+	/** Schedule the data reaper with the given period between reapings, starting after a delay of
+	 * the given period. The reaper calls {@link #removeInactiveData(Duration)}
+	 * every periodInSeconds with a Duration of 7 days (e.g. any data older than a week which
+	 * meets conditions for deletion will be removed).
+	 * 
+	 * @param periodInSeconds how often the reaper runs.
+	 * @throws IllegalArgumentException if the reaper is already running or the period is less
+	 * than or equal to zero.
+	 */
+	public synchronized void startReaper(long periodInSeconds) {
+		if (reaperRunning) {
+			throw new IllegalArgumentException("The reaper is already running");
+		}
+		if (periodInSeconds <= 0) {
+			throw new IllegalArgumentException("periodInSeconds must be > 0");
+		}
+		reaperRunning = true;
+		executor = Executors.newSingleThreadScheduledExecutor();
+		executor.scheduleAtFixedRate(
+				new Reaper(), periodInSeconds, periodInSeconds, TimeUnit.SECONDS);
+	}
+	
+	/** Returns true if the reaper is running, false otherwise.
+	 * @return true if the reaper is running.
+	 */
+	public synchronized boolean isReaperRunning() {
+		return reaperRunning;
+	}
+	
+	/** Stops the reaper from running again. Call {@link #startReaper(long)} to restart the reaper.
+	 * Calling this method multiple times in succession has no effect.
+	 */
+	public synchronized void stopReaper() {
+		executor.shutdown();
+		reaperRunning = false;
+	}
+	
+	private class Reaper implements Runnable {
+
+		@Override
+		public void run() {
+			try {
+				LoggerFactory.getLogger(getClass()).info("Running data reaper");
+				removeInactiveData(REAPER_DATA_AGE);
+			} catch (Throwable e) {
+				// the only error that can really occur here is losing the connection to mongo,
+				// so we just punt, log, and retry next time.
+				// unfortunately this is really difficult to test in an automated way, so test
+				// manually by shutting down mongo.
+				LoggerFactory.getLogger(getClass())
+						.error("Error removing inactive data: " + e.getMessage(), e);
+			}
+		}
+		
 	}
 	
 	private void checkConfig() throws StorageInitException  {
@@ -180,8 +261,11 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	}
 
 	private static class DuplicateKeyExceptionChecker {
-		// super hacky and fragile, but doesn't seem another way to do this.
 		
+		// might need this stuff later, so keeping for now.
+		
+		/*
+		// super hacky and fragile, but doesn't seem another way to do this.
 		private final Pattern keyPattern = Pattern.compile("dup key:\\s+\\{ : \"(.*)\" \\}");
 		private final Pattern indexPattern = Pattern.compile(
 				"duplicate key error (index|collection): " +
@@ -219,12 +303,13 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 				key = Optional.absent();
 			}
 			
-		}
+		} */
 		
 		public static boolean isDuplicate(final MongoWriteException mwe) {
 			return mwe.getError().getCategory().equals(ErrorCategory.DUPLICATE_KEY);
 		}
-
+		
+		/*
 		public boolean isDuplicate() {
 			return isDuplicate;
 		}
@@ -241,6 +326,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		public Optional<String> getKey() {
 			return key;
 		}
+		*/
 	}
 	
 	@Override
@@ -250,8 +336,10 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		final MinHashSketchDatabase sketchDB = namespace.getSketchDatabase();
 		final Document ns = new Document()
 				.append(Fields.NAMESPACE_LOAD_ID, namespace.getLoadID().getName())
+				.append(Fields.NAMESPACE_FILTER_ID, namespace.getFilterID().isPresent() ?
+						namespace.getFilterID().get().getName() : null)
 				.append(Fields.NAMESPACE_DATASOURCE_ID, namespace.getSourceID().getName())
-				.append(Fields.NAMESPACE_CREATION_DATE, Date.from(namespace.getCreation()))
+				.append(Fields.NAMESPACE_MODIFICATION_DATE, Date.from(namespace.getModification()))
 				.append(Fields.NAMESPACE_DATABASE_ID, namespace.getSourceDatabaseID())
 				.append(Fields.NAMESPACE_DESCRIPTION, namespace.getDescription().orNull())
 				.append(Fields.NAMESPACE_IMPLEMENTATION,
@@ -266,7 +354,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 						sketchDB.getLocation().getPathToFile().get().toString())
 				.append(Fields.NAMESPACE_SEQUENCE_COUNT, sketchDB.getSequenceCount());
 		
-		final Document query = new Document(Fields.NAMESPACE_ID, namespace.getId().getName());
+		final Document query = new Document(Fields.NAMESPACE_ID, namespace.getID().getName());
 		upsert(COL_NAMESPACES, query, ns);
 	}
 
@@ -297,13 +385,13 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	}
 	
 	@Override
-	public Namespace getNamespace(final NamespaceID namespace)
+	public Namespace getNamespace(final NamespaceID namespaceID)
 			throws AssemblyHomologyStorageException, NoSuchNamespaceException {
-		checkNotNull(namespace, "namespace");
+		checkNotNull(namespaceID, "namespaceID");
 		final Document ns = findOne(
-				COL_NAMESPACES, new Document(Fields.NAMESPACE_ID, namespace.getName()));
+				COL_NAMESPACES, new Document(Fields.NAMESPACE_ID, namespaceID.getName()));
 		if (ns == null) {
-			throw new NoSuchNamespaceException(namespace.getName());
+			throw new NoSuchNamespaceException(namespaceID.getName());
 		} else {
 			return toNamespace(ns);
 		}
@@ -311,6 +399,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 
 	private Namespace toNamespace(final Document ns) throws AssemblyHomologyStorageException {
 		try {
+			final String fid = ns.getString(Fields.NAMESPACE_FILTER_ID);
 			return Namespace.getBuilder(
 					new NamespaceID(ns.getString(Fields.NAMESPACE_ID)),
 					new MinHashSketchDatabase(
@@ -322,7 +411,8 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 									Paths.get(ns.getString(Fields.NAMESPACE_SKETCH_DB_PATH))),
 							ns.getInteger(Fields.NAMESPACE_SEQUENCE_COUNT)),
 					new LoadID(ns.getString(Fields.NAMESPACE_LOAD_ID)),
-					ns.getDate(Fields.NAMESPACE_CREATION_DATE).toInstant())
+					ns.getDate(Fields.NAMESPACE_MODIFICATION_DATE).toInstant())
+					.withNullableFilterID(fid == null ? null : new FilterID(fid))
 					.withNullableSourceDatabaseID(ns.getString(Fields.NAMESPACE_DATABASE_ID))
 					.withNullableDescription(ns.getString(Fields.NAMESPACE_DESCRIPTION))
 					.withNullableDataSourceID(new DataSourceID(
@@ -375,18 +465,19 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	
 	@Override
-	public void deleteNamespace(final NamespaceID namespace) {
+	public void deleteNamespace(final NamespaceID namespaceID) {
 		// TODO FEATURE delete namespace and sequence data
+		throw new UnsupportedOperationException();
 		
 	}
 	
 	@Override
 	public void saveSequenceMetadata(
-			final NamespaceID namespace,
+			final NamespaceID namespaceID,
 			final LoadID loadID,
 			final Collection<SequenceMetadata> seqmeta)
 			throws AssemblyHomologyStorageException {
-		checkNotNull(namespace, "namespace");
+		checkNotNull(namespaceID, "namespaceID");
 		checkNotNull(loadID, "loadID");
 		checkNoNullsInCollection(seqmeta, "seqmeta");
 		// if loop too slow try https://docs.mongodb.com/manual/reference/method/Bulk/
@@ -398,7 +489,7 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 					.append(Fields.SEQMETA_RELATED_IDS, meta.getRelatedIDs());
 			
 			final Document query = new Document()
-					.append(Fields.SEQMETA_NAMESPACE_ID, namespace.getName())
+					.append(Fields.SEQMETA_NAMESPACE_ID, namespaceID.getName())
 					.append(Fields.SEQMETA_LOAD_ID, loadID.getName())
 					.append(Fields.SEQMETA_SEQUENCE_ID, meta.getID());
 			upsert(COL_SEQUENCE_METADATA, query, dmeta);
@@ -416,37 +507,44 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 	
 	@Override
 	public List<SequenceMetadata> getSequenceMetadata(
-			final NamespaceID namespace,
+			final NamespaceID namespaceID,
 			final LoadID loadID,
 			final List<String> sequenceIDs)
-			throws AssemblyHomologyStorageException, NoSuchSequenceException,
-				NoSuchNamespaceException {
-		checkNotNull(namespace, "namespace");
+			throws AssemblyHomologyStorageException, NoSuchSequenceException {
+		checkNotNull(namespaceID, "namespaceID");
+		checkNotNull(loadID, "loadID");
 		checkNoNullsOrEmpties(sequenceIDs, "sequenceIDs");
 		final Document query = new Document()
-				.append(Fields.SEQMETA_NAMESPACE_ID, namespace.getName())
+				.append(Fields.SEQMETA_NAMESPACE_ID, namespaceID.getName())
 				.append(Fields.SEQMETA_LOAD_ID, loadID.getName())
 				.append(Fields.SEQMETA_SEQUENCE_ID, new Document("$in", sequenceIDs));
-		final List<SequenceMetadata> ret = new LinkedList<>();
 		try {
 			final FindIterable<Document> docs = db.getCollection(
 					COL_SEQUENCE_METADATA).find(query);
+			final Map<String, SequenceMetadata> idToSeq = new HashMap<>();
 			for (final Document d: docs) {
-				ret.add(toSequenceMeta(d));
+				final SequenceMetadata sm = toSequenceMeta(d);
+				idToSeq.put(sm.getID(), sm);
 			}
-			if (ret.size() != sequenceIDs.size()) {
-				//TODO ERRHANDLING be more specific - provide some sequence IDs
+			if (idToSeq.size() != sequenceIDs.size()) {
+				final Set<String> missing = new HashSet<>(sequenceIDs);
+				missing.removeAll(idToSeq.keySet());
 				throw new NoSuchSequenceException(String.format(
-						"Missing sequence in namespace %s with load id %s",
-						namespace.getName(), loadID.getName()));
+						"Missing sequence(s) in namespace %s with load id %s: %s",
+						namespaceID.getName(), loadID.getName(), getUpTo3SeqIDs(missing)));
 			}
-			return ret;
+			return sequenceIDs.stream().map(id -> idToSeq.get(id)).collect(Collectors.toList());
 		} catch (MongoException e) {
 			throw new AssemblyHomologyStorageException(
 					"Connection to database failed: " + e.getMessage(), e);
 		}
 	}
 	
+	private String getUpTo3SeqIDs(final Set<String> missing) {
+		return String.join(" ", new TreeSet<>(missing).stream().limit(3)
+				.collect(Collectors.toList()));
+	}
+
 	private SequenceMetadata toSequenceMeta(final Document d) {
 		final SequenceMetadata.Builder b = SequenceMetadata.getBuilder(
 				d.getString(Fields.SEQMETA_SEQUENCE_ID),
@@ -461,65 +559,58 @@ public class MongoAssemblyHomologyStorage implements AssemblyHomologyStorage {
 		}
 		return b.build();
 	}
-
-	public static void main(final String[] args) throws Exception {
-		@SuppressWarnings("resource")
-		final MongoClient mc = new MongoClient("localhost");
-		final AssemblyHomologyStorage storage = new MongoAssemblyHomologyStorage(
-				mc.getDatabase("assemblyhomology"));
-		
-		
-		final Namespace ns = Namespace.getBuilder(
-				new NamespaceID("foo"),
-				new MinHashSketchDatabase(
-						new MinHashSketchDBName("dbname"),
-						new MinHashImplementationName("Mash"),
-						MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
-						new MinHashDBLocation(Paths.get("/tmp/fake")),
-						2400),
-				new LoadID("some UUID"),
-				Instant.ofEpochMilli(20000))
-				.withNullableDescription("desc")
-				.withNullableSourceDatabaseID("CI Refseq")
-				.withNullableDataSourceID(new DataSourceID("some ds id"))
-				.build();
-		
-		storage.createOrReplaceNamespace(ns);
-		
-		System.out.println(storage.getNamespace(new NamespaceID("foo")));
-		
-		final Namespace ns2 = Namespace.getBuilder(
-				new NamespaceID("foo"),
-				new MinHashSketchDatabase(
-						new MinHashSketchDBName("dbname"),
-						new MinHashImplementationName("Mash"),
-						MinHashParameters.getBuilder(31).withSketchSize(1000).build(),
-						new MinHashDBLocation(Paths.get("/tmp/fake2")),
-						2400),
-				new LoadID("load1"),
-				Instant.ofEpochMilli(30000))
-				.withNullableDescription("desc2")
-				.withNullableSourceDatabaseID("CI Refseq2")
-				.build();
-		
-		storage.createOrReplaceNamespace(ns2);
-		
-		System.out.println(storage.getNamespace(new NamespaceID("foo")));
-		
-		final List<SequenceMetadata> seqmeta = Arrays.asList(
-				SequenceMetadata.getBuilder("smfoo", "sid", Instant.ofEpochMilli(10000))
-						.withNullableScientificName("sciname")
-						.withRelatedID("Genome", "5/6/7")
-						.withRelatedID("NCBI", "GCF_stuff")
-						.build(),
-				SequenceMetadata.getBuilder("smfoo2", "sid2", Instant.ofEpochMilli(20000))
-						.build());
-		
-		storage.saveSequenceMetadata(new NamespaceID("foo"), new LoadID("load1"), seqmeta);
-		
-		System.out.println(storage.getSequenceMetadata(
-				new NamespaceID("foo"), Arrays.asList("smfoo", "smfoo2")));
-				
+	
+	/** Removes sequence metadata from the system that a) is not associated with an extant
+	 * namespace and the namespace's current load id and b) is older than the given duration.
+	 * 
+	 * This allows for cleaning up data for which the load never completed or which has been
+	 * made inactive by the namespace being updated with a new load ID.
+	 * 
+	 * The duration should be long enough such that loads in progress will not be affected.
+	 * 
+	 * @param olderThan the minimum age of the data to remove.
+	 * @throws AssemblyHomologyStorageException if an error occurs communicating with MongoDB.
+	 */
+	public void removeInactiveData(final Duration olderThan)
+			throws AssemblyHomologyStorageException {
+		checkNotNull(olderThan, "olderThan");
+		final Date deleteOlderThan = Date.from(clock.instant().minus(olderThan));
+		try {
+			final List<String> nsids = new LinkedList<>();
+			for (final Namespace ns: getNamespaces()) {
+				db.getCollection(COL_SEQUENCE_METADATA).deleteMany(new Document()
+						.append(Fields.SEQMETA_NAMESPACE_ID, ns.getID().getName())
+						.append(Fields.SEQMETA_LOAD_ID,
+								new Document("$ne", ns.getLoadID().getName()))
+						.append(Fields.SEQMETA_CREATION_DATE,
+								new Document("$lt", deleteOlderThan)));
+				nsids.add(ns.getID().getName());
+			}
+			db.getCollection(COL_SEQUENCE_METADATA).deleteMany(new Document()
+					.append(Fields.SEQMETA_NAMESPACE_ID, new Document("$nin", nsids))
+					.append(Fields.SEQMETA_CREATION_DATE, new Document("$lt", deleteOlderThan)));
+		} catch (MongoException e) {
+			throw new AssemblyHomologyStorageException(
+					"Connection to database failed: " + e.getMessage(), e);
+		}
 	}
-
+	
+	/** Get all the sequence metadata in the system. This is primarily useful for testing
+	 * and exploratory work, not production use.
+	 * @return the sequence metadata.
+	 * @throws AssemblyHomologyStorageException if an error occurs communicating with MongoDB.
+	 */
+	public Set<SequenceMetadata> getSequenceMetadata() throws AssemblyHomologyStorageException {
+		try {
+			final FindIterable<Document> docs = db.getCollection(COL_SEQUENCE_METADATA).find();
+			final Set<SequenceMetadata> seqs = new HashSet<>();
+			for (final Document d: docs) {
+				seqs.add(toSequenceMeta(d));
+			}
+			return seqs;
+		} catch (MongoException e) {
+			throw new AssemblyHomologyStorageException(
+					"Connection to database failed: " + e.getMessage(), e);
+		}
+	}
 }

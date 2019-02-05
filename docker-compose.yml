@@ -34,7 +34,6 @@ services:
       # If your server is using self-signed certs, or otherwise problematic for cert validation
       # you can add the following flag:
     # - "-validateCert=false"
-      - "/kb/deployment/bin/start_assembly_homology.sh"
     depends_on: ["ci-mongo", "mongoinit"]
 
   mongoinit:

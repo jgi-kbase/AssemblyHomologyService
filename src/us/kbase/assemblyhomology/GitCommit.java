@@ -22,7 +22,7 @@ public class GitCommit {
 	
 	static {
 		final InputStream is = GitCommit.class.getResourceAsStream(COMMIT_FILE_NAME);
-		String commit = null;
+		final String commit;
 		if (is == null) {
 			commit = "Missing git commit file " + COMMIT_FILE_NAME +
 					", should be in " + GitCommit.class.getPackage().getName();

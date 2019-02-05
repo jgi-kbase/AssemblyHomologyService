@@ -9,15 +9,18 @@ import us.kbase.assemblyhomology.minhash.MinHashImplementationFactory;
 import us.kbase.assemblyhomology.minhash.MinHashImplementationName;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 
+/** A factory for a Mash implementation of {@link MinHashImplementation}.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MashFactory implements MinHashImplementationFactory {
 
-	//TODO JAVADOC
-	//TODO TEST
-	
 	@Override
-	public MinHashImplementation getImplementation(final Path tempFileDirectory)
+	public MinHashImplementation getImplementation(
+			final Path tempFileDirectory,
+			final int minhashTimeout)
 			throws MinHashInitException {
-		return new Mash(tempFileDirectory);
+		return new Mash(tempFileDirectory, minhashTimeout);
 	}
 
 	@Override
@@ -27,7 +30,7 @@ public class MashFactory implements MinHashImplementationFactory {
 	
 	@Override
 	public Optional<Path> getExpectedFileExtension() {
-		return Mash.getExpectedFileExtension();
+		return Optional.of(Mash.getExpectedFileExtension());
 	}
 
 }

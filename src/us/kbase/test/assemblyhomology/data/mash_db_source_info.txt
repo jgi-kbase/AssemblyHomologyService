@@ -1,0 +1,2 @@
+All sequences used to generate sketches are from the KBase ci environment. The sequence IDs
+in the sketches are worksapce UPAs.

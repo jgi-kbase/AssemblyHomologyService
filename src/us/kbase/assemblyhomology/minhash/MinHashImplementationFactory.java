@@ -6,15 +6,29 @@ import com.google.common.base.Optional;
 
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 
+/** A factory for a MinHash implementation.
+ * @author gaprice@lbl.gov
+ *
+ */
 public interface MinHashImplementationFactory {
 	
-	//TODO JAVADOC
-	
-	MinHashImplementation getImplementation(final Path tempFileDirectory)
+	/** Get the implementation from this factory.
+	 * @param tempFileDirectory a directory the implementation can use to create temporary files.
+	 * @param minhashTimeoutSec the timeout to use for the minhash process in seconds.
+	 * @return the implementation.
+	 * @throws MinHashInitException if the implementation could not be created.
+	 */
+	MinHashImplementation getImplementation(Path tempFileDirectory, int minhashTimeoutSec)
 			throws MinHashInitException;
 	
+	/** Get the name of the implementation.
+	 * @return the implementation name.
+	 */
 	MinHashImplementationName getImplementationName();
 	
+	/** Get the file extension, if any, that the implementation expects.
+	 * @return the expected file extension.
+	 */
 	Optional<Path> getExpectedFileExtension();
 
 }

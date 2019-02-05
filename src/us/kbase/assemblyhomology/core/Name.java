@@ -14,8 +14,6 @@ import us.kbase.assemblyhomology.core.exceptions.MissingParameterException;
  */
 public class Name implements Comparable<Name> {
 	
-	//TODO TEST
-	
 	private final String name;
 	
 	/** Create a new name.

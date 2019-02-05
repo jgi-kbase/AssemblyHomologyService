@@ -12,9 +12,10 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
 import javax.ws.rs.container.ContainerResponseContext;
 import javax.ws.rs.container.ContainerResponseFilter;
-import javax.ws.rs.core.Context;
 
 import org.slf4j.LoggerFactory;
+
+import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
 
 /** The logger for the service. Sets up the logging info (e.g. the method, a random call ID,
  * and the IP address) for each request and logs the method, path, status code, and user agent on
@@ -22,27 +23,33 @@ import org.slf4j.LoggerFactory;
  * @author gaprice@lbl.gov
  *
  */
-public class LoggingFilter implements ContainerRequestFilter,
-		ContainerResponseFilter {
-	
-	//TODO TEST
+public class LoggingFilter implements ContainerRequestFilter, ContainerResponseFilter {
 	
 	private static final String X_FORWARDED_FOR = "X-Forwarded-For";
 	private static final String X_REAL_IP = "X-Real-IP";
 	private static final String USER_AGENT = "User-Agent";
 	
-	//TODO CODE is there a way to inject these via a constructor? Makes testing a lot easier
-	@Context
-	private HttpServletRequest servletRequest;
+	private final HttpServletRequest servletRequest;
+	private final SLF4JAutoLogger logger;
+	private final boolean ignoreIPheaders;
 	
+	/** Create the logging filter. This is normally done by the Jersey framework.
+	 * @param servletRequest the request to be logged.
+	 * @param logger the logger to receive the call information.
+	 * @param cfg the service configuration.
+	 */
 	@Inject
-	private SLF4JAutoLogger logger;
+	public LoggingFilter(
+			final HttpServletRequest servletRequest,
+			final SLF4JAutoLogger logger,
+			final AssemblyHomologyConfig cfg) {
+		this.servletRequest = servletRequest;
+		this.logger = logger;
+		ignoreIPheaders = cfg.isIgnoreIPHeaders();
+	}
 	
 	@Override
-	public void filter(final ContainerRequestContext reqcon)
-			throws IOException {
-		//TODO NOW get dont-trust-ip-headers from config
-		boolean ignoreIPheaders = false;
+	public void filter(final ContainerRequestContext reqcon) throws IOException {
 		logger.setCallInfo(
 				reqcon.getMethod(),
 				(String.format("%.16f", Math.random())).substring(2),

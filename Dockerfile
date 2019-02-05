@@ -21,7 +21,7 @@ COPY --from=build /jars /jars
 # The BUILD_DATE value seem to bust the docker cache when the timestamp changes, move to
 # the end
 LABEL org.label-schema.build-date=$BUILD_DATE \
-      org.label-schema.vcs-url="https://github.com/kbaseIncubator/AssemblyHomologyService.git" \
+      org.label-schema.vcs-url="https://github.com/jgi-kbase/AssemblyHomologyService.git" \
       org.label-schema.vcs-ref=$VCS_REF \
       org.label-schema.schema-version="1.0.0-rc1" \
       us.kbase.vcs-branch=$BRANCH \
@@ -42,5 +42,4 @@ ENTRYPOINT [ "/kb/deployment/bin/dockerize" ]
 # Here are some default params passed to dockerize. They would typically
 # be overidden by docker-compose at startup
 CMD [  "-template", "/kb/deployment/conf/.templates/deployment.cfg.templ:/kb/deployment/conf/deployment.cfg", \
-       "java", "-DSTOP.PORT=8079", "-DSTOP.KEY=foo", "-Djetty.home=/usr/local/jetty", \
-       "-jar", "/usr/local/jetty/start.jar" ]
+       "java", "-Djetty.home=/usr/local/jetty", "-jar", "/usr/local/jetty/start.jar" ]

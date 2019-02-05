@@ -9,11 +9,12 @@ import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
 import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 
+/** A database of MinHash sketches.
+ * @author gaprice@lbl.gov
+ *
+ */
 public class MinHashSketchDatabase {
 	
-	//TODO TEST
-	//TODO JAVADOC
-
 	private final MinHashSketchDBName name;
 	private final MinHashImplementationName minHashImplementationName;
 	private final MinHashParameters parameterSet;
@@ -21,6 +22,13 @@ public class MinHashSketchDatabase {
 	private final int sequenceCount;
 	
 	// a builder would be nice. Everything's required though.
+	/** Create a sketch database.
+	 * @param dbname the name of the database.
+	 * @param minHashImplName the name of the implementation that created the database.
+	 * @param parameterSet the parameter set used to create the database.
+	 * @param location the location of the database.
+	 * @param sequenceCount the number of sequences / sketches in the database.
+	 */
 	public MinHashSketchDatabase(
 			final MinHashSketchDBName dbname,
 			final MinHashImplementationName minHashImplName,
@@ -41,22 +49,37 @@ public class MinHashSketchDatabase {
 		this.sequenceCount = sequenceCount;
 	}
 
+	/** Get the database name.
+	 * @return the database name.
+	 */
 	public MinHashSketchDBName getName() {
 		return name;
 	}
 
+	/** Get the name of the MinHash implementation that created the database.
+	 * @return the implementation name.
+	 */
 	public MinHashImplementationName getImplementationName() {
 		return minHashImplementationName;
 	}
 	
+	/** Get the parameter set used when creating the database.
+	 * @return the database parameters.
+	 */
 	public MinHashParameters getParameterSet() {
 		return parameterSet;
 	}
 
+	/** Get the location of the database.
+	 * @return the database location.
+	 */
 	public MinHashDBLocation getLocation() {
 		return location;
 	}
 
+	/** Get the number of sequences / sketches in the database.
+	 * @return the sequence count.
+	 */
 	public int getSequenceCount() {
 		return sequenceCount;
 	}
@@ -72,16 +95,16 @@ public class MinHashSketchDatabase {
 	 */
 	public List<String> checkIsQueriableBy(final MinHashSketchDatabase query, final boolean strict)
 			throws IncompatibleSketchesException {
+		checkNotNull(query, "query");
 		final List<String> warnings = new LinkedList<>();
 		if (!getImplementationName().equals(query.getImplementationName())) {
 			// need to check version?
 			throw new IncompatibleSketchesException(String.format(
 					"Implementations for sketches do not match: %s %s",
-					getImplementationName(), query.getImplementationName()));
+					getImplementationName().getName(), query.getImplementationName().getName()));
 		}
 		final MinHashParameters rp = getParameterSet();
 		final MinHashParameters qp = query.getParameterSet();
-		//TODO FEATURE allow multiple kmer sizes
 		if (rp.getKmerSize() != qp.getKmerSize()) {
 			throw new IncompatibleSketchesException(String.format(
 					"Kmer size for sketches are not compatible: %s %s",
@@ -95,7 +118,7 @@ public class MinHashSketchDatabase {
 			// may need to adjust this when we have an implementation that supports scaling
 			if (!rp.getScaling().get().equals(qp.getScaling().get())) {
 				throw new IncompatibleSketchesException(String.format(
-						"Scaling paramters for sketches are not compatible: %s %s",
+						"Scaling parameters for sketches are not compatible: %s %s",
 						rp.getScaling().get(), qp.getScaling().get()));
 			}
 		} else {
@@ -185,22 +208,5 @@ public class MinHashSketchDatabase {
 			return false;
 		}
 		return true;
-	}
-
-	@Override
-	public String toString() {
-		StringBuilder builder = new StringBuilder();
-		builder.append("MinHashSketchDatabase [name=");
-		builder.append(name);
-		builder.append(", minHashImplementationName=");
-		builder.append(minHashImplementationName);
-		builder.append(", parameterSet=");
-		builder.append(parameterSet);
-		builder.append(", location=");
-		builder.append(location);
-		builder.append(", sequenceCount=");
-		builder.append(sequenceCount);
-		builder.append("]");
-		return builder.toString();
 	}
 }

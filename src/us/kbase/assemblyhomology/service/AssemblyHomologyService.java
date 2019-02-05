@@ -12,10 +12,10 @@ import com.mongodb.MongoClient;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import us.kbase.assemblyhomology.build.AssemblyHomologyBuilder;
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfig;
 import us.kbase.assemblyhomology.config.AssemblyHomologyConfigurationException;
 import us.kbase.assemblyhomology.core.AssemblyHomology;
-import us.kbase.assemblyhomology.core.AssemblyHomologyBuilder;
 import us.kbase.assemblyhomology.service.exceptions.ExceptionHandler;
 import us.kbase.assemblyhomology.storage.exceptions.StorageInitException;
 
@@ -56,7 +56,7 @@ public class AssemblyHomologyService extends ResourceConfig {
 
 	private void buildApp(
 			final AssemblyHomologyConfig c)
-			throws StorageInitException {
+			throws StorageInitException, AssemblyHomologyConfigurationException {
 		final AssemblyHomologyBuilder ab;
 		synchronized(this) {
 			if (mc == null) {
