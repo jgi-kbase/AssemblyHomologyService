@@ -55,7 +55,7 @@ import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageExcep
 public class AssemblyHomology {
 	
 	private static final int DEFAULT_RETURN = 10;
-	private static final int MAX_RETURN = 100;
+	private static final int MAX_RETURN = 500;
 	
 	private final AssemblyHomologyStorage storage;
 	private final Map<String, MinHashImplementationFactory> impls = new HashMap<>();
