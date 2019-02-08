@@ -271,7 +271,7 @@ Query parameters:
 * `notstrict` - if omitted, the server will return an error if the query sketch size is greater
   than any of the namespace sketch sizes. If `notstrict` is included, the server will return
   warnings instead. Any other parameter mismatches will result in an error.
-* `max` - defines the maximum number of returned results. If missing, < 1, or > 100, `max` is
+* `max` - defines the maximum number of returned results. If missing, < 1, or > 1000, `max` is
   set to 10.
 
 Some namespaces may allow, or require, an authorization token if the filter they're associated

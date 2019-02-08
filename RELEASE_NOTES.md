@@ -1,5 +1,9 @@
 # Assembly Homology Service release notes
 
+## 0.1.2
+
+* Increases the maximum number of returned distances to 1000 from 100.
+
 ## 0.1.1
 
 * Adds an extensible Minhash distance filtering system. Filters can be associated with
