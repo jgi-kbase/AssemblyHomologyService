@@ -5,12 +5,12 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.slf4j.LoggerFactory;
 
 import com.mongodb.MongoClient;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
@@ -81,10 +81,11 @@ public class AssemblyHomologyBuilder {
 		//TODO ZLATER MONGO handle shards & replica sets
 		try {
 			if (c.getMongoUser().isPresent()) {
-				final List<MongoCredential> creds = Arrays.asList(MongoCredential.createCredential(
-						c.getMongoUser().get(), c.getMongoDatabase(), c.getMongoPwd().get()));
+				final MongoCredential creds = MongoCredential.createCredential(
+						c.getMongoUser().get(), c.getMongoDatabase(), c.getMongoPwd().get());
 				// unclear if and when it's safe to clear the password
-				return new MongoClient(new ServerAddress(c.getMongoHost()), creds);
+				return new MongoClient(new ServerAddress(c.getMongoHost()), creds,
+						MongoClientOptions.builder().build());
 			} else {
 				return new MongoClient(new ServerAddress(c.getMongoHost()));
 			}
