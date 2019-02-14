@@ -1,5 +1,9 @@
 # Assembly Homology Service release notes
 
+## 0.1.3
+
+* Update the Java Mongo client to 3.10.1. This supports the latest Mongo version, 4.0.
+
 ## 0.1.2
 
 * Increases the maximum number of returned distances to 1000 from 100.
