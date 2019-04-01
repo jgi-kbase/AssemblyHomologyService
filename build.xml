@@ -28,7 +28,7 @@
     <include name="google/guava-18.0.jar"/>
     <include name="ini4j/ini4j-0.5.2.jar"/>
     <include name="jcommander/jcommander-1.72.jar"/>
-    <include name="mongo/mongo-java-driver-3.4.2.jar"/>
+    <include name="mongo/mongo-java-driver-3.10.1.jar"/>
     <include name="snakeyaml/snakeyaml-1.18.jar"/>
     <include name="kbase/workspace/WorkspaceClient-0.8.0.jar"/>
     <include name="kbase/auth/kbase-auth-0.4.4.jar"/>

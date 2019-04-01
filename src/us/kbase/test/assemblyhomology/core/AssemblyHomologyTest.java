@@ -516,7 +516,7 @@ public class AssemblyHomologyTest {
 			final boolean strict,
 			final Set<String> expectedWarnings,
 			final int returnSize,
-			final int expectedReturnSize)
+			final int expectedReturnSize) /// TODO NOW TEST this isn't actually checked. Add a method to get the collector from the filter to check max size.
 			throws Exception {
 		final AssemblyHomologyStorage storage = mock(AssemblyHomologyStorage.class);
 		final MinHashImplementationFactory fac = mock(MinHashImplementationFactory.class);

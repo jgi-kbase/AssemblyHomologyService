@@ -55,7 +55,7 @@ import us.kbase.assemblyhomology.storage.exceptions.AssemblyHomologyStorageExcep
 public class AssemblyHomology {
 	
 	private static final int DEFAULT_RETURN = 10;
-	private static final int MAX_RETURN = 100;
+	private static final int MAX_RETURN = 1000;
 	
 	private final AssemblyHomologyStorage storage;
 	private final Map<String, MinHashImplementationFactory> impls = new HashMap<>();
@@ -178,7 +178,7 @@ public class AssemblyHomology {
 	 * @param namespaceIDs the namespace IDs for the namespaces of interest.
 	 * @param sketchDB the input query sketch that will be measured against the sketch databases
 	 * associated with the given sequences.
-	 * @param returnCount the number of measurements to return. If < 1 or > 100, 10 measurements
+	 * @param returnCount the number of measurements to return. If < 1 or > 1000, 10 measurements
 	 * will be returned.
 	 * @param strict true to enforce an exact match between sketch parameters. If false, 
 	 * differences in the parameters will be ignored if the MinHash implementation allows it.
