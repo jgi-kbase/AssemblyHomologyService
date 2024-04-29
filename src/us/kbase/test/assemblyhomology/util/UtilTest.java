@@ -1,5 +1,6 @@
 package us.kbase.test.assemblyhomology.util;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
@@ -224,14 +225,26 @@ public class UtilTest {
 	
 	@Test
 	public void loadClassWithInterfaceFailIncorrectGeneric() throws Exception {
-		failLoadClassWithInterface(
-				LoadClassTestClassIllegalConstructor.class.getName(),
-				MinHashDistanceFilterFactory.class,
-				ImmutableMap.of("foo", "bar"),
-				new AssemblyHomologyConfigurationException(
-						"Module us.kbase.test.assemblyhomology.util." +
-						"LoadClassTestClassIllegalConstructor could not be instantiated: " +
-						"java.lang.String cannot be cast to java.lang.Long"));
+		try {
+			Util.loadClassWithInterface(
+					LoadClassTestClassIllegalConstructor.class.getName(),
+					MinHashDistanceFilterFactory.class,
+					ImmutableMap.of("foo", "bar")
+			);
+			fail("expected exception");
+		} catch (AssemblyHomologyConfigurationException got) {
+			// minor text changes for java 8 vs 11
+			assertThat("incorrect message", got.getMessage(), containsString(
+					"Module us.kbase.test.assemblyhomology.util." +
+					"LoadClassTestClassIllegalConstructor could not be instantiated: "
+			));
+			assertThat("incorrect message", got.getMessage(), containsString(
+					"java.lang.String cannot be cast to "
+			));
+			assertThat("incorrect message", got.getMessage(), containsString(
+					"java.lang.Long"
+			));
+		}
 	}
 	
 	@Test

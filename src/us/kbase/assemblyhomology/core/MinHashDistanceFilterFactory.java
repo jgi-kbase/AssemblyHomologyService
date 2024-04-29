@@ -2,8 +2,6 @@ package us.kbase.assemblyhomology.core;
 
 import com.google.common.base.Optional;
 
-import us.kbase.assemblyhomology.core.FilterID;
-import us.kbase.assemblyhomology.core.Token;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceCollector;
 import us.kbase.assemblyhomology.minhash.MinHashDistanceFilter;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterException;
