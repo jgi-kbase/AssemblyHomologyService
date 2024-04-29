@@ -73,7 +73,7 @@ jobs:
       - name: Run tests
         shell: bash
         run: |
-          PATH = $PATH:$MASH_PATH
+          PATH=$PATH:$MASH_PATH
           echo $PATH
           ant ${{matrix.ant_test}}
 
