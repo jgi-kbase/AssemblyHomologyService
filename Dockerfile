@@ -1,10 +1,11 @@
-FROM kbase/kb_jre:latest as build
-RUN apt-get -y update && apt-get -y install ant git openjdk-8-jdk
+FROM kbase/sdkbase2 as build
 RUN cd / && git clone https://github.com/kbase/jars
 
 ADD . /src
 RUN cd /src && ant build
 RUN find /src
+
+
 FROM kbase/kb_jre:latest
 
 # These ARGs values are passed in via the docker build command

@@ -53,7 +53,7 @@ jobs:
           # Set up mash
           wget https://github.com/marbl/Mash/releases/download/v2.0/mash-Linux64-v2.0.tar
           tar -xf mash-Linux64-v2.0.tar
-          cd mash_Linux64-v2.0
+          cd mash-Linux64-v2.0
           MP = `pwd`
           echo "MASH_PATH=$MP" >> "$GITHUB_ENV"
           cd ..
