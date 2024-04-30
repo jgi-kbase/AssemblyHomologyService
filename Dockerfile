@@ -1,10 +1,22 @@
 FROM kbase/sdkbase2 as build
-RUN cd / && git clone https://github.com/kbase/jars
 
+WORKDIR /tmp/ah
 
-ADD . /src
-RUN cd /src && ant build
-RUN find /src
+# dependencies take a while to D/L, so D/L & cache before the build so code changes don't cause
+# a new D/L
+# can't glob *gradle because of the .gradle dir
+COPY build.gradle gradlew settings.gradle /tmp/ah/
+COPY gradle/ /tmp/ah/gradle/
+RUN ./gradlew dependencies
+
+# Now build the code
+COPY deployment/ /tmp/ah/deployment/
+COPY jettybase/ /tmp/ah/jettybase/
+COPY src /tmp/ah/src/
+COPY war /tmp/ah/war/
+# for the git commit
+COPY .git /tmp/ah/.git/
+RUN ./gradlew war
 
 
 FROM kbase/kb_jre:latest
@@ -14,10 +26,9 @@ ARG BUILD_DATE
 ARG VCS_REF
 ARG BRANCH=develop
 
-COPY --from=build /src/deployment/ /kb/deployment/
-COPY --from=build /src/jettybase/ /kb/deployment/jettybase/
-COPY --from=build /src/dist/ /src/dist/
-COPY --from=build /src/assembly_homology /kb/deployment/bin/
+COPY --from=build /tmp/ah/deployment/ /kb/deployment/
+COPY --from=build /tmp/ah/jettybase/ /kb/deployment/jettybase/
+COPY --from=build /tmp/ah/build/libs/AssemblyHomologyService.war /kb/deployment/jettybase/webapps/ROOT.war
 
 # The BUILD_DATE value seem to bust the docker cache when the timestamp changes, move to
 # the end
@@ -32,6 +43,9 @@ WORKDIR /kb/deployment/jettybase
 ENV ASSEMBLY_HOMOLOGY_CONFIG=/kb/deployment/conf/deployment.cfg
 ENV PATH=/bin:/usr/bin:/kb/deployment/bin
 ENV JETTY_HOME=/usr/local/jetty
+
+# TODO BUILD update to no longer use dockerize and take env vars (e.g. like Collections).
+# TODO BUILD Use subsections in the ini file / switch to TOML
 
 RUN wget https://github.com/marbl/Mash/releases/download/v2.0/mash-Linux64-v2.0.tar && \
     tar xf mash-Linux64-v2.0.tar && \

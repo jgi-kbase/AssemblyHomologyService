@@ -9,7 +9,6 @@ plugins {
 	id 'org.ajoberstar.grgit' version '4.1.1'
 }
 
-// TODO NOW update docker build & docker-compose & remove build.xml
 // TODO NOW switch to std gradle layout
 // TODO NOW use jitpacked workspace client and shadow jar when available and remove jars
 
