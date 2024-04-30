@@ -67,6 +67,7 @@ public interface AssemblyHomologyStorage {
 	 * storage system fails.
 	 * @throws NoSuchSequenceException if the requested sequence id(s) does not exist within the
 	 * namespace and its current load ID.
+	 * @throws NoSuchNamespaceException if the provided namespace does not exist.
 	 */
 	List<SequenceMetadata> getSequenceMetadata(
 			NamespaceID namespaceID,

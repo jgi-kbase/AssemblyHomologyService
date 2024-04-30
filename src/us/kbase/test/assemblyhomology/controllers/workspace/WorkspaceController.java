@@ -1,7 +1,7 @@
 package us.kbase.test.assemblyhomology.controllers.workspace;
 
-import static us.kbase.common.test.controllers.ControllerCommon.findFreePort;
-import static us.kbase.common.test.controllers.ControllerCommon.makeTempDirs;
+import static us.kbase.testutils.controllers.ControllerCommon.findFreePort;
+import static us.kbase.testutils.controllers.ControllerCommon.makeTempDirs;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -27,7 +27,7 @@ import org.ini4j.Profile.Section;
 import com.mongodb.MongoClient;
 import com.mongodb.client.MongoDatabase;
 
-import us.kbase.common.test.TestException;
+import us.kbase.testutils.TestException;
 
 
 /** Q&D Utility to run a Workspace server for the purposes of testing from

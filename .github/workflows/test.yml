@@ -25,10 +25,10 @@ jobs:
           # the current production setup
           - java: '8'
             mongo: 'mongodb-linux-x86_64-3.6.13'
-            ant_test: 'test'
+            gradle_test: 'test'
           - java: '11'
             mongo: 'mongodb-linux-x86_64-3.6.23'
-            ant_test: 'test'
+            gradle_test: 'test'
     steps:
       - uses: actions/checkout@v3
 
@@ -75,7 +75,7 @@ jobs:
         run: |
           PATH=$PATH:$MASH_PATH
           echo $PATH
-          ant ${{matrix.ant_test}}
+          ./gradlew ${{matrix.gradle_test}}
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3

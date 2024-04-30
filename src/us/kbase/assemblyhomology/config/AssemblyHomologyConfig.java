@@ -32,8 +32,8 @@ import us.kbase.common.service.JsonServerSyslog.SyslogOutput;
  * mongo-pwd
  * temp-dir
  * filters
- * filter-<name>-factory-class
- * filter-<name>-init-<key>
+ * filter-&lt;name&gt;-factory-class
+ * filter-&lt;name&gt;-init-&lt;key&gt;
  * dont-trust-x-ip-headers
  * </pre>
  * 
@@ -123,6 +123,7 @@ public class AssemblyHomologyConfig {
 		if (nullLogger) {
 			logger = new NullLogger();
 		} else {
+			JsonServerSyslog.setStaticUseSyslog(false);
 			// may want to allow configuring the logger name, but YAGNI
 			logger = new JsonServerSysLogAutoLogger(new JsonServerSyslog(LOG_NAME,
 					//TODO KBASECOMMON allow null for the fake config prop arg
