@@ -47,8 +47,6 @@ public class TestCommon {
 	public static final String MONGOEXE = "test.mongo.exe";
 	public static final String MONGO_USE_WIRED_TIGER = "test.mongo.wired_tiger";
 	
-	public static final String JARS_PATH = "test.jars.dir";
-	
 	public static final String TEST_TEMP_DIR = "test.temp.dir";
 	public static final String KEEP_TEMP_DIR = "test.temp.dir.keep";
 	
@@ -165,10 +163,6 @@ public class TestCommon {
 	
 	public static Path getMongoExe() {
 		return Paths.get(getTestProperty(MONGOEXE)).toAbsolutePath().normalize();
-	}
-
-	public static Path getJarsDir() {
-		return Paths.get(getTestProperty(JARS_PATH)).toAbsolutePath().normalize();
 	}
 
 	public static Path getTempDir() {

@@ -6,9 +6,6 @@
 # path to the mongodb executable to use for the tests.
 test.mongo.exe=/path/to/mongodbexecutable
 
-# path to the KBase jars directory, e.g. [path to parent folder]/jars/lib/jars
-test.jars.dir=/path/to/jars/dir
-
 # true to use wired tiger, anything else for false.
 test.mongo.wired_tiger=false
 

@@ -74,11 +74,11 @@ import us.kbase.test.assemblyhomology.StandaloneAssemblyHomologyServer.ServerThr
 import us.kbase.test.assemblyhomology.data.TestDataManager;
 import us.kbase.test.assemblyhomology.service.api.RootTest;
 import us.kbase.test.auth2.authcontroller.AuthController;
+import us.kbase.test.workspace.controllers.workspace.WorkspaceController;
 import us.kbase.workspace.CreateWorkspaceParams;
 import us.kbase.workspace.SetPermissionsParams;
 import us.kbase.workspace.WorkspaceClient;
 import us.kbase.test.assemblyhomology.TestCommon;
-import us.kbase.test.assemblyhomology.controllers.workspace.WorkspaceController;
 
 public class ServiceIntegrationTest {
 	
@@ -195,9 +195,9 @@ public class ServiceIntegrationTest {
 
 		// set up Workspace
 		WS = new WorkspaceController(
-				TestCommon.getJarsDir(),
 				"localhost:" + MANAGER.mongo.getServerPort(),
 				"AssemblyHomologyServiceIntegTestWSDB",
+				"AssemblyHomologyServiceIntegTestWSDB_types",
 				"fakeadmin",
 				authURL,
 				TEMP_DIR);
@@ -485,8 +485,6 @@ public class ServiceIntegrationTest {
 				Files.newInputStream(TEMP_DIR.resolve(QUERY_K31_S1500)),
 				MediaType.APPLICATION_OCTET_STREAM));
 		
-		assertThat("incorrect response code", res.getStatus(), is(200));
-
 		@SuppressWarnings("unchecked")
 		final Map<String, Object> response = res.readEntity(Map.class);
 		
@@ -515,6 +513,7 @@ public class ServiceIntegrationTest {
 				);
 		
 		assertThat("incorrect response", response, is(expected));
+		assertThat("incorrect response code", res.getStatus(), is(200));
 	}
 	
 	@Test

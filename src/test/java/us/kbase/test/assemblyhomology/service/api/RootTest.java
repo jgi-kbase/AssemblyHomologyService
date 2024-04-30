@@ -17,7 +17,7 @@ import us.kbase.test.assemblyhomology.TestCommon;
 
 public class RootTest {
 	
-	public static final String SERVER_VER = "0.1.3";
+	public static final String SERVER_VER = "0.1.4";
 	private static final String GIT_ERR = 
 			"Missing git commit file gitcommit, should be in us.kbase.assemblyhomology";
 	

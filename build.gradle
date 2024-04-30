@@ -9,8 +9,6 @@ plugins {
 	id 'org.ajoberstar.grgit' version '4.1.1'
 }
 
-// TODO NOW use jitpacked workspace client and shadow jar when available and remove jars
-
 repositories {
 	mavenCentral()
 	
@@ -111,25 +109,7 @@ task buildAll {
 	dependsOn javadoc
 }
 
-def fromURL = { url, name ->
-	File file = new File("$buildDir/download/${name}.jar")
-	file.parentFile.mkdirs()
-	if (!file.exists()) {
-		new URL(url).withInputStream { downloadStream ->
-			file.withOutputStream { fileOut ->
-				fileOut << downloadStream
-			}
-		}
-	}
-	files(file.absolutePath)
-}
-
 dependencies {
-
-	implementation fromURL(
-		'https://github.com/kbase/jars/raw/master/lib/jars/kbase/workspace/WorkspaceService-0.8.0.jar',
-		'WorkspaceService-0.8.0'
-	)
 
 	implementation 'org.ini4j:ini4j:0.5.2'
 	implementation 'commons-io:commons-io:2.4'
@@ -142,6 +122,12 @@ dependencies {
 		exclude group: 'org.eclipse.jetty.aggregate'  // ugh, java common pollutes everything
 		exclude group: 'com.fasterxml.jackson.core'  // breaks everything if we upgrade
 		exclude group: 'javax.servlet', module: 'servlet-api'  // 2.5 vs 3.1 below
+	}
+	implementation('com.github.kbase.workspace_deluxe:workspace-client:0.15.0') {
+		exclude group: 'net.java.dev.jna' // breaks mac builds, not needed
+		exclude group: 'org.eclipse.jetty.aggregate'  // ugh, java common pollutes everything
+		exclude group: 'com.fasterxml.jackson.core'  // breaks everything if we upgrade
+		exclude group: 'javax.servlet', module: 'servlet-api'  // 2.5 vs 3.0.1 below
 	}
 	implementation 'com.github.zafarkhaja:java-semver:0.9.0'
 	implementation 'org.yaml:snakeyaml:1.18'
@@ -159,6 +145,7 @@ dependencies {
 	implementation 'javax.xml.bind:jaxb-api:2.4.0-b180830.0359'
 	
 	testImplementation "com.github.kbase:auth2:0.7.1"
+	testImplementation 'com.github.kbase.workspace_deluxe:workspace_deluxe-test-shadow-all:0.15.0'
 	testImplementation 'nl.jqno.equalsverifier:equalsverifier:3.1.10'
 	testImplementation 'junit:junit:4.12'
 	testImplementation('org.eclipse.jetty:jetty-servlet:9.3.11.v20160721') {
