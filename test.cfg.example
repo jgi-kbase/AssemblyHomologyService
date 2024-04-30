@@ -13,7 +13,7 @@ test.jars.dir=/path/to/jars/dir
 test.mongo.wired_tiger=false
 
 # path to a temporary directory to use for tests.
-test.temp.dir=/path/to/temp/dir/make/sure/this/is/safe
+test.temp.dir=test_temp_assyhomology
 
 # true to keep the temporary directory contents after running tests. 
 test.temp.dir.keep=false

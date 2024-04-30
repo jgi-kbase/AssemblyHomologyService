@@ -5,8 +5,6 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import java.util.LinkedList;
 import java.util.List;
 
-import us.kbase.assemblyhomology.minhash.MinHashDBLocation;
-import us.kbase.assemblyhomology.minhash.MinHashParameters;
 import us.kbase.assemblyhomology.minhash.exceptions.IncompatibleSketchesException;
 
 /** A database of MinHash sketches.
