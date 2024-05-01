@@ -17,7 +17,9 @@ public interface Restreamable {
 	 */
 	InputStream getInputStream() throws IOException;
 	
-	/** Get information about the source of a stream. Typically a file name. */
+	/** Get information about the source of a stream. Typically a file name.
+	 * @return the source information. 
+	 */
 	String getSourceInfo();
 	
 }

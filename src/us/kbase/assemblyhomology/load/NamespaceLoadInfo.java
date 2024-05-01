@@ -30,7 +30,7 @@ import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
  * sourcedatabase: CI Refdata
  * description: some reference data
  * filterid: myfilter
- * <pre>
+ * </pre>
  * 
  * @author gaprice@lbl.gov
  *

@@ -86,6 +86,7 @@ public class Util {
 	}
 	
 	/** Check that the provided collection is not null and contains no null elements.
+	 * @param <T> the type of the collecction items.
 	 * @param col the collection to test.
 	 * @param name the name of the collection to use in any error messages.
 	 */
@@ -115,7 +116,7 @@ public class Util {
 	
 	
 	/** Load and instantiate a class with a given interface. Expects a constructor that takes
-	 * a single Map<String, String> argument.
+	 * a single Map&lt;String, String&gt; argument.
 	 * @param <T> the class that will be instantiated.
 	 * @param className the fully qualified class name.
 	 * @param interfce the required interface.

@@ -117,11 +117,12 @@ public class Namespaces {
 	
 	/** Search one or more namespaces. Expects a sketch database file in the request body.
 	 * @param request the incoming servlet request.
+	 * @param auth the authorization token.
 	 * @param namespaces a comma delimited string of namespace IDs.
 	 * @param notStrict if non null, MinHash searches will continue if possible if the query
 	 * sketch database parameters do not match the target database parameters.
-	 * @param max the maximum number of matches to return. If missing, < 1, or > 100 the maximum
-	 * is set to 10.
+	 * @param max the maximum number of matches to return. If missing, &lt; 1, or &gt;
+	 * 100 the maximum is set to 10.
 	 * @return the matches.
 	 * @throws IOException if an error occurs retrieving the sketch database file from the
 	 * request or saving the file to a temporary file.

@@ -178,8 +178,8 @@ public class AssemblyHomology {
 	 * @param namespaceIDs the namespace IDs for the namespaces of interest.
 	 * @param sketchDB the input query sketch that will be measured against the sketch databases
 	 * associated with the given sequences.
-	 * @param returnCount the number of measurements to return. If < 1 or > 1000, 10 measurements
-	 * will be returned.
+	 * @param returnCount the number of measurements to return. If &lt; 1 or &gt; 1000,
+	 * 10 measurements will be returned.
 	 * @param strict true to enforce an exact match between sketch parameters. If false, 
 	 * differences in the parameters will be ignored if the MinHash implementation allows it.
 	 * @param token a token to use for namespaces that accept or require authentication. Pass null

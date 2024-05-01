@@ -66,7 +66,7 @@ import us.kbase.assemblyhomology.minhash.MinHashSketchDBName;
 import us.kbase.assemblyhomology.minhash.MinHashSketchDatabase;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashDistanceFilterAuthenticationException;
 import us.kbase.auth.AuthToken;
-import us.kbase.common.test.RegexMatcher;
+import us.kbase.testutils.RegexMatcher;
 import us.kbase.test.assemblyhomology.MapBuilder;
 import us.kbase.test.assemblyhomology.MongoStorageTestManager;
 import us.kbase.test.assemblyhomology.StandaloneAssemblyHomologyServer;

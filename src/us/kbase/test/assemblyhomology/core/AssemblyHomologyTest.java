@@ -77,7 +77,7 @@ import us.kbase.assemblyhomology.minhash.exceptions.MinHashException;
 import us.kbase.assemblyhomology.minhash.exceptions.MinHashInitException;
 import us.kbase.assemblyhomology.minhash.exceptions.NotASketchException;
 import us.kbase.assemblyhomology.storage.AssemblyHomologyStorage;
-import us.kbase.common.test.TestException;
+import us.kbase.testutils.TestException;
 import us.kbase.test.assemblyhomology.TestCommon;
 import us.kbase.test.assemblyhomology.TestCommon.LogEvent;
 

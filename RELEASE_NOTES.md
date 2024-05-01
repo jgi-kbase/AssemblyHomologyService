@@ -1,5 +1,10 @@
 # Assembly Homology Service release notes
 
+## 0.1.4
+
+* Switched the build system from Ant to Gradle. As such, all build artifacts, including the
+  `assembly_homology` script, are now found in the `build` directory.
+
 ## 0.1.3
 
 * Update the Java Mongo client to 3.10.1. This supports the latest Mongo version, 4.0.

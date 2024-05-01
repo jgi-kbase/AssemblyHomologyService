@@ -7,7 +7,7 @@ import java.nio.file.Path;
 
 import org.apache.commons.io.IOUtils;
 
-import us.kbase.common.test.TestException;
+import us.kbase.testutils.TestException;
 
 public class TestDataManager {
 
