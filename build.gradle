@@ -9,7 +9,6 @@ plugins {
 	id 'org.ajoberstar.grgit' version '4.1.1'
 }
 
-// TODO NOW switch to std gradle layout
 // TODO NOW use jitpacked workspace client and shadow jar when available and remove jars
 
 repositories {
@@ -110,27 +109,6 @@ task buildAll {
 	dependsOn generateCLIScript
 	dependsOn war
 	dependsOn javadoc
-}
-
-sourceSets {
-	main {
-		java {
-			srcDirs = ["src"]
-			exclude '**/test/**'
-		}
-	}
-	test {
-		java {
-			srcDirs = ["src"]
-			include '**/test/**'
-		}
-		resources {
-			srcDirs = ["src"]
-			include "**/*.msh"
-			include "**/*.txt"
-			include "**/wsjars"
-		}
-	}
 }
 
 def fromURL = { url, name ->
