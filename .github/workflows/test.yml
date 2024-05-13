@@ -46,10 +46,6 @@ jobs:
           # move to parent dir of homedir to install binaries etc
           cd ..
           
-          # set up jars
-          git clone https://github.com/kbase/jars
-          export JARSDIR=$(pwd)/jars/lib/jars/
-          
           # Set up mash
           wget https://github.com/marbl/Mash/releases/download/v2.0/mash-Linux64-v2.0.tar
           tar -xf mash-Linux64-v2.0.tar
@@ -66,7 +62,6 @@ jobs:
           # set up test config
           cd $HOMEDIR
           cp -n test.cfg.example test.cfg
-          sed -i "s#^test.jars.dir.*#test.jars.dir=$JARSDIR#" test.cfg
           sed -i "s#^test.mongo.exe.*#test.mongo.exe=$MONGOD#" test.cfg
           cat test.cfg
 

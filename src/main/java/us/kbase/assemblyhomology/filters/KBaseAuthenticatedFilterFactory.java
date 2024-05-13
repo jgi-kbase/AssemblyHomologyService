@@ -170,8 +170,7 @@ public class KBaseAuthenticatedFilterFactory implements MinHashDistanceFilterFac
 			if (e.getMessage().contains(
 					// hacky hacky hacky
 					// ws needs error codes
-					// and we need to rewrite the auth client for auth2
-					"Login failed! Server responded with code 401 Unauthorized")) {
+					"10020 Invalid token")) {
 				throw new MinHashDistanceFilterAuthenticationException("Invalid token");
 			} else {
 				// this is annoying to test, so pass
