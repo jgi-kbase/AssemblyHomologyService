@@ -22,13 +22,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # the current production setup
           - java: '8'
-            mongo: 'mongodb-linux-x86_64-3.6.13'
-            gradle_test: 'test'
+            mongo: 'mongodb-linux-x86_64-ubuntu2204-7.0.4'
           - java: '11'
             mongo: 'mongodb-linux-x86_64-3.6.23'
-            gradle_test: 'test'
     steps:
       - uses: actions/checkout@v3
 
@@ -70,7 +67,7 @@ jobs:
         run: |
           PATH=$PATH:$MASH_PATH
           echo $PATH
-          ./gradlew ${{matrix.gradle_test}}
+          ./gradlew test
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
