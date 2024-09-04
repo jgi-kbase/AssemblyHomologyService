@@ -114,7 +114,10 @@ dependencies {
 	implementation 'org.ini4j:ini4j:0.5.2'
 	implementation 'commons-io:commons-io:2.4'
 	implementation 'com.beust:jcommander:1.72'
-	implementation 'org.mongodb:mongo-java-driver:3.10.1'
+	implementation 'org.mongodb:mongodb-driver-core:4.11.1'
+	implementation 'org.mongodb:mongodb-driver-sync:4.11.1'
+	implementation 'org.mongodb:bson-record-codec:4.11.1'
+	implementation 'org.mongodb:bson:4.11.1'
 	implementation 'com.google.guava:guava:18.0'
 	implementation "com.github.kbase:auth2_client_java:0.5.0"
 	implementation('com.github.kbase:java_common:0.3.0') {

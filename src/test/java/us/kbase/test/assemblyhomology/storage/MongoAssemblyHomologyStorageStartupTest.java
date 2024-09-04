@@ -99,9 +99,9 @@ public class MongoAssemblyHomologyStorageStartupTest {
 		
 		final Pattern errorPattern = Pattern.compile(
 				"Failed to create index: Write failed with error code 11000 and error message " +
-				"'(exception: )?E11000 duplicate key error (index|collection): " +
+				"'(exception: )?(.*)E11000 duplicate key error (index|collection): " +
 				"startUpWith2ConfigDocs.config( index: |\\.\\$)schema_1\\s+dup key: " +
-				"\\{ : \"schema\" \\}'");
+				"(\\{ schema: \"schema\" \\}'|\\{ : \"schema\" \\}')");
 		try {
 			new MongoAssemblyHomologyStorage(db);
 			fail("started mongo with bad config");
@@ -174,56 +174,59 @@ public class MongoAssemblyHomologyStorageStartupTest {
 	
 	@Test
 	public void indexesConfig() {
-		final Set<Document> indexes = new HashSet<>();
-		manager.db.getCollection("config").listIndexes()
-				.forEach((Consumer<Document>) indexes::add);
+		final Set<Document> indexes = getAndNormalizeIndexes("config");
 		assertThat("incorrect indexes", indexes, is(set(
 				new Document("v", manager.indexVer)
 						.append("unique", true)
 						.append("key", new Document("schema", 1))
-						.append("name", "schema_1")
-						.append("ns", "test_mongoahstorage.config"),
+						.append("name", "schema_1"),
 				new Document("v", manager.indexVer)
 						.append("key", new Document("_id", 1))
 						.append("name", "_id_")
-						.append("ns", "test_mongoahstorage.config")
 				)));
 	}
 	
 	@Test
 	public void indexesNamespace() {
-		final Set<Document> indexes = new HashSet<>();
-		manager.db.getCollection("namesp").listIndexes()
-				.forEach((Consumer<Document>) indexes::add);
+		final Set<Document> indexes = getAndNormalizeIndexes("namesp");
 		assertThat("incorrect indexes", indexes, is(set(
 				new Document("v", manager.indexVer)
 						.append("unique", true)
 						.append("key", new Document("id", 1))
-						.append("name", "id_1")
-						.append("ns", "test_mongoahstorage.namesp"),
+						.append("name", "id_1"),
 				new Document("v", manager.indexVer)
 						.append("key", new Document("_id", 1))
 						.append("name", "_id_")
-						.append("ns", "test_mongoahstorage.namesp")
 				)));
 	}
 	
 	@Test
 	public void indexesSeqMeta() {
-		final Set<Document> indexes = new HashSet<>();
-		manager.db.getCollection("seqmeta").listIndexes()
-				.forEach((Consumer<Document>) indexes::add);
+		final Set<Document> indexes = getAndNormalizeIndexes("seqmeta");
 		assertThat("incorrect indexes", indexes, is(set(
 				new Document("v", manager.indexVer)
 						.append("unique", true)
 						.append("key", new Document("nsid", 1)
 								.append("load", 1).append("seqid", 1))
-						.append("name", "nsid_1_load_1_seqid_1")
-						.append("ns", "test_mongoahstorage.seqmeta"),
+						.append("name", "nsid_1_load_1_seqid_1"),
 				new Document("v", manager.indexVer)
 						.append("key", new Document("_id", 1))
 						.append("name", "_id_")
-						.append("ns", "test_mongoahstorage.seqmeta")
 				)));
+	}
+
+	private Set<Document> getAndNormalizeIndexes(final String collectionName) {
+		final Set<Document> indexes = new HashSet<>();
+		for (Document index: manager.db.getCollection(collectionName).listIndexes()) {
+			// In MongoDB 4.4, the listIndexes and the mongo shell helper method db.collection.getIndexes()
+			// no longer returns the namespace ns field in the index specification documents.
+			index.remove("ns");
+			// some versions of Mongo return ints, some longs. Convert all to longs.
+			if (index.containsKey("expireAfterSeconds")) {
+				index.put("expireAfterSeconds", ((Number) index.get("expireAfterSeconds")).longValue());
+			}
+			indexes.add(index);
+		}
+		return indexes;
 	}
 }
