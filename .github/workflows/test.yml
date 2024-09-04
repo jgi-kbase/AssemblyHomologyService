@@ -25,7 +25,7 @@ jobs:
           - java: '8'
             mongo: 'mongodb-linux-x86_64-ubuntu2204-7.0.4'
           - java: '11'
-            mongo: 'mongodb-linux-x86_64-3.6.23'
+            mongo: 'mongodb-linux-x86_64-4.4.29'
     steps:
       - uses: actions/checkout@v3
 
