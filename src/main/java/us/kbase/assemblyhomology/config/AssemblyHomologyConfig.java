@@ -59,6 +59,7 @@ public class AssemblyHomologyConfig {
 	private static final String KEY_MONGO_DB = "mongo-db";
 	private static final String KEY_MONGO_USER = "mongo-user";
 	private static final String KEY_MONGO_PWD = "mongo-pwd";
+	private static final String KEY_MONGO_RETRY_WRITES = "mongo-retrywrites";
 	private static final String KEY_TEMP_DIR = "temp-dir";
 	private static final String KEY_MINHASH_TIMEOUT = "minhash-timeout";
 	private static final String KEY_IGNORE_IP_HEADERS = "dont-trust-x-ip-headers";
@@ -78,6 +79,7 @@ public class AssemblyHomologyConfig {
 	private final String mongoDB;
 	private final Optional<String> mongoUser;
 	private final Optional<char[]> mongoPwd;
+	private final boolean mongoRetryWrites;
 	private final Path tempDir;
 	private final int minhashTimeoutSec;
 	private final SLF4JAutoLogger logger;
@@ -137,6 +139,7 @@ public class AssemblyHomologyConfig {
 		tempDir = Paths.get(getString(KEY_TEMP_DIR, cfg, true));
 		mongoHost = getString(KEY_MONGO_HOST, cfg, true);
 		mongoDB = getString(KEY_MONGO_DB, cfg, true);
+		mongoRetryWrites = TRUE.equals(getString(KEY_MONGO_RETRY_WRITES, cfg));
 		mongoUser = Optional.fromNullable(getString(KEY_MONGO_USER, cfg));
 		Optional<String> mongop = Optional.fromNullable(getString(KEY_MONGO_PWD, cfg));
 		if (mongoUser.isPresent() ^ mongop.isPresent()) {
@@ -328,11 +331,18 @@ public class AssemblyHomologyConfig {
 		return mongoHost;
 	}
 
-	/** Ge the MongoDB database to use.
+	/** Get the MongoDB database to use.
 	 * @return the database.
 	 */
 	public String getMongoDatabase() {
 		return mongoDB;
+	}
+
+	/** Get whether the MongoDB retryWrites parameter should be set.
+	 * @return True to set the retryWrites parameter when connecting to MongoDB, false otherwise.
+	 */
+	public boolean getMongoRetryWrites() {
+		return mongoRetryWrites;
 	}
 
 	/** Get the MongoDB user name, if any. If provided a password will also be provided.
