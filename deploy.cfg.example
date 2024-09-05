@@ -10,6 +10,10 @@ mongo-db=
 mongo-user=
 mongo-pwd=
 
+# Whether to enable ('true') the MongoDB retryWrites parameter or not (anything other than 'true').
+# See https://www.mongodb.com/docs/manual/core/retryable-writes/
+mongo-retrywrites=false
+
 # A directory to use for temporary files:
 temp-dir=./assemblyhomology_temp
 

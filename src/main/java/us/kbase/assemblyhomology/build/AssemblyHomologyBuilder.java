@@ -80,8 +80,10 @@ public class AssemblyHomologyBuilder {
 	
 	private MongoClient buildMongo(final AssemblyHomologyConfig c) throws StorageInitException {
 		//TODO ZLATER MONGO handle shards & replica sets
-		final MongoClientSettings.Builder mongoBuilder = MongoClientSettings.builder().applyToClusterSettings(
-				builder -> builder.hosts(Arrays.asList(new ServerAddress(c.getMongoHost()))));
+		final MongoClientSettings.Builder mongoBuilder = MongoClientSettings.builder()
+				.retryWrites(c.getMongoRetryWrites())
+				.applyToClusterSettings(builder -> builder.hosts(
+						Arrays.asList(new ServerAddress(c.getMongoHost()))));
 		try {
 			if (c.getMongoUser().isPresent()) {
 				final MongoCredential creds = MongoCredential.createCredential(

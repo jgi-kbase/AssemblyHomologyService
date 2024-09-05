@@ -85,6 +85,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
+		assertThat("incorrect retry writes", cfg.getMongoRetryWrites(), is(false));
 		assertThat("incorrect minhash timeout", cfg.getMinhashTimeoutSec(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
@@ -106,6 +107,7 @@ public class AssemblyHomologyConfigTest {
 					 "mongo-db=database\n" +
 					 "mongo-user=\n" +
 					 "mongo-pwd=\n" +
+					 "mongo-retrywrites=\n" +
 					 "minhash-timeout=\n" +
 					 "dont-trust-x-ip-headers=true1\n" +
 					 "temp-dir=/foo/bar/baz\n" +
@@ -121,6 +123,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
+		assertThat("incorrect retry writes", cfg.getMongoRetryWrites(), is(false));
 		assertThat("incorrect minhash timeout", cfg.getMinhashTimeoutSec(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
@@ -143,6 +146,7 @@ public class AssemblyHomologyConfigTest {
 					 "mongo-db=database\n" +
 					 "mongo-user=userfoo\n" +
 					 "mongo-pwd=somepwd\n" +
+					 "mongo-retrywrites=	false	\n" +
 					 "minhash-timeout=600\n" +
 					 "dont-trust-x-ip-headers=true\n" +
 					 "temp-dir=/foo/bar/baz\n" +
@@ -164,6 +168,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
+		assertThat("incorrect retry writes", cfg.getMongoRetryWrites(), is(false));
 		assertThat("incorrect minhash timeout", cfg.getMinhashTimeoutSec(), is(600));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
@@ -187,6 +192,7 @@ public class AssemblyHomologyConfigTest {
 					 "mongo-db=database\n" +
 					 "mongo-user=userfoo\n" +
 					 "mongo-pwd=somepwd\n" +
+					 "mongo-retrywrites=true\n" +
 					 "minhash-timeout=15\n" +
 					 "dont-trust-x-ip-headers=true\n" +
 					 "temp-dir=/foo/bar/baz")
@@ -201,6 +207,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
+		assertThat("incorrect retry writes", cfg.getMongoRetryWrites(), is(true));
 		assertThat("incorrect minhash timeout", cfg.getMinhashTimeoutSec(), is(15));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
@@ -224,6 +231,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo db", cfg.getMongoDatabase(), is("database"));
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.absent()));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd(), is(Optional.absent()));
+		assertThat("incorrect retry writes", cfg.getMongoRetryWrites(), is(false));
 		assertThat("incorrect minhash timeout", cfg.getMinhashTimeoutSec(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
@@ -241,6 +249,7 @@ public class AssemblyHomologyConfigTest {
 				 "mongo-db=database\n" +
 				 "mongo-user=userfoo\n" +
 				 "mongo-pwd=somepwd\n" +
+				 "mongo-retrywrites=true	\n" +
 				 "dont-trust-x-ip-headers=true\n" +
 				 "temp-dir=/foo/bar/baz\n" + 
 				 "filters=foo,  \t   ,   bar  \n" +
@@ -256,6 +265,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
+		assertThat("incorrect retry writes", cfg.getMongoRetryWrites(), is(true));
 		assertThat("incorrect minhash timeout", cfg.getMinhashTimeoutSec(), is(30));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
