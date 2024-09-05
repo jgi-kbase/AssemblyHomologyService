@@ -146,7 +146,7 @@ public class AssemblyHomologyConfigTest {
 					 "mongo-db=database\n" +
 					 "mongo-user=userfoo\n" +
 					 "mongo-pwd=somepwd\n" +
-					 "mongo-retrywrites=true\n" +
+					 "mongo-retrywrites=	false	\n" +
 					 "minhash-timeout=600\n" +
 					 "dont-trust-x-ip-headers=true\n" +
 					 "temp-dir=/foo/bar/baz\n" +
@@ -168,7 +168,7 @@ public class AssemblyHomologyConfigTest {
 		assertThat("incorrect mongo user", cfg.getMongoUser(), is(Optional.of("userfoo")));
 		assertThat("incorrect mongo pwd", cfg.getMongoPwd().get(),
 				equalTo("somepwd".toCharArray()));
-		assertThat("incorrect retry writes", cfg.getMongoRetryWrites(), is(true));
+		assertThat("incorrect retry writes", cfg.getMongoRetryWrites(), is(false));
 		assertThat("incorrect minhash timeout", cfg.getMinhashTimeoutSec(), is(600));
 		assertThat("incorrect temp dir", cfg.getPathToTemporaryFileDirectory(),
 				is(Paths.get("/foo/bar/baz")));
@@ -249,7 +249,7 @@ public class AssemblyHomologyConfigTest {
 				 "mongo-db=database\n" +
 				 "mongo-user=userfoo\n" +
 				 "mongo-pwd=somepwd\n" +
-				 "mongo-retrywrites=true\n" +
+				 "mongo-retrywrites=true	\n" +
 				 "dont-trust-x-ip-headers=true\n" +
 				 "temp-dir=/foo/bar/baz\n" + 
 				 "filters=foo,  \t   ,   bar  \n" +
