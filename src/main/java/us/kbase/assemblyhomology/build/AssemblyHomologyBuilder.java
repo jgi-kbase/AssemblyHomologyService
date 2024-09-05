@@ -9,8 +9,9 @@ import java.util.Set;
 
 import org.slf4j.LoggerFactory;
 
-import com.mongodb.MongoClient;
-import com.mongodb.MongoClientOptions;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.MongoException;
 import com.mongodb.ServerAddress;
@@ -79,15 +80,16 @@ public class AssemblyHomologyBuilder {
 	
 	private MongoClient buildMongo(final AssemblyHomologyConfig c) throws StorageInitException {
 		//TODO ZLATER MONGO handle shards & replica sets
+		final MongoClientSettings.Builder mongoBuilder = MongoClientSettings.builder().applyToClusterSettings(
+				builder -> builder.hosts(Arrays.asList(new ServerAddress(c.getMongoHost()))));
 		try {
 			if (c.getMongoUser().isPresent()) {
 				final MongoCredential creds = MongoCredential.createCredential(
 						c.getMongoUser().get(), c.getMongoDatabase(), c.getMongoPwd().get());
 				// unclear if and when it's safe to clear the password
-				return new MongoClient(new ServerAddress(c.getMongoHost()), creds,
-						MongoClientOptions.builder().build());
+				return MongoClients.create(mongoBuilder.credential(creds).build());
 			} else {
-				return new MongoClient(new ServerAddress(c.getMongoHost()));
+				return MongoClients.create(mongoBuilder.build());
 			}
 		} catch (MongoException e) {
 			LoggerFactory.getLogger(getClass()).error(
