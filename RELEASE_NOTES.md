@@ -1,13 +1,9 @@
 # Assembly Homology Service release notes
 
-## 0.1.5
-
-* The MongoDB clients have been updated to the most recent version.
-* Added the ``mongo-retrywrites`` configuration setting in ``deploy.cfg``, defaulting to
-  ``false``.
-
 ## 0.1.4
 
+* The MongoDB clients have been updated to the most recent version.
+* Added the ``mongo-retrywrites`` configuration setting in ``deploy.cfg``, defaulting to ``false``.
 * Switched the build system from Ant to Gradle. As such, all build artifacts, including the
   `assembly_homology` script, are now found in the `build` directory.
 
