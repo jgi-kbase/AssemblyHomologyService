@@ -5,20 +5,24 @@ version: "3.1"
 # that is started up and polled
 services:
   assembly_homology:
-    image: kbase/assembly_homology:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     environment:
-      - ASSEMBLY_HOMOLOGY_CONFIG=/kb/deployment/conf/deployment.cfg
+      mongo_host: "mongo:27017"
     command:
       - "-wait"
-      - "tcp://ci-mongo:27017"
-      - "-wait"
-      - "tcp://mongoinit:8080"
+      - "tcp://mongo:27017"
       - "-timeout"
       - "120s"
       - "-template"
       - "/kb/deployment/conf/.templates/deployment.cfg.templ:/kb/deployment/conf/deployment.cfg"
+      - "java"
+      - "-Djetty.home=/usr/local/jetty"
+      - "-jar"
+      - "/usr/local/jetty/start.jar"
       # If you needed to pass in context for template evaluation you would put something like
       # these lines that tell dockerize to hit github for an INI style file for the context
     # - "-env"
@@ -34,22 +38,10 @@ services:
       # If your server is using self-signed certs, or otherwise problematic for cert validation
       # you can add the following flag:
     # - "-validateCert=false"
-    depends_on: ["ci-mongo", "mongoinit"]
+    depends_on: ["mongo"]
 
-  mongoinit:
-    image: kbase/db_initialize:latest
-    entrypoint:
-      - "/kb/deployment/bin/dockerize.sh"
-      - "-wait"
-      - "tcp://ci-mongo:27017"
-      - "-timeout"
-      - "120s"
-    depends_on: [ "ci-mongo" ]
-  
-  ci-mongo:
-    image: mongo:2
-    command:
-      - "--smallfiles"
+  mongo:
+    image: mongo:3.6.23
     ports:
       - "27017:27017"
 

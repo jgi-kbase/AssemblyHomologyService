@@ -4,8 +4,6 @@ This repo contains the KBase / JGI Assembly Homology Service (AHS). The service 
 assembly matching based on implementations of the
 [MinHash algorithm](https://ieeexplore.ieee.org/abstract/document/666900/?reload=tru).
 
-Build status (master):
-[![Build Status](https://travis-ci.org/jgi-kbase/AssemblyHomologyService.svg?branch=master)](https://travis-ci.org/jgi-kbase/AssemblyHomologyService)
 [![codecov](https://codecov.io/gh/jgi-kbase/AssemblyHomologyService/branch/master/graph/badge.svg)](https://codecov.io/gh/jgi-kbase/AssemblyHomologyService)
 
 ## Usage
@@ -33,20 +31,19 @@ is supported. Mash is configured to never return sequences with a distance great
 ## Requirements
 
 Java 8 (OpenJDK OK)  
-Apache Ant (http://ant.apache.org/)  
 MongoDB 2.6+ (https://www.mongodb.com/)  
 Jetty 9.3+ (http://www.eclipse.org/jetty/download.html)
     (see jetty-config.md for version used for testing)  
 This repo (git clone https://github.com/jgi-kbase/AssemblyHomologyService)  
-The jars repo (git clone https://github.com/kbase/jars)  
-The two repos above need to be in the same parent folder.
 
 ## Build
 
 ```
 cd [assembly homology repo directory]
-ant build
+./gradlew buildAll
 ```
+
+Build artifacts reside in the `build` directory.
 
 ## Load data
 
@@ -230,7 +227,13 @@ processing and either discard or pass on all distances to the collector.
 ensure `mash` is available on the system path  
 start mongodb  
 cd into the assembly homology repo  
-`ant build`  
+
+```
+./gradlew buildAll
+mkdir jettybase/webapps
+cp build/libs/AssemblyHomologyService.war jettybase/webapps/ROOT.war
+```
+
 copy `deploy.cfg.example` to `deploy.cfg` and fill in appropriately  
 `export ASSEMBLY_HOMOLOGY_CONFIG=<path to deploy.cfg>`  
 OR  
@@ -300,14 +303,14 @@ authorization source specified may be searched at the same time as namespaces wi
 * Releases
   * The master branch is the stable branch. Releases are made from the develop branch to the master
     branch.
-  * Update the version as per the semantic version rules in `src/us/kbase/assemblyhomoloy/api/Root.java`.
+  * Update the version as per the semantic version rules in
+    `src/us/kbase/assemblyhomoloy/service/api/Root.java`.
   * Tag the version in git and github.
 
 ### Running tests
 
 * Copy `test.cfg.example` to `test.cfg` and fill in the values appropriately.
-  * If it works as is start buying lottery tickets immediately.
-* `ant test`
+* `./gradlew test`
 
 ### UI
 
