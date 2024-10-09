@@ -14,5 +14,5 @@ filter-kbase-init-workspace-url={{ default .Env.ws_url "https://kbase.us/service
 filter-kbase-init-env={{ default .Env.kbase_env "prod" }}
 
 filter-kbaseci-factory-class=us.kbase.assemblyhomology.filters.KBaseAuthenticatedFilterFactory
-filter-kbaseci-init-workspace-url=https://ci.kbase.us/services/ws
-filter-kbaseci-init-env=ci
+filter-kbaseci-init-workspace-url={{ default .Env.ci_ws_url "https://ci.kbase.us/services/ws" }}
+filter-kbaseci-init-env={{ default .Env.kbase_env_ci "ci" }}
