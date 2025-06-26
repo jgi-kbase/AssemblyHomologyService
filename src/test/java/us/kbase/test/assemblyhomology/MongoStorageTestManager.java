@@ -6,9 +6,6 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.time.Clock;
 
-import org.bson.Document;
-
-import com.github.zafarkhaja.semver.Version;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -23,27 +20,18 @@ public class MongoStorageTestManager {
 	public MongoDatabase db;
 	public MongoAssemblyHomologyStorage storage;
 	public Clock clockMock;
-	public Version mongoDBVer;
-	public int indexVer;
-	public boolean wiredTiger;
-	public boolean includeSystemIndexes;
+	public final int indexVer = 2;
+	public final boolean includeSystemIndexes = false;
 	
 	public MongoStorageTestManager(final String dbName) throws Exception {
 		TestCommon.stfuLoggers();
 		mongo = new MongoController(TestCommon.getMongoExe().toString(),
 				TestCommon.getTempDir(),
 				TestCommon.useWiredTigerEngine());
-		wiredTiger = TestCommon.useWiredTigerEngine();
 		System.out.println(String.format("Testing against mongo executable %s on port %s",
 				TestCommon.getMongoExe(), mongo.getServerPort()));
 		mc = MongoClients.create("mongodb://localhost:" + mongo.getServerPort());
 		db = mc.getDatabase(dbName);
-		
-		final Document bi = db.runCommand(new Document("buildinfo", 1));
-		final String version = bi.getString("version");
-		mongoDBVer = Version.valueOf(version);
-		indexVer = mongoDBVer.greaterThanOrEqualTo(Version.forIntegers(3, 4)) ? 2 : 1;
-		includeSystemIndexes = mongoDBVer.lessThan(Version.forIntegers(3, 2)) && !wiredTiger;
 		reset();
 	}
 	
