@@ -20,8 +20,6 @@ public class MongoStorageTestManager {
 	public MongoDatabase db;
 	public MongoAssemblyHomologyStorage storage;
 	public Clock clockMock;
-	public static final int indexVer = 2;
-	public static final boolean includeSystemIndexes = false;
 	
 	public MongoStorageTestManager(final String dbName) throws Exception {
 		TestCommon.stfuLoggers();
