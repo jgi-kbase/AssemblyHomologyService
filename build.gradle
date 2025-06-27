@@ -120,7 +120,7 @@ dependencies {
 	implementation 'org.mongodb:bson:4.11.1'
 	implementation 'com.google.guava:guava:18.0'
 	implementation "com.github.kbase:auth2_client_java:0.5.0"
-	implementation('com.github.kbase:java_common:0.3.0') {
+	implementation('com.github.kbase:java_common:0.3.1') {
 		exclude group: 'net.java.dev.jna' // breaks mac builds, not needed
 		exclude group: 'org.eclipse.jetty.aggregate'  // ugh, java common pollutes everything
 		exclude group: 'com.fasterxml.jackson.core'  // breaks everything if we upgrade
