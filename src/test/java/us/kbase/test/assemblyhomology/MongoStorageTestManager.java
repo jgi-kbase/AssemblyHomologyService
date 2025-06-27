@@ -20,14 +20,14 @@ public class MongoStorageTestManager {
 	public MongoDatabase db;
 	public MongoAssemblyHomologyStorage storage;
 	public Clock clockMock;
-	public final int indexVer = 2;
-	public final boolean includeSystemIndexes = false;
+	public static final int indexVer = 2;
+	public static final boolean includeSystemIndexes = false;
 	
 	public MongoStorageTestManager(final String dbName) throws Exception {
 		TestCommon.stfuLoggers();
 		mongo = new MongoController(TestCommon.getMongoExe().toString(),
 				TestCommon.getTempDir(),
-				TestCommon.useWiredTigerEngine());
+				true);
 		System.out.println(String.format("Testing against mongo executable %s on port %s",
 				TestCommon.getMongoExe(), mongo.getServerPort()));
 		mc = MongoClients.create("mongodb://localhost:" + mongo.getServerPort());
