@@ -6,9 +6,6 @@
 # path to the mongodb executable to use for the tests.
 test.mongo.exe=/path/to/mongodbexecutable
 
-# true to use wired tiger, anything else for false.
-test.mongo.wired_tiger=false
-
 # path to a temporary directory to use for tests.
 test.temp.dir=test_temp_assyhomology
 
