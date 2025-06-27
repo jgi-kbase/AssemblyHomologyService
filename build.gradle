@@ -151,7 +151,7 @@ dependencies {
 	testImplementation 'com.github.kbase.workspace_deluxe:workspace_deluxe-test-shadow-all:0.15.0'
 	testImplementation 'nl.jqno.equalsverifier:equalsverifier:3.1.10'
 	testImplementation 'junit:junit:4.12'
-	testImplementation('org.eclipse.jetty:jetty-servlet:9.3.11.v20160721') {
+	testImplementation('org.eclipse.jetty:jetty-servlet:11.0.25') {
 		exclude group: "javax.servlet", module: "javax.servlet-api" // upgrading breaks tests
 	}
 	testImplementation 'org.mockito:mockito-core:3.0.0'
