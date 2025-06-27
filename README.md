@@ -31,7 +31,7 @@ is supported. Mash is configured to never return sequences with a distance great
 ## Requirements
 
 Java 8 (OpenJDK OK)  
-MongoDB 2.6+ (https://www.mongodb.com/)  
+MongoDB 7.0.4+ (https://www.mongodb.com/)  
 Jetty 9.3+ (http://www.eclipse.org/jetty/download.html)
     (see jetty-config.md for version used for testing)  
 This repo (git clone https://github.com/jgi-kbase/AssemblyHomologyService)  

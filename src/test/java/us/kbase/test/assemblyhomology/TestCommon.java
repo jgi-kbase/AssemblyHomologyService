@@ -45,8 +45,6 @@ import us.kbase.testutils.TestException;
 public class TestCommon {
 
 	public static final String MONGOEXE = "test.mongo.exe";
-	public static final String MONGO_USE_WIRED_TIGER = "test.mongo.wired_tiger";
-	
 	public static final String TEST_TEMP_DIR = "test.temp.dir";
 	public static final String KEEP_TEMP_DIR = "test.temp.dir.keep";
 	
@@ -171,10 +169,6 @@ public class TestCommon {
 	
 	public static boolean isDeleteTempFiles() {
 		return !"true".equals(getTestProperty(KEEP_TEMP_DIR));
-	}
-
-	public static boolean useWiredTigerEngine() {
-		return "true".equals(getTestProperty(MONGO_USE_WIRED_TIGER));
 	}
 	
 	private static String getTestProperty(final String propertyKey) {

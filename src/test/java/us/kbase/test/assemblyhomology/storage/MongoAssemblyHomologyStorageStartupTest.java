@@ -163,9 +163,6 @@ public class MongoAssemblyHomologyStorageStartupTest {
 				"config",
 				"namesp",
 				"seqmeta");
-		if (manager.includeSystemIndexes) {
-			expected.add("system.indexes");
-		}
 		// this is annoying. MongoIterator has two forEach methods with different signatures
 		// and so which one to call is ambiguous for lambda expressions.
 		manager.db.listCollectionNames().forEach((Consumer<String>) names::add);
@@ -176,11 +173,11 @@ public class MongoAssemblyHomologyStorageStartupTest {
 	public void indexesConfig() {
 		final Set<Document> indexes = getAndNormalizeIndexes("config");
 		assertThat("incorrect indexes", indexes, is(set(
-				new Document("v", manager.indexVer)
+				new Document("v", 2)
 						.append("unique", true)
 						.append("key", new Document("schema", 1))
 						.append("name", "schema_1"),
-				new Document("v", manager.indexVer)
+				new Document("v", 2)
 						.append("key", new Document("_id", 1))
 						.append("name", "_id_")
 				)));
@@ -190,11 +187,11 @@ public class MongoAssemblyHomologyStorageStartupTest {
 	public void indexesNamespace() {
 		final Set<Document> indexes = getAndNormalizeIndexes("namesp");
 		assertThat("incorrect indexes", indexes, is(set(
-				new Document("v", manager.indexVer)
+				new Document("v", 2)
 						.append("unique", true)
 						.append("key", new Document("id", 1))
 						.append("name", "id_1"),
-				new Document("v", manager.indexVer)
+				new Document("v", 2)
 						.append("key", new Document("_id", 1))
 						.append("name", "_id_")
 				)));
@@ -204,12 +201,12 @@ public class MongoAssemblyHomologyStorageStartupTest {
 	public void indexesSeqMeta() {
 		final Set<Document> indexes = getAndNormalizeIndexes("seqmeta");
 		assertThat("incorrect indexes", indexes, is(set(
-				new Document("v", manager.indexVer)
+				new Document("v", 2)
 						.append("unique", true)
 						.append("key", new Document("nsid", 1)
 								.append("load", 1).append("seqid", 1))
 						.append("name", "nsid_1_load_1_seqid_1"),
-				new Document("v", manager.indexVer)
+				new Document("v", 2)
 						.append("key", new Document("_id", 1))
 						.append("name", "_id_")
 				)));
