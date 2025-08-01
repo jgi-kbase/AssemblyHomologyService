@@ -139,8 +139,8 @@ dependencies {
 	// TODO DEPS Need to rework the java common logger to not use syslog4j at all since it's
 	// abandonware and has a ton of CVEs, even in the newer versions.
 	implementation "org.syslog4j:syslog4j:0.9.46"
-	implementation 'com.fasterxml.jackson.core:jackson-annotations:2.5.4'
-	implementation 'com.fasterxml.jackson.core:jackson-databind:2.5.4'
+	implementation 'com.fasterxml.jackson.core:jackson-annotations:2.19.2'
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.2'
 	implementation 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.5.4'
 	implementation 'org.glassfish.jersey.containers:jersey-container-servlet:2.23.2'
 	implementation 'org.glassfish.jersey.media:jersey-media-json-jackson:2.23.2'
